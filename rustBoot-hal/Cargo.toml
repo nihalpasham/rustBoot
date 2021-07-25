@@ -1,0 +1,10 @@
+[package]
+name = "rustBoot-hal"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+embedded-hal = "0.2.5"
+nrf52840-hal = "0.12.2"
