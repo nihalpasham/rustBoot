@@ -1,6 +1,7 @@
 #![no_std]
 #![allow(warnings)]
 
+use core::convert::TryInto;
 use core::mem::size_of;
 use core::usize;
 
@@ -55,7 +56,7 @@ pub const ECC_SIGNATURE_SIZE: usize = 64;
 // EC256 constants
 #[cfg(feature = "secp256k1")]
 pub const HDR_IMG_TYPE_AUTH: u16 = 0x0200;
-// pub const N: 
+// pub const N:
 // ED25519 constants
 #[cfg(feature = "ed25519")]
 pub const HDR_IMG_TYPE_AUTH: u16 = 0x0100;
@@ -66,11 +67,10 @@ pub(crate) enum SectFlags {
     SwappingFlag,
     BackupFlag,
     UpdatedFlag,
-    None
+    None,
 }
 
 impl SectFlags {
-
     pub fn has_new_flag(&self) -> bool {
         self == &SectFlags::NewFlag
     }
@@ -105,9 +105,9 @@ impl SectFlags {
 /// A function to parse a valid `boot or update` image header for a given `TLV`. It
 /// takes as input a ref to [`RustbootImage`] i.e. a valid image/partition and `type_field`.
 ///
-/// Returns a tuple containing 
-/// - the ref to the val, 
-/// - the length and 
+/// Returns a tuple containing
+/// - the ref to the val,
+/// - the length and
 /// - a counter which represents the byte-position of the TLV from `start of header`.
 pub(crate) fn parse_image_header<'a, Part: ValidPart + Swappable, State: TypeState>(
     img: &RustbootImage<Part, State>,
@@ -153,4 +153,234 @@ pub(crate) fn parse_image_header<'a, Part: ValidPart + Swappable, State: TypeSta
     Err(err)
 }
 
+#[derive(Clone, Copy)]
+pub enum Tags {
+    Version,
+    TimeStamp,
+    ImgType,
+    Digest256,
+    Digest384,
+    Signature,
+    EndOfHeader,
+}
 
+impl Tags {
+    #[rustfmt::skip]
+    fn get_id(self) -> &'static [u8] {
+        match self {
+            Self::Version       => &[0x00, 0x01],
+            Self::TimeStamp     => &[0x00, 0x02],
+            Self::ImgType       => &[0x00, 0x04],
+            Self::Digest256     => &[0x00, 0x03],
+            Self::Digest384     => &[0x00, 0x13],
+            Self::Signature     => &[0x00, 0x20],
+            Self::EndOfHeader   => &[0x00, 0x00],
+        }
+    }
+}
+
+use nom::bytes::complete::take_while;
+use nom::bytes::complete::{tag, take};
+use nom::lib;
+use nom::{
+    error::{Error, ErrorKind},
+    Err, IResult,
+};
+
+// use libc_print::libc_println;
+
+fn check_for_eof(input: &[u8]) -> IResult<&[u8], &[u8]> {
+    match tag::<_, _, Error<&[u8]>>(Tags::EndOfHeader.get_id())(input) {
+        Ok((tail, eof)) => Err(Err::Error(Error::new(input, ErrorKind::Eof))),
+        Err(_e) => Ok((input, &[])),
+    }
+}
+
+fn check_for_padding(input: &[u8]) -> IResult<&[u8], &[u8]> {
+    let res = take_while::<_, _, Error<&[u8]>>(|pad_byte| pad_byte == 0xff)(input)?;
+    Ok(res)
+}
+
+fn extract_version<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+    let (input, _) = check_for_eof(input)?;
+    let (input, _) = check_for_padding(input)?;
+    let (tail, version) = take(8u32)(input)?;
+    let (_, version_check) = take(2u32)(version)?;
+    if version_check == Tags::Version.get_id() {
+        Ok((tail, &version[4..]))
+    } else {
+        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+    }
+}
+
+fn extract_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+    let (tail, _) = extract_version(input)?;
+    let (tail, _) = check_for_eof(tail)?;
+    let (tail, _) = check_for_padding(tail)?;
+    let (tail, timestamp) = take(12u32)(tail)?;
+    let (_, timestamp_check) = take(2u32)(timestamp)?;
+    if timestamp_check == Tags::TimeStamp.get_id() {
+        Ok((tail, &timestamp[4..]))
+    } else {
+        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+    }
+}
+
+fn extract_img_type<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+    let (tail, _) = extract_timestamp(input)?;
+    let (tail, _) = check_for_eof(tail)?;
+    let (tail, _) = check_for_padding(tail)?;
+    let (tail, img_type) = take(6u32)(tail)?;
+    let (_, img_type_check) = take(2u32)(img_type)?;
+    if img_type_check == Tags::ImgType.get_id() {
+        Ok((tail, &img_type[4..]))
+    } else {
+        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+    }
+}
+
+fn extract_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+    let (tail, _) = extract_img_type(input)?;
+    let (tail, _) = check_for_eof(tail)?;
+    let (tail, _) = check_for_padding(tail)?;
+    let (tail, typelen) = take(4u32)(tail)?;
+    let len = (typelen[3] as u16 | (typelen[2] as u16) << 8) as u32;
+    let (tail, digest) = take(len)(tail)?;
+    let (_, digest_check) = take(2u32)(typelen)?;
+    if digest_check == Tags::Digest256.get_id() || digest_check == Tags::Digest384.get_id() {
+        Ok((tail, &digest[..]))
+    } else {
+        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+    }
+}
+
+fn extract_signature<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+    let (tail, _) = extract_digest(input)?;
+    let (tail, _) = check_for_eof(tail)?;
+    let (tail, _) = check_for_padding(tail)?;
+    let (tail, typelen) = take(4u32)(tail)?;
+    let len = (typelen[3] as u16 | (typelen[2] as u16) << 8) as u32;
+    let (tail, signature) = take(len)(tail)?;
+    let (_, signature_check) = take(2u32)(typelen)?;
+    if signature_check == Tags::Signature.get_id() {
+        Ok((tail, &signature[..]))
+    } else {
+        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use libc_print::libc_println;
+
+    use super::*;
+
+    const PAD1: &[u8] = &[0x20, 0x01, 0xff, 0x02, 0x03];
+    const PAD2: &[u8] = &[0xff, 0xff, 0xff, 0x02, 0x03];
+
+    #[rustfmt::skip]
+    const DATA: &[u8] = &[
+        // 0x54, 0x53, 0x55, 0x52, // magic
+        // 0x65, 0x51, 0x48, 0x54, // size
+        0x00, 0x01, 0x00, 0x04, // version type & len
+        0x01, 0x02, 0x03, 0x04, // version value
+
+        0xff, 0xff, 0xff, 0xff, // padding bytes
+
+        0x00, 0x02, 0x00, 0x08, // timestamp type & len
+        0x11, 0x11, 0x11, 0x11, // timestamp value
+        0x22, 0x22, 0x22, 0x22, 
+
+        0x00, 0x04, 0x00, 0x02, // img type and len
+        0x02, 0x00, 
+
+        0xff, 0xff, 0xff, 0xff, // padding bytes
+        0xff, 0xff,
+
+        // 32 byte digest type and len
+        0x00, 0x03, 0x00, 0x20, 
+        // digest value
+        0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
+        0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
+        0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
+        0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
+        
+        // signature type and len
+        0x00, 0x20, 0x00, 0x40, 
+        // signature value
+        0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
+        0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
+        0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
+        0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
+        0x44, 0x44, 0x44, 0x44, 
+
+        // end of header
+        0x00, 0x00, 
+    ];
+
+    #[test]
+    fn padding_test() {
+        let val = match check_for_padding(PAD1) {
+            Ok((tail, val)) => {
+                libc_println!("incorrect padding: {:?}", tail);
+                tail
+            }
+            Err(_e) => &[],
+        };
+        assert_eq!(val, &[0x20, 0x01, 0xff, 0x02, 0x03]);
+
+        let val = match check_for_padding(PAD2) {
+            Ok((tail, val)) => {
+                libc_println!("padding: {:?}", val);
+                val
+            }
+            Err(_e) => &[],
+        };
+        assert_eq!(val, &[0xff, 0xff, 0xff])
+    }
+
+    #[test]
+    fn parse_version() {
+        let val = match extract_version(DATA) {
+            Ok((tail, version)) => {
+                libc_println!("version: {:?}", version);
+                version
+            }
+            Err(_e) => &[],
+        };
+        assert_eq!(val, &[0x01, 0x02, 0x03, 0x04])
+    }
+
+    #[test]
+    fn parse_timestamp() {
+        let val = match extract_timestamp(DATA) {
+            Ok((tail, timestamp)) => {
+                libc_println!("timestamp: {:?}", timestamp);
+                timestamp
+            }
+            Err(_e) => &[],
+        };
+        assert_eq!(val, &[0x11, 0x11, 0x11, 0x11, 0x22, 0x22, 0x22, 0x22])
+    }
+
+    #[test]
+    fn parse_signature() {
+        let val = match extract_signature(DATA) {
+            Ok((tail, signature)) => {
+                libc_println!("signature: {:?}", signature);
+                signature
+            }
+            Err(_e) => &[],
+        };
+        assert_eq!(
+            val,
+            &[
+                0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
+                0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
+                0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
+                0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
+                0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
+            ]
+        )
+    }
+}
