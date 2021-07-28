@@ -390,8 +390,8 @@ impl<'a> RustbootImage<'a, Boot, StateTesting> {
 }
 
 impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, State> {
-        pub fn get_firmware_version(&self) -> Result<u32> {
-        let (val, _, _) = parse_image_header(self, 0x03)?;
+    pub fn get_firmware_version(&self) -> Result<u32> {
+        let (val) = parse_tlv(self, Tags::Version)?;
         let fw_version =
             u32::from_be_bytes(val.try_into().map_err(|_| RustbootError::InvalidValue)?);
         Ok(fw_version)
@@ -406,16 +406,14 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState + Updateable>
         state
     }
     pub fn get_image_type(&self) -> Result<u16> {
-        let (val, _, _) = parse_image_header(self, HDR_IMG_TYPE)?;
+        let (val) = parse_tlv(self, Tags::ImgType)?;
         let image_type =
             u16::from_be_bytes(val.try_into().map_err(|_| RustbootError::InvalidValue)?);
         Ok(image_type)
     }
 }
 
-impl<'a, Part: ValidPart + Swappable, State: TypeState>
-    RustbootImage<'a, Part, State>
-{
+impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, State> {
     /// Used to verify the integrity of an image. Note - integrity checking includes
     /// `version` and `timestamp` fields.
     pub fn verify_integrity<const N: usize>(&mut self) -> Result<bool> {
@@ -429,12 +427,9 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState>
                     .get()
                     .ok_or(RustbootError::FieldNotSet)?
                     .fw_size;
-                let res = parse_image_header(self, hash_type);
+                let res = parse_tlv(self, Tags::Digest256);
                 let stored_hash = match res {
-                    Ok((stored_hash, hash_len, _)) => {
-                        if N != hash_len as usize {
-                            return Err(RustbootError::InvalidHdrFieldLength);
-                        };
+                    Ok(stored_hash) => {
                         let hasher = compute_img_hash::<Part, State, Sha256, N>(self, fw_size)?;
                         let computed_hash = hasher.finalize();
                         if (computed_hash.as_slice() != stored_hash) {
@@ -479,19 +474,10 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState>
                     .get()
                     .ok_or(RustbootError::FieldNotSet)?
                     .fw_size;
-                let res = parse_image_header(self, signature_type);
+                let res = parse_tlv(self, Tags::Signature);
                 let computed_hash = match res {
-                    Ok((stored_signature, signature_len, _)) => {
-                        if ECC_SIGNATURE_SIZE != signature_len as usize {
-                            return Err(RustbootError::InvalidHdrFieldLength);
-                        };
-                        let type_of_img = HDR_IMG_TYPE;
-                        let (img_type_val, img_type_len, _) =
-                            parse_image_header(self, type_of_img)?;
-                        // Image type field length is 2 bytes.
-                        if img_type_len != 2 {
-                            return Err(RustbootError::InvalidHdrFieldLength);
-                        };
+                    Ok(stored_signature) => {
+                        let (img_type_val) = parse_tlv(self, Tags::ImgType)?;
                         let val = img_type_val[0] as u16 + (img_type_val[1] as u16) << 8;
                         if ((val & 0xFF00) != N) {
                             return Err(RustbootError::InvalidValue);
@@ -555,14 +541,13 @@ where
             SHA256_DIGEST_SIZE => {
                 let mut block_size: usize = 0x40; //sha256 takes a 512-bit block of data or 64 bytes at a time.
                 let mut hasher = D::new();
-                // In actuality, this is a fixed offset but rather than hard-code it,
-                // I've chosen to compute it by parsing the img_header (for the SHA_TLV field) to accomodate
-                // the insertion of possible new header fields.
-                let (_, _, mut offset) = parse_image_header(img, HDR_SHA256)?;
+                let mut offset = get_tlv_offset(img, Tags::Digest256)?;
 
                 while offset > 0 {
                     if offset < block_size {
-                        block_size = offset
+                        block_size = offset;
+                        hasher.update(&part[..block_size]);
+                        break;
                     }
                     hasher.update(&part[..block_size]);
                     offset -= block_size;
