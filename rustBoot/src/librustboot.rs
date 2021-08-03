@@ -2,7 +2,6 @@
 #![allow(warnings)]
 
 use core::convert::TryInto;
-use core::mem::size_of;
 use core::usize;
 
 use crate::image::image::{PartId, RustbootImage, Swappable, TypeState, ValidPart};
@@ -40,6 +39,9 @@ pub const SWAP_BASE: usize = SWAP_PARTITION_ADDRESS;
 pub const RUSTBOOT_MAGIC: usize = 0x54535552; // RUST
 pub const RUSTBOOT_MAGIC_TRAIL: usize = 0x544F4F42; // BOOT
 
+pub const PART_STATUS_LEN: usize = 1;
+pub const MAGIC_TRAIL_LEN: usize = 4;
+
 /*  Hash Config */
 
 // SHA256 constants
@@ -60,13 +62,12 @@ pub const ECC_SIGNATURE_SIZE: usize = 64;
 // EC256 constants
 #[cfg(feature = "secp256k1")]
 pub const HDR_IMG_TYPE_AUTH: u16 = 0x0200;
-// pub const N:
 // ED25519 constants
 #[cfg(feature = "ed25519")]
 pub const HDR_IMG_TYPE_AUTH: u16 = 0x0100;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum SectFlags {
+pub enum SectFlags {
     NewFlag,
     SwappingFlag,
     BackupFlag,
@@ -105,10 +106,20 @@ impl SectFlags {
         self = SectFlags::UpdatedFlag;
         self
     }
+
+    pub fn from(&self) -> Option<u8> {
+        match self {
+            NewFlag => Some(0x0F),
+            SwappingFlag => Some(0x07),
+            BackupFlag => Some(0x03),
+            UpdatedFlag => Some(0x00),
+            _ => None,
+        }
+    }
 }
 
-/// A function to parse a valid `boot or update` image header for a given `TLV`. It
-/// takes as input a ref to [`RustbootImage`] i.e. a valid image/partition and `type_field`.
+/// A function to parse the image-header contained in a `boot or update` partition, for a given `TLV`. It
+/// takes as input a ref to [`RustbootImage`] and a [`Tags`] variant.
 ///
 /// Returns a slice containing the value
 pub(crate) fn parse_tlv<'a, Part: ValidPart + Swappable, State: TypeState>(
@@ -117,10 +128,11 @@ pub(crate) fn parse_tlv<'a, Part: ValidPart + Swappable, State: TypeState>(
 ) -> Result<&'a [u8]> {
     let part_desc = img.part_desc.get().unwrap();
     if let Some(val) = part_desc.hdr {
-        let header_bytes = (unsafe { (val as *const [u8; IMAGE_HEADER_SIZE]).as_ref() })
+        let mut header_bytes: &[u8] = (unsafe { (val as *const [u8; IMAGE_HEADER_SIZE]).as_ref() })
             .ok_or(RustbootError::__Nonexhaustive)?;
         // we've checked `magic` and `size` fields of the header during init
         // start parsing from the 8th byte of the header
+        header_bytes = &header_bytes[8..];
         let value = match type_field {
             Tags::Version => {
                 let (_, version) =
@@ -160,14 +172,18 @@ pub(crate) fn parse_tlv<'a, Part: ValidPart + Swappable, State: TypeState>(
     }
 }
 
+/// Returns an offset value for the supplied [`Tags`] variant.
+///
+/// *Note: offset represents the index/byte-position of a `TLV` from `start of image-header`.*
 pub(crate) fn get_tlv_offset<'a, Part: ValidPart + Swappable, State: TypeState>(
     img: &RustbootImage<Part, State>,
     type_field: Tags,
 ) -> Result<usize> {
     let part_desc = img.part_desc.get().unwrap();
     if let Some(val) = part_desc.hdr {
-        let header_bytes = (unsafe { (val as *const [u8; IMAGE_HEADER_SIZE]).as_ref() })
+        let mut header_bytes: &[u8] = (unsafe { (val as *const [u8; IMAGE_HEADER_SIZE]).as_ref() })
             .ok_or(RustbootError::__Nonexhaustive)?;
+        header_bytes = &header_bytes[8..]; // skip magic & size fields
         match type_field {
             Tags::Version => {
                 let (remaining, _) =
@@ -213,6 +229,10 @@ pub(crate) fn get_tlv_offset<'a, Part: ValidPart + Swappable, State: TypeState>(
 }
 
 #[derive(Clone, Copy)]
+/// Each variant in [`Tags`] represents a field in the image-header.
+///
+/// *Note: [`EndOfHeader`] is a pseudo-Tag, i.e. doesnt come
+/// with an associated length-value pair*
 pub enum Tags {
     Version,
     TimeStamp,
@@ -265,8 +285,8 @@ fn extract_version<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, version) = take(8u32)(input)?;
     let (lengthvalue, version_check) = take(2u32)(version)?;
     let (value, version_len) = take(2u32)(lengthvalue)?;
-    let len = (version_len[1] as u16 | (version_len[0] as u16) << 8) as u32;
-    if version_check == Tags::Version.get_id() && len == 0x04 {
+    let len = (version_len[1] as u16 | (version_len[0] as u16) << 8) as usize;
+    if version_check == Tags::Version.get_id() && len == HDR_VERSION_LEN {
         Ok((remainder, value))
     } else {
         Err(Err::Error(Error::new(input, ErrorKind::Tag)))
@@ -280,8 +300,8 @@ fn extract_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, timestamp) = take(12u32)(remainder)?;
     let (lengthvalue, timestamp_check) = take(2u32)(timestamp)?;
     let (value, timestamp_len) = take(2u32)(lengthvalue)?;
-    let len = (timestamp_len[1] as u16 | (timestamp_len[0] as u16) << 8) as u32;
-    if timestamp_check == Tags::TimeStamp.get_id() && len == 0x08 {
+    let len = (timestamp_len[1] as u16 | (timestamp_len[0] as u16) << 8) as usize;
+    if timestamp_check == Tags::TimeStamp.get_id() && len == HDR_TIMESTAMP_LEN {
         Ok((remainder, value))
     } else {
         Err(Err::Error(Error::new(input, ErrorKind::Tag)))
@@ -295,8 +315,8 @@ fn extract_img_type<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, img_type) = take(6u32)(remainder)?;
     let (lengthvalue, img_type_check) = take(2u32)(img_type)?;
     let (value, timestamp_len) = take(2u32)(lengthvalue)?;
-    let len = (timestamp_len[1] as u16 | (timestamp_len[0] as u16) << 8) as u32;
-    if img_type_check == Tags::ImgType.get_id() && len == 0x02 {
+    let len = (timestamp_len[1] as u16 | (timestamp_len[0] as u16) << 8) as usize;
+    if img_type_check == Tags::ImgType.get_id() && len == HDR_IMG_TYPE_LEN {
         Ok((remainder, value))
     } else {
         Err(Err::Error(Error::new(input, ErrorKind::Tag)))
@@ -308,11 +328,11 @@ fn extract_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
     let (remainder, typelen) = take(4u32)(remainder)?;
-    let len = (typelen[3] as u16 | (typelen[2] as u16) << 8) as u32;
+    let len = (typelen[3] as u16 | (typelen[2] as u16) << 8) as usize;
     let (remainder, digest) = take(len)(remainder)?;
     let (_, digest_check) = take(2u32)(typelen)?;
-    if (digest_check == Tags::Digest256.get_id() && len == 0x20)
-        || (digest_check == Tags::Digest384.get_id() && len == 0x30)
+    if (digest_check == Tags::Digest256.get_id() && len == SHA256_DIGEST_SIZE)
+        || (digest_check == Tags::Digest384.get_id() && len == SHA384_DIGEST_SIZE)
     {
         Ok((remainder, &digest[..]))
     } else {
@@ -325,10 +345,10 @@ fn extract_signature<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
     let (remainder, typelen) = take(4u32)(remainder)?;
-    let len = (typelen[3] as u16 | (typelen[2] as u16) << 8) as u32;
+    let len = (typelen[3] as u16 | (typelen[2] as u16) << 8) as usize;
     let (remainder, signature) = take(len)(remainder)?;
     let (_, signature_check) = take(2u32)(typelen)?;
-    if signature_check == Tags::Signature.get_id() && len == 0x40 {
+    if signature_check == Tags::Signature.get_id() && len == ECC_SIGNATURE_SIZE {
         Ok((remainder, &signature[..]))
     } else {
         Err(Err::Error(Error::new(input, ErrorKind::Tag)))
@@ -484,9 +504,7 @@ mod tests {
     #[test]
     fn get_tlv_digest256() {
         let remaining = match extract_digest(DATA) {
-            Ok((remainder, digest)) => {
-                remainder
-            }
+            Ok((remainder, digest)) => remainder,
             Err(_e) => &[],
         };
         let offset = DATA.len() - remaining.len() - (4 + SHA256_DIGEST_SIZE);

@@ -4,6 +4,8 @@ use crate::librustboot::*;
 use crate::target::*;
 use crate::{Result, RustbootError};
 
+use crate::update::FlashApi;
+
 use k256::elliptic_curve::consts::U32;
 use sha2::{Digest, Sha256, Sha384};
 
@@ -17,38 +19,48 @@ static mut UPDT: OnceCell<PartDescriptor<Update>> = OnceCell::new();
 /// Singleton to ensure we only ever have one instance of the `SWAP` partition
 static mut SWAP: OnceCell<PartDescriptor<Swap>> = OnceCell::new();
 
-/// All valid `rustBoot states` must implement this (sealed) trait.
-pub trait TypeState: Sealed {
-    fn get_state_val(&self) -> Option<u8>;
+pub enum States {
+    New(StateNew),
+    Updating(StateUpdating),
+    Testing(StateTesting),
+    Success(StateSuccess),
+    NoState(NoState),
 }
-/// Any `rustboot state` implementing this marker trait is updateable.
+
+/// All valid `rustBoot states` must implement this [`Sealed`] trait.
+pub trait TypeState: Sealed {
+    fn from(&self) -> Option<u8>;
+}
+/// Any `rustboot state` implementing this marker trait is updateable. `Updateable`, here indicates
+/// (legal) states that are allowed to transition from `StateTesting` to `StateUpdating` or
+/// vice-versa.
 ///
-/// *Note: Not all `rustboot states` are updateable. For now, the only 2 updateable states are*
+/// *Note: Not all `rustboot states` are updateable. The only 2 updateable states are*
 /// - [`StateTesting`] - if the boot partition is still marked as 'statetesting` after an
 /// update, a roll-back is triggered
 /// - [`StateUpdating`] - if the update partition contains a downloaded update and is
 /// marked as `stateupdating`, an update will be triggered
-pub trait Updateable: Sealed {}
+pub trait Updateable: Sealed + TypeState {}
 
-/// Represents the state of a given partition/image. `StateNew` refers to
+/// Represents the state of a partition/image. [`StateNew`] refers to
 /// a state when an image has not been staged for boot, or triggered for an update.
 ///
 /// - If an image is present, no flags are active.
 #[derive(Debug)]
-pub struct StateNew(u8);
+pub struct StateNew;
 impl TypeState for StateNew {
-    fn get_state_val(&self) -> Option<u8> {
-        Some(self.0)
+    fn from(&self) -> Option<u8> {
+        Some(0xFF)
     }
 }
-/// Represents the state of a given partition/image. This state is ONLY
+/// Represents the state of a partition/image. This state is ONLY
 /// valid in the `UPDATE` partition. The image is marked for update and should replace
 /// the current image in `BOOT`.
 #[derive(Debug)]
-pub struct StateUpdating(u8);
+pub struct StateUpdating;
 impl TypeState for StateUpdating {
-    fn get_state_val(&self) -> Option<u8> {
-        Some(self.0)
+    fn from(&self) -> Option<u8> {
+        Some(0x70)
     }
 }
 impl Updateable for StateUpdating {}
@@ -57,10 +69,10 @@ impl Updateable for StateUpdating {}
 /// reboot. If present after reboot, it means that the updated image failed to boot,
 /// despite being correctly verified. This particular situation triggers a rollback.
 #[derive(Debug)]
-pub struct StateTesting(pub u8);
+pub struct StateTesting;
 impl TypeState for StateTesting {
-    fn get_state_val(&self) -> Option<u8> {
-        Some(self.0)
+    fn from(&self) -> Option<u8> {
+        Some(0x10)
     }
 }
 impl Updateable for StateTesting {}
@@ -68,19 +80,19 @@ impl Updateable for StateTesting {}
 /// valid in the `BOOT` partition. `Success` here indicates that image currently stored
 /// in BOOT has been successfully staged at least once, and the update is now complete.
 #[derive(Debug)]
-pub struct StateSuccess(u8);
+pub struct StateSuccess;
 impl TypeState for StateSuccess {
-    fn get_state_val(&self) -> Option<u8> {
-        Some(self.0)
+    fn from(&self) -> Option<u8> {
+        Some(0x00)
     }
 }
-/// We use the `NoState` type to represent `non-existent state`.
+/// We use the [`NoState`] type to represent `non-existent state`.
 ///
-/// **Example:** the swap partition has no state field and does not need one.
+/// **Example:** the `swap partition` has no state field and does not need one.
 #[derive(Debug)]
 pub struct NoState;
 impl TypeState for NoState {
-    fn get_state_val(&self) -> Option<u8> {
+    fn from(&self) -> Option<u8> {
         None
     }
 }
@@ -90,7 +102,7 @@ pub trait ValidPart: Sealed {
     fn part_id(&self) -> PartId;
 }
 /// A marker trait to indicate which partitions are swappable.
-pub trait Swappable: Sealed {}
+pub trait Swappable: Sealed + ValidPart {}
 /// Enumerated partitions
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PartId {
@@ -98,7 +110,7 @@ pub enum PartId {
     PartUpdate,
     PartSwap,
 }
-///  A zero-sized struct representing the `BOOT` image/partition.
+///  A zero-sized struct to represent the `BOOT` image/partition.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Boot;
 impl Swappable for Boot {}
@@ -107,7 +119,7 @@ impl ValidPart for Boot {
         PartId::PartBoot
     }
 }
-///  A zero-sized struct representing the `UPDATE` image/partition.
+///  A zero-sized struct to represent the `UPDATE` image/partition.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Update;
 impl Swappable for Update {}
@@ -116,7 +128,7 @@ impl ValidPart for Update {
         PartId::PartUpdate
     }
 }
-///  A zero-sized struct representing the `SWAP` image/partition.
+///  A zero-sized struct to represent the `SWAP` image/partition.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Swap;
 impl ValidPart for Swap {
@@ -130,7 +142,7 @@ pub(crate) struct PartDescriptor<Part: ValidPart> {
     pub hdr: Option<*const u8>,
     fw_base: *const u8,
     sha_hash: Option<*const u8>,
-    trailer: Option<*const u8>,
+    pub trailer: Option<*const u8>,
     pub fw_size: usize,
     pub hdr_ok: bool,
     signature_ok: bool,
@@ -142,7 +154,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
     /// Open a new partition of type `BOOT` or `UPDATE` or `SWAP`.
     ///
     /// This is an exclusive constructor for `boot OR update OR swap` `IMAGES` i.e. only way to
-    /// create `RustbootImage` instances.
+    /// create [`RustbootImage`] instances.
     pub fn open_partition(part: Part) -> Result<ImageType<'static>> {
         match part.part_id() {
             PartId::PartBoot => {
@@ -166,27 +178,27 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                     part: Boot,
                 };
 
-                match part_desc.get_state() {
-                    Ok(0xFF) => Ok(ImageType::BootInNewState(RustbootImage {
+                match part_desc.get_part_status()? {
+                    States::New(state) => Ok(ImageType::BootInNewState(RustbootImage {
                         part_desc: unsafe {
                             BOOT.set(part_desc);
                             &mut BOOT
                         },
-                        state: Some(StateNew(0xFF)),
+                        state: Some(state),
                     })),
-                    Ok(0x10) => Ok(ImageType::BootInTestingState(RustbootImage {
+                    States::Testing(state) => Ok(ImageType::BootInTestingState(RustbootImage {
                         part_desc: unsafe {
                             BOOT.set(part_desc);
                             &mut BOOT
                         },
-                        state: Some(StateTesting(0x10)),
+                        state: Some(state),
                     })),
-                    Ok(0x00) => Ok(ImageType::BootInSuccessState(RustbootImage {
+                    States::Success(state) => Ok(ImageType::BootInSuccessState(RustbootImage {
                         part_desc: unsafe {
                             BOOT.set(part_desc);
                             &mut BOOT
                         },
-                        state: Some(StateSuccess(0x00)),
+                        state: Some(state),
                     })),
                     _ => todo!(),
                 }
@@ -211,21 +223,23 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                     sha_ok: false,
                     part: Update,
                 };
-                match part_desc.get_state() {
-                    Ok(0xFF) => Ok(ImageType::UpdateInNewState(RustbootImage {
+                match part_desc.get_part_status()? {
+                    States::New(state) => Ok(ImageType::UpdateInNewState(RustbootImage {
                         part_desc: unsafe {
                             UPDT.set(part_desc);
                             &mut UPDT
                         },
-                        state: Some(StateNew(0xFF)),
+                        state: Some(state),
                     })),
-                    Ok(0x70) => Ok(ImageType::UpdateInUpdatingState(RustbootImage {
-                        part_desc: unsafe {
-                            UPDT.set(part_desc);
-                            &mut UPDT
-                        },
-                        state: Some(StateUpdating(0x70)),
-                    })),
+                    States::Updating(state) => {
+                        Ok(ImageType::UpdateInUpdatingState(RustbootImage {
+                            part_desc: unsafe {
+                                UPDT.set(part_desc);
+                                &mut UPDT
+                            },
+                            state: Some(state),
+                        }))
+                    }
                     _ => todo!(),
                 }
             }
@@ -256,24 +270,35 @@ impl<Part: ValidPart> PartDescriptor<Part> {
 }
 
 impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
-    fn get_state(&self) -> Result<u8> {
+    fn get_part_status(&self) -> Result<States> {
         let magic_trailer = unsafe { *self.get_partition_magic()? };
         if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
             return Err(RustbootError::InvalidImage);
         }
         let state = unsafe { *self.get_partition_state()? };
-        Ok(state)
+        let state = match state {
+            0xFF => Ok(States::New(StateNew)),
+            0x70 => Ok(States::Updating(StateUpdating)),
+            0x10 => Ok(States::Testing(StateTesting)),
+            0x00 => Ok(States::Success(StateSuccess)),
+            _ => Err(RustbootError::InvalidState),
+        };
+        state
     }
 
-    pub fn set_state<State: TypeState + Updateable>(&self, state: &State) -> Result<bool> {
+    pub fn set_state<State: TypeState + Updateable>(
+        &self,
+        updater: impl FlashApi,
+        state: &State,
+    ) -> Result<bool> {
         let magic_trailer = unsafe { *self.get_partition_magic()? };
         if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
-            self.set_partition_magic();
+            self.set_partition_magic(updater);
         }
         let current_state = unsafe { *self.get_partition_state()? };
-        let new_state = state.get_state_val().unwrap();
+        let new_state = state.from().unwrap();
         if current_state != new_state {
-            self.set_partition_state(new_state);
+            self.set_partition_state(updater, new_state);
         }
         Ok(true)
     }
@@ -282,16 +307,18 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
         Ok(self.get_trailer_at_offset(0)? as *const u32)
     }
 
-    fn set_partition_magic(&self) {
-        todo!()
+    fn set_partition_magic(&self, updater: impl FlashApi) -> Result<()> {
+        let trailer_magic = (&RUSTBOOT_MAGIC_TRAIL as *const usize) as *const u8;
+        Ok(updater.flash_trailer_write(self, 0, trailer_magic, MAGIC_TRAIL_LEN))
     }
 
     fn get_partition_state(&self) -> Result<*const u8> {
         self.get_trailer_at_offset(1)
     }
 
-    fn set_partition_state(&self, state: u8) {
-        todo!()
+    fn set_partition_state(&self, updater: impl FlashApi, state: u8) -> Result<()> {
+        let state = &state as *const u8;
+        Ok(updater.flash_trailer_write(self, 1, state, PART_STATUS_LEN))
     }
 
     fn get_trailer_at_offset(&self, offset: usize) -> Result<*const u8> {
@@ -301,8 +328,9 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
         }
     }
 
-    fn set_trailer_at(&self, offset: usize, val: u8) -> Result<bool> {
-        todo!()
+    fn set_trailer_at(&self, updater: impl FlashApi, offset: usize, flag: u8) -> Result<()> {
+        let newflag = &flag as *const u8;
+        Ok(updater.flash_trailer_write(self, offset, newflag, 1))
     }
 }
 
@@ -332,13 +360,28 @@ impl PartDescriptor<Update> {
     pub fn get_update_sector_flags(&self, offset: usize) -> Result<*const u8> {
         self.get_trailer_at_offset(2 + offset)
     }
-    pub fn set_flags(&self, sector: usize, flag: SectFlags) {
-        todo!()
+    pub fn set_flags(&self, updater: impl FlashApi, sector: usize, flag: SectFlags) -> Result<()> {
+        let newflag = flag.from().ok_or(RustbootError::InvalidSectFlag)?;
+        let sector_position = sector >> 1;
+        let magic_trailer = unsafe { *self.get_partition_magic()? };
+        if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
+            return Err(RustbootError::InvalidImage);
+        }
+        let mut flags = 0u8;
+        let res = unsafe { *self.get_update_sector_flags(sector_position)? };
+        if (sector == (sector_position << 1)) {
+            flags = (res & 0xF0) | (newflag & 0x0F);
+        } else {
+            flags = ((newflag & 0x0F) << 4) | (res & 0x0F);
+        }
+        if flags != res {
+            self.set_update_sector_flags(updater, sector_position, flags);
+        }
+        Ok(())
     }
 
-    fn set_update_sector_flags(&self, pos: usize, flag: u8) {
-        self.set_trailer_at(2 + pos, flag);
-        todo!()
+    fn set_update_sector_flags(&self, updater: impl FlashApi, pos: usize, flag: u8) -> Result<()> {
+        self.set_trailer_at(updater, (2 + pos), flag)
     }
 }
 
@@ -352,6 +395,9 @@ pub(crate) struct RustbootImage<'a, Part: ValidPart, State: TypeState> {
 }
 
 /// An enum to hold all valid (i.e. legal) image-types or [`RustbootImage`]s.
+///
+/// Each variant of [`ImageType`] represents a partition and its state.
+/// As you can see we have 6 valid `partition-state` variants.
 #[derive(Debug)]
 pub(crate) enum ImageType<'a> {
     BootInNewState(RustbootImage<'a, Boot, StateNew>),
@@ -366,7 +412,7 @@ impl<'a> RustbootImage<'a, Boot, StateNew> {
     pub fn into_testing_state(self) -> RustbootImage<'a, Boot, StateTesting> {
         RustbootImage {
             part_desc: self.part_desc,
-            state: Some(StateTesting(0x10)),
+            state: Some(StateTesting),
         }
     }
 }
@@ -375,7 +421,7 @@ impl<'a> RustbootImage<'a, Boot, StateSuccess> {
     pub fn into_testing_state(self) -> RustbootImage<'a, Boot, StateTesting> {
         RustbootImage {
             part_desc: self.part_desc,
-            state: Some(StateTesting(0x10)),
+            state: Some(StateTesting),
         }
     }
 }
@@ -384,7 +430,7 @@ impl<'a> RustbootImage<'a, Boot, StateTesting> {
     fn into_success_state(self) -> RustbootImage<'a, Boot, StateSuccess> {
         RustbootImage {
             part_desc: self.part_desc,
-            state: Some(StateSuccess(0x00)),
+            state: Some(StateSuccess),
         }
     }
 }
@@ -398,9 +444,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
     }
 }
 
-impl<'a, Part: ValidPart + Swappable, State: TypeState + Updateable>
-    RustbootImage<'a, Part, State>
-{
+impl<'a, Part: ValidPart + Swappable, State: Updateable> RustbootImage<'a, Part, State> {
     pub fn get_state(&self) -> &State {
         let state = self.state.as_ref().unwrap();
         state

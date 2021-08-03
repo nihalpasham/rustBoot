@@ -52,7 +52,7 @@ impl FlashInterface for FlashWriterEraser {
                 while self.nvmc.ready.read().ready().is_busy() {}
                 idx += 4;
             } else {
-                // do a single byte write i.e. 1-byte write
+                // else do a single byte write i.e. 1-byte write
                 let mut val = 0u32;
                 let val_bytes = ((&mut val) as *mut u32) as *mut u8;
                 let offset = (address + idx) - (((address + idx) >> 2) << 2);

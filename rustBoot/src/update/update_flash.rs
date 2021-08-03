@@ -6,8 +6,10 @@ use crate::librustboot::*;
 use crate::target::{PARTITION_SIZE, SECTOR_SIZE};
 use crate::{Result, RustbootError};
 
+use super::{FlashApi, UpdateInterface};
 use rustBoot_hal::FlashInterface;
 
+#[derive(Debug, Clone, Copy)]
 pub struct FlashUpdater<Interface> {
     iface: Interface,
 }
@@ -19,9 +21,14 @@ where
     pub fn new(iface: Interface) -> Self {
         FlashUpdater { iface }
     }
+}
+impl<Interface> FlashApi for &FlashUpdater<Interface>
+where
+    Interface: FlashInterface,
+{
 
-    pub(crate) fn flash_write<Part: ValidPart>(
-        &self,
+    fn flash_write<Part: ValidPart>(
+        self,
         part: &PartDescriptor<Part>,
         offset: usize,
         data: *const u8,
@@ -30,8 +37,8 @@ where
         let addr = part.hdr.unwrap() as usize + offset;
         self.iface.hal_flash_write(addr, data, len)
     }
-    pub(crate) fn flash_erase<Part: ValidPart>(
-        &self,
+    fn flash_erase<Part: ValidPart>(
+        self,
         part: &PartDescriptor<Part>,
         offset: usize,
         len: usize,
@@ -39,9 +46,28 @@ where
         let addr = part.hdr.unwrap() as usize + offset;
         self.iface.hal_flash_erase(addr, len);
     }
+    fn flash_trailer_write<Part: ValidPart>(
+        self,
+        part: &PartDescriptor<Part>,
+        offset: usize,
+        data: *const u8,
+        len: usize,
+    ) {
+        let addr = part.trailer.unwrap() as usize - (4 + offset);
+        self.iface.hal_flash_write(addr, data, len)
+    }
 
-    pub(crate) fn copy_sector<SrcPart: ValidPart, DstPart: ValidPart>(
-        &self,
+    fn flash_init() {}
+    fn flash_unlock() {}
+    fn flash_lock() {}
+}
+
+impl<Interface> UpdateInterface for &FlashUpdater<Interface>
+where
+    Interface: FlashInterface,
+{
+    fn copy_sector<SrcPart: ValidPart, DstPart: ValidPart>(
+        self,
         src_part: &PartDescriptor<SrcPart>,
         dst_part: &PartDescriptor<DstPart>,
         sector: usize,
@@ -70,10 +96,7 @@ where
         Ok(pos)
     }
 
-    pub(crate) fn rustboot_update<'a>(
-        &self,
-        rollback: bool,
-    ) -> Result<RustbootImage<'a, Boot, StateTesting>> {
+    fn rustboot_update<'a>(self, rollback: bool) -> Result<RustbootImage<'a, Boot, StateTesting>> {
         let boot = PartDescriptor::open_partition(Boot)?;
         let updt = PartDescriptor::open_partition(Update)?;
         let swap = PartDescriptor::open_partition(Swap)?;
@@ -90,8 +113,8 @@ where
                     // This scope is to satisfy the borrow checker
                     let updt_part = updt.part_desc.get().unwrap();
                     let boot_part = match boot {
+                        // Explicitly check both possible Boot states
                         ImageType::BootInNewState(ref boot) => {
-                            // Explicitly check both possible Boot states
                             let boot_fw_size = boot.part_desc.get().unwrap().fw_size; // can be unwrapped as it was checked during init.
                             let update_fw_size = updt_part.fw_size;
                             total_size = boot_fw_size + IMAGE_HEADER_SIZE;
@@ -168,7 +191,7 @@ where
                             flag.set_swapping_flag();
                             self.copy_sector(updt_part, swap_part, sector);
                             if (((sector + 1) * SECTOR_SIZE) < PARTITION_SIZE) {
-                                updt_part.set_flags(sector, flag);
+                                updt_part.set_flags(self, sector, flag);
                             }
                         }
                         if flag.has_swapping_flag() {
@@ -179,7 +202,7 @@ where
                             flag.set_backup_flag();
                             self.copy_sector(boot_part, updt_part, sector);
                             if (((sector + 1) * SECTOR_SIZE) < PARTITION_SIZE) {
-                                updt_part.set_flags(sector, flag);
+                                updt_part.set_flags(self, sector, flag);
                             }
                         }
                         if flag.has_backup_flag() {
@@ -190,7 +213,7 @@ where
                             flag.set_updated_flag();
                             self.copy_sector(swap_part, boot_part, sector);
                             if (((sector + 1) * SECTOR_SIZE) < PARTITION_SIZE) {
-                                updt_part.set_flags(sector, flag);
+                                updt_part.set_flags(self, sector, flag);
                             }
                         }
                         sector += 1;
@@ -215,7 +238,7 @@ where
                     .part_desc
                     .get()
                     .unwrap()
-                    .set_state(new_img.get_state());
+                    .set_state(self, new_img.get_state());
                 new_boot_img = Some(new_img);
             }
             _ => return Err(RustbootError::InvalidState),
@@ -223,7 +246,7 @@ where
         Ok(new_boot_img.unwrap())
     }
 
-    pub fn rustboot_start(self) -> ! {
+    fn rustboot_start(self) -> ! {
         let mut boot = PartDescriptor::open_partition(Boot).unwrap();
         let updt = PartDescriptor::open_partition(Update).unwrap();
 
@@ -277,9 +300,11 @@ where
         loop {}
     }
 
-    pub(crate) fn init() {}
-    pub(crate) fn flash_unlock() {}
-    pub(crate) fn flash_lock() {}
-    pub fn update_trigger(&self) {}
-    pub fn update_success() {}
+    fn update_trigger(self) {}
+    fn update_success(self) {}
 }
+
+// impl<Interface> &FlashUpdater<Interface> 
+
+
+// }

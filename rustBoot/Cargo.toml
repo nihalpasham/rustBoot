@@ -5,7 +5,7 @@ authors = ["Twitter: @npashi <nihal.pasham@gmail.com>"]
 edition = "2018"
 categories = ["embedded", "no_std", "authentication"]
 description = """
-A platform agnostic, portable secure bootloader with firmware authentication 
+A micro-architecture agnostic, portable secure bootloader with firmware authentication 
 and update capabilities, written in pure-Rust .
 """
 documentation = ""
