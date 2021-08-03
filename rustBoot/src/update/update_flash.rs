@@ -303,7 +303,7 @@ where
                 let part_desc = img.part_desc.get();
                 match part_desc {
                     Some(part) => part.set_partition_state(self, state),
-                    None => return Err(RustbootError::FieldNotSet),
+                    None => return Err(RustbootError::__Nonexhaustive),
                 };
             }
             ImageType::UpdateInUpdatingState(img) => {} // do nothing as update has been triggered
@@ -312,7 +312,7 @@ where
         Self::flash_lock();
         Ok(())
     }
-    
+
     fn update_success(self) -> Result<()> {
         let boot = PartDescriptor::open_partition(Boot).unwrap();
         let state = StateSuccess.from().unwrap();
