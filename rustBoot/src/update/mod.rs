@@ -2,7 +2,7 @@ pub mod update_flash;
 
 use crate::image::image::*;
 use crate::Result;
-pub(crate) trait UpdateInterface {
+pub(crate) trait UpdateInterface: FlashApi {
     fn copy_sector<SrcPart: ValidPart, DstPart: ValidPart>(
         self,
         src_part: &PartDescriptor<SrcPart>,
@@ -11,8 +11,8 @@ pub(crate) trait UpdateInterface {
     ) -> Result<usize>;
     fn rustboot_update<'a>(self, rollback: bool) -> Result<RustbootImage<'a, Boot, StateTesting>>;
     fn rustboot_start(self) -> !;
-    fn update_trigger(self);
-    fn update_success(self);
+    fn update_trigger(self) -> Result<()>;
+    fn update_success(self) -> Result<()>;
 }
 
 pub(crate) trait FlashApi: Copy {

@@ -316,7 +316,7 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
         self.get_trailer_at_offset(1)
     }
 
-    fn set_partition_state(&self, updater: impl FlashApi, state: u8) -> Result<()> {
+    pub fn set_partition_state(&self, updater: impl FlashApi, state: u8) -> Result<()> {
         let state = &state as *const u8;
         Ok(updater.flash_trailer_write(self, 1, state, PART_STATUS_LEN))
     }

@@ -26,7 +26,6 @@ impl<Interface> FlashApi for &FlashUpdater<Interface>
 where
     Interface: FlashInterface,
 {
-
     fn flash_write<Part: ValidPart>(
         self,
         part: &PartDescriptor<Part>,
@@ -37,12 +36,7 @@ where
         let addr = part.hdr.unwrap() as usize + offset;
         self.iface.hal_flash_write(addr, data, len)
     }
-    fn flash_erase<Part: ValidPart>(
-        self,
-        part: &PartDescriptor<Part>,
-        offset: usize,
-        len: usize,
-    ) {
+    fn flash_erase<Part: ValidPart>(self, part: &PartDescriptor<Part>, offset: usize, len: usize) {
         let addr = part.hdr.unwrap() as usize + offset;
         self.iface.hal_flash_erase(addr, len);
     }
@@ -233,7 +227,7 @@ where
                     ImageType::BootInSuccessState(img) => img.into_testing_state(),
                     _ => return Err(RustbootError::InvalidState),
                 };
-                // Set new physical state byte in the boot partition.
+                // Set new status byte in the boot partition.
                 new_img
                     .part_desc
                     .get()
@@ -300,11 +294,48 @@ where
         loop {}
     }
 
-    fn update_trigger(self) {}
-    fn update_success(self) {}
+    fn update_trigger(self) -> Result<()> {
+        let updt = PartDescriptor::open_partition(Update).unwrap();
+        let state = StateUpdating.from().unwrap();
+        Self::flash_unlock();
+        match updt {
+            ImageType::UpdateInNewState(img) => {
+                let part_desc = img.part_desc.get();
+                match part_desc {
+                    Some(part) => part.set_partition_state(self, state),
+                    None => return Err(RustbootError::FieldNotSet),
+                };
+            }
+            ImageType::UpdateInUpdatingState(img) => {} // do nothing as update has been triggered
+            _ => return Err(RustbootError::Unreachable),
+        }
+        Self::flash_lock();
+        Ok(())
+    }
+    
+    fn update_success(self) -> Result<()> {
+        let boot = PartDescriptor::open_partition(Boot).unwrap();
+        let state = StateSuccess.from().unwrap();
+        Self::flash_unlock();
+        match boot {
+            ImageType::BootInNewState(img) => {
+                let part_desc = img.part_desc.get();
+                match part_desc {
+                    Some(part) => part.set_partition_state(self, state),
+                    None => return Err(RustbootError::__Nonexhaustive),
+                };
+            }
+            ImageType::BootInTestingState(img) => {
+                let part_desc = img.part_desc.get();
+                match part_desc {
+                    Some(part) => part.set_partition_state(self, state),
+                    None => return Err(RustbootError::__Nonexhaustive),
+                };
+            } 
+            ImageType::BootInSuccessState(img) => {} // do nothing as we've successfully updated & booted 
+            _ => return Err(RustbootError::Unreachable),
+        }
+        Self::flash_lock();
+        Ok(())
+    }
 }
-
-// impl<Interface> &FlashUpdater<Interface> 
-
-
-// }
