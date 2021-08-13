@@ -3,12 +3,19 @@ use core::{
     usize,
 };
 
+use cortex_m;
 use nrf52840_hal as hal;
 
 use crate::FlashInterface;
 use hal::pac::{Peripherals, NVMC};
 
 pub const FLASH_PAGE_SIZE: usize = 4096;
+pub const STACK_LOW: usize = 0x20_000_000;
+pub const STACK_UP: usize = 0x20_040_000;
+pub const IVT_SIZE: usize = 0x100;
+pub const BASE_ADDR: usize = 0x2f000;
+pub const FW_ADDR: usize = BASE_ADDR + IVT_SIZE;
+
 pub struct FlashWriterEraser {
     nvmc: NVMC,
 }
@@ -101,4 +108,39 @@ impl FlashInterface for FlashWriterEraser {
     }
 
     fn hal_init() {}
+}
+
+pub fn preboot() {}
+
+struct RefinedUsize<const MIN: usize, const MAX: usize, const VAL: usize>(usize);
+
+impl<const MIN: usize, const MAX: usize, const VAL: usize> RefinedUsize<MIN, MAX, VAL> {
+    pub fn bounded_int(i: usize) -> Self {
+        assert!(i >= MIN && i <= MAX);
+        RefinedUsize(i)
+    }
+    pub fn single_valued_int(i: usize) -> Self {
+        assert!(i == VAL);
+        RefinedUsize(i)
+    }
+}
+
+#[rustfmt::skip]
+pub fn boot_from(fw_base_address: usize) -> ! {
+    let mut core_peripherals = hal::pac::CorePeripherals::take().unwrap();
+    let mut scb = core_peripherals.SCB;
+    unsafe {
+        let base_img_addr = fw_base_address as u32;
+        let stack_pointer = RefinedUsize::<STACK_LOW, STACK_UP, 0>::bounded_int(
+            *(fw_base_address as *const u32) as usize).0 as u32;
+        let reset_vector = RefinedUsize::<0, 0, FW_ADDR>::single_valued_int(
+            *((fw_base_address + 4) as *const u32) as usize).0;
+        let jump_vector = core::mem::transmute::<usize, extern "C" fn() -> !>(reset_vector);
+
+        cortex_m::asm::dsb();
+        cortex_m::asm::isb();
+        scb.vtor.write(base_img_addr);
+        cortex_m::register::msp::write(stack_pointer);
+        jump_vector()
+    }
 }

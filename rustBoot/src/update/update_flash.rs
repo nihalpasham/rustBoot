@@ -9,6 +9,19 @@ use crate::{Result, RustbootError};
 use super::{FlashApi, UpdateInterface};
 use rustBoot_hal::FlashInterface;
 
+struct RefinedUsize<const MIN: usize, const MAX: usize, const VAL: usize>(usize);
+
+impl<const MIN: usize, const MAX: usize, const VAL: usize> RefinedUsize<MIN, MAX, VAL> {
+    pub fn bounded_int(i: usize) -> Self {
+        assert!(i >= MIN && i <= MAX);
+        RefinedUsize(i)
+    }
+    pub fn single_valued_int(i: usize) -> Self {
+        assert!(i == VAL);
+        RefinedUsize(i)
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct FlashUpdater<Interface> {
     iface: Interface,
@@ -56,12 +69,12 @@ where
     fn flash_lock() {}
 }
 
-impl<Interface> UpdateInterface for &FlashUpdater<Interface>
+impl<Interface> FlashUpdater<Interface>
 where
     Interface: FlashInterface,
 {
     fn copy_sector<SrcPart: ValidPart, DstPart: ValidPart>(
-        self,
+        &self,
         src_part: &PartDescriptor<SrcPart>,
         dst_part: &PartDescriptor<DstPart>,
         sector: usize,
@@ -90,7 +103,7 @@ where
         Ok(pos)
     }
 
-    fn rustboot_update<'a>(self, rollback: bool) -> Result<RustbootImage<'a, Boot, StateTesting>> {
+    fn rustboot_update<'a>(&self, rollback: bool) -> Result<RustbootImage<'a, Boot, StateTesting>> {
         let boot = PartDescriptor::open_partition(Boot)?;
         let updt = PartDescriptor::open_partition(Update)?;
         let swap = PartDescriptor::open_partition(Swap)?;
@@ -239,7 +252,12 @@ where
         }
         Ok(new_boot_img.unwrap())
     }
+}
 
+impl<Interface> UpdateInterface for &FlashUpdater<Interface>
+where
+    Interface: FlashInterface,
+{
     fn rustboot_start(self) -> ! {
         let mut boot = PartDescriptor::open_partition(Boot).unwrap();
         let updt = PartDescriptor::open_partition(Update).unwrap();
@@ -290,8 +308,29 @@ where
                 _ => unreachable!(),
             }
         }
-
-        loop {}
+        // After an update or rollback re-open the boot partition
+        let boot = PartDescriptor::open_partition(Boot).unwrap();
+        match boot {
+            ImageType::BootInNewState(img) => {
+                let boot_part = img.part_desc.get().unwrap();
+                let base_img_addr = RefinedUsize::<0, 0, BOOT_FWBASE>::single_valued_int(
+                    boot_part.fw_base as usize,
+                )
+                .0;
+                hal_preboot();
+                hal_boot_from(base_img_addr)
+            }
+            ImageType::BootInSuccessState(img) => {
+                let boot_part = img.part_desc.get().unwrap();
+                let base_img_addr = RefinedUsize::<0, 0, BOOT_FWBASE>::single_valued_int(
+                    boot_part.fw_base as usize,
+                )
+                .0;
+                hal_preboot();
+                hal_boot_from(base_img_addr)
+            }
+            _ => loop {},
+        }
     }
 
     fn update_trigger(self) -> Result<()> {
@@ -300,7 +339,8 @@ where
         Self::flash_unlock();
         match updt {
             ImageType::UpdateInNewState(img) => {
-                let part_desc = img.part_desc.get();
+                let new_img = img.into_updating_state();
+                let part_desc = new_img.part_desc.get();
                 match part_desc {
                     Some(part) => part.set_partition_state(self, state),
                     None => return Err(RustbootError::__Nonexhaustive),
@@ -318,21 +358,15 @@ where
         let state = StateSuccess.from().unwrap();
         Self::flash_unlock();
         match boot {
-            ImageType::BootInNewState(img) => {
-                let part_desc = img.part_desc.get();
+            ImageType::BootInTestingState(img) => {
+                let new_img = img.into_success_state();
+                let part_desc = new_img.part_desc.get();
                 match part_desc {
                     Some(part) => part.set_partition_state(self, state),
                     None => return Err(RustbootError::__Nonexhaustive),
                 };
             }
-            ImageType::BootInTestingState(img) => {
-                let part_desc = img.part_desc.get();
-                match part_desc {
-                    Some(part) => part.set_partition_state(self, state),
-                    None => return Err(RustbootError::__Nonexhaustive),
-                };
-            } 
-            ImageType::BootInSuccessState(img) => {} // do nothing as we've successfully updated & booted 
+            ImageType::BootInSuccessState(img) => {} // do nothing as we've successfully updated & booted
             _ => return Err(RustbootError::Unreachable),
         }
         Self::flash_lock();

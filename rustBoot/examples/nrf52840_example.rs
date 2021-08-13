@@ -1,6 +1,6 @@
 
 use rustBoot_hal::nrf::nrf52840::FlashWriterEraser;
-use rustboot::update::{Updater, update_flash::FlashUpdater};
+use rustboot::update::{UpdateInterface, update_flash::FlashUpdater};
 
 
 fn main() {

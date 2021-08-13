@@ -27,5 +27,7 @@ pub trait FlashInterface {
 }
 
 // Arch-specific code
-pub fn hal_prepare_boot() {}
-pub fn do_boot() {}
+pub fn preboot() {}
+pub fn boot_from(fw_base_address: usize) -> ! {
+    crate::nrf::nrf52840::boot_from(fw_base_address)
+}

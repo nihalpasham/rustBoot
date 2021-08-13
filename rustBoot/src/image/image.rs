@@ -138,9 +138,9 @@ impl ValidPart for Swap {
 }
 
 #[derive(Debug)]
-pub(crate) struct PartDescriptor<Part: ValidPart> {
+pub struct PartDescriptor<Part: ValidPart> {
     pub hdr: Option<*const u8>,
-    fw_base: *const u8,
+    pub fw_base: *const u8,
     sha_hash: Option<*const u8>,
     pub trailer: Option<*const u8>,
     pub fw_size: usize,
@@ -155,7 +155,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
     ///
     /// This is an exclusive constructor for `boot OR update OR swap` `IMAGES` i.e. only way to
     /// create [`RustbootImage`] instances.
-    pub fn open_partition(part: Part) -> Result<ImageType<'static>> {
+    pub(crate) fn open_partition(part: Part) -> Result<ImageType<'static>> {
         match part.part_id() {
             PartId::PartBoot => {
                 let mut size = 0x0;
@@ -415,6 +415,12 @@ impl<'a> RustbootImage<'a, Boot, StateNew> {
             state: Some(StateTesting),
         }
     }
+    pub fn into_success_state(self) -> RustbootImage<'a, Boot, StateSuccess> {
+        RustbootImage {
+            part_desc: self.part_desc,
+            state: Some(StateSuccess),
+        }
+    }
 }
 
 impl<'a> RustbootImage<'a, Boot, StateSuccess> {
@@ -427,10 +433,19 @@ impl<'a> RustbootImage<'a, Boot, StateSuccess> {
 }
 
 impl<'a> RustbootImage<'a, Boot, StateTesting> {
-    fn into_success_state(self) -> RustbootImage<'a, Boot, StateSuccess> {
+    pub fn into_success_state(self) -> RustbootImage<'a, Boot, StateSuccess> {
         RustbootImage {
             part_desc: self.part_desc,
             state: Some(StateSuccess),
+        }
+    }
+}
+
+impl<'a> RustbootImage<'a, Update, StateNew> {
+    pub fn into_updating_state(self) -> RustbootImage<'a, Update, StateUpdating> {
+        RustbootImage {
+            part_desc: self.part_desc,
+            state: Some(StateUpdating),
         }
     }
 }

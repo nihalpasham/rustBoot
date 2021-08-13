@@ -25,15 +25,12 @@ pub const HDR_PADDING: u8 = 0xFF;
 pub const SECT_FLAG_NEW: u8 = 0x0F;
 
 /// Enumerated BOOT partition
-pub const PART_BOOT: u8 = 0x0;
 pub const BOOT_TRAILER_ADDRESS: usize = BOOT_PARTITION_ADDRESS + PARTITION_SIZE;
 pub const BOOT_FWBASE: usize = BOOT_PARTITION_ADDRESS + IMAGE_HEADER_SIZE;
 /// Enumerated UPDATE partition
-pub const PART_UPDATE: u8 = 0x1;
 pub const UPDATE_TRAILER_ADDRESS: usize = UPDATE_PARTITION_ADDRESS + PARTITION_SIZE;
 pub const UPDATE_FWBASE: usize = UPDATE_PARTITION_ADDRESS + IMAGE_HEADER_SIZE;
 /// Enumerated SWAP partition
-pub const PART_SWAP: u8 = 0x2;
 pub const SWAP_BASE: usize = SWAP_PARTITION_ADDRESS;
 
 pub const RUSTBOOT_MAGIC: usize = 0x54535552; // RUST
@@ -50,6 +47,14 @@ pub const SHA256_DIGEST_SIZE: usize = 32;
 // SHA384 constants
 pub const HDR_SHA384: u16 = 0x0013;
 pub const SHA384_DIGEST_SIZE: usize = 48;
+
+// SHA384 constants
+pub const HDR_PUBKEY_DIGEST: u16 = 0x0010;
+#[cfg(feature = "sha256")]
+pub const PUBKEY_DIGEST_SIZE: usize = 32;
+#[cfg(feature = "sha384")]
+pub const PUBKEY_DIGEST_SIZE: usize = 48;
+
 
 // NVM_FLASH_WRITEONCE
 #[cfg(feature = "ext_flash")]
@@ -159,6 +164,11 @@ pub(crate) fn parse_tlv<'a, Part: ValidPart + Swappable, State: TypeState>(
                     extract_digest(header_bytes).map_err(|_| RustbootError::InvalidValue)?;
                 digest384
             }
+            Tags::PubkeyDigest => {
+                let (_, pubkey_digest) =
+                    extract_pubkey_digest(header_bytes).map_err(|_| RustbootError::InvalidValue)?;
+                pubkey_digest
+            }
             Tags::Signature => {
                 let (_, signature) =
                     extract_signature(header_bytes).map_err(|_| RustbootError::InvalidValue)?;
@@ -215,6 +225,12 @@ pub(crate) fn get_tlv_offset<'a, Part: ValidPart + Swappable, State: TypeState>(
                 let offset = IMAGE_HEADER_SIZE - remaining.len() - (4 + SHA384_DIGEST_SIZE);
                 Ok(offset)
             }
+            Tags::PubkeyDigest => {
+                let (remaining, _) =
+                    extract_pubkey_digest(header_bytes).map_err(|_| RustbootError::InvalidValue)?;
+                let offset = IMAGE_HEADER_SIZE - remaining.len() - (4 + PUBKEY_DIGEST_SIZE);
+                Ok(offset)
+            }
             Tags::Signature => {
                 let (remaining, _) =
                     extract_signature(header_bytes).map_err(|_| RustbootError::InvalidValue)?;
@@ -239,6 +255,7 @@ pub enum Tags {
     ImgType,
     Digest256,
     Digest384,
+    PubkeyDigest,
     Signature,
     EndOfHeader,
 }
@@ -252,6 +269,7 @@ impl Tags {
             Self::ImgType       => &[0x00, 0x04],
             Self::Digest256     => &[0x00, 0x03],
             Self::Digest384     => &[0x00, 0x13],
+            Self::PubkeyDigest  => &[0x00, 0x10],
             Self::Signature     => &[0x00, 0x20],
             Self::EndOfHeader   => &[0x00, 0x00],
         }
@@ -265,7 +283,7 @@ use nom::{
     Err, IResult,
 };
 
-use libc_print::libc_println;
+// use libc_print::libc_println;
 
 fn check_for_eof(input: &[u8]) -> IResult<&[u8], &[u8]> {
     match tag::<_, _, Error<&[u8]>>(Tags::EndOfHeader.get_id())(input) {
@@ -340,8 +358,25 @@ fn extract_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     }
 }
 
-fn extract_signature<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+fn extract_pubkey_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = extract_digest(input)?;
+    let (remainder, _) = check_for_eof(remainder)?;
+    let (remainder, _) = check_for_padding(remainder)?;
+    let (remainder, typelen) = take(4u32)(remainder)?;
+    let len = (typelen[3] as u16 | (typelen[2] as u16) << 8) as usize;
+    let (remainder, digest) = take(len)(remainder)?;
+    let (_, digest_check) = take(2u32)(typelen)?;
+    if (digest_check == Tags::PubkeyDigest.get_id() && len == SHA256_DIGEST_SIZE)
+        || (digest_check == Tags::PubkeyDigest.get_id() && len == SHA384_DIGEST_SIZE)
+    {
+        Ok((remainder, &digest[..]))
+    } else {
+        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+    }
+}
+
+fn extract_signature<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+    let (remainder, _) = extract_pubkey_digest(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
     let (remainder, typelen) = take(4u32)(remainder)?;
@@ -390,7 +425,13 @@ mod tests {
         0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
         0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
         0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
-        
+        // 32-byte pubkey digest type and len
+        0x00, 0x10, 0x00, 0x20, 
+        // pubkey digest value
+        0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 
+        0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 
+        0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 
+        0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 
         // signature type and len
         0x00, 0x20, 0x00, 0x40, 
         // signature value
@@ -473,6 +514,25 @@ mod tests {
         assert_eq!(
             val,
             &[
+                0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
+                0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
+                0x55, 0x55, 0x55, 0x55,
+            ]
+        )
+    }
+
+    #[test]
+    fn parse_pubkey_digest() {
+        let val = match extract_digest(DATA) {
+            Ok((remainder, digest)) => {
+                libc_println!("pubkey digest: {:?}", digest);
+                digest
+            }
+            Err(_e) => &[],
+        };
+        assert_eq!(
+            val,
+            &[
                 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
                 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
                 0x33, 0x33, 0x33, 0x33,
@@ -509,5 +569,15 @@ mod tests {
         };
         let offset = DATA.len() - remaining.len() - (4 + SHA256_DIGEST_SIZE);
         assert_eq!(offset, 8 + 4 + 12 + 6 + 6)
+    }
+
+    #[test]
+    fn get_tlv_pubkey_digest() {
+        let remaining = match extract_pubkey_digest(DATA) {
+            Ok((remainder, digest)) => remainder,
+            Err(_e) => &[],
+        };
+        let offset = DATA.len() - remaining.len() - (4 + PUBKEY_DIGEST_SIZE);
+        assert_eq!(offset, 8 + 4 + 12 + 6 + 6 + 36)
     }
 }
