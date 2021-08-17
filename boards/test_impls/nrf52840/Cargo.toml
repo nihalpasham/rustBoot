@@ -1,0 +1,14 @@
+[package]
+name = "nrf52840"
+version = "0.1.0"
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+rustBoot-update = {path = "../../rustBoot-update"}
+rustBoot-hal = {path = "../../rustBoot-hal", default-features = false, features = ["nrf52840"]}
+cortex-m = "0.7.3"
+cortex-m-rt = "0.6.15"
+
+
+# [workspace]

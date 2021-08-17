@@ -1,0 +1,13 @@
+[package]
+name = "nrf52840_bootfw"
+version = "0.1.0"
+edition = "2018"
+build = "build.rs"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cortex-m-rt = "0.6.15"
+nrf52840-hal = "0.13.0"
+panic-halt = "0.2.0"
+
+# [workspace]

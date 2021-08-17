@@ -1,6 +1,5 @@
 [workspace]
 
 members = [
-    "rustBoot",
-    "rustBoot-hal"
+  "rustBoot"
 ]

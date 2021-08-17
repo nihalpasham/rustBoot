@@ -1,12 +1,13 @@
 use core::marker::PhantomData;
 
 use crate::hal::hal::*;
-use crate::image::image::*;
-use crate::librustboot::*;
-use crate::target::{PARTITION_SIZE, SECTOR_SIZE};
-use crate::{Result, RustbootError};
+use rustBoot::image::image::*;
+use rustBoot::parser::*;
+use rustBoot::constants::*;
+use rustBoot::{Result, RustbootError};
 
-use super::{FlashApi, UpdateInterface};
+use rustBoot::flashapi::FlashApi;
+use super::{UpdateInterface};
 use rustBoot_hal::FlashInterface;
 
 struct RefinedUsize<const MIN: usize, const MAX: usize, const VAL: usize>(usize);

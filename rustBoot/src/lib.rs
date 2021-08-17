@@ -2,12 +2,11 @@
 #![allow(warnings)]
 #![feature(once_cell)]
 
-mod image;
+pub mod image;
 mod crypto;
-pub mod target;
-pub mod librustboot;
-pub mod update;
-pub mod hal;
+pub mod constants;
+pub mod parser;
+pub mod flashapi;
 
 use core::fmt;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -1,6 +1,7 @@
 #![no_std]
 #![allow(warnings)]
 
+#[cfg(feature = "nrf")]
 pub mod nrf;
 
 /// This is the main trait that abstracts the necessary HW-specific flash operations 
@@ -29,5 +30,6 @@ pub trait FlashInterface {
 // Arch-specific code
 pub fn preboot() {}
 pub fn boot_from(fw_base_address: usize) -> ! {
+    #[cfg(feature = "nrf52840")]
     crate::nrf::nrf52840::boot_from(fw_base_address)
 }

@@ -1,10 +1,10 @@
 use super::sealed::Sealed;
+use crate::constants::*;
 use crate::crypto::signatures::*;
-use crate::librustboot::*;
-use crate::target::*;
+use crate::parser::*;
 use crate::{Result, RustbootError};
 
-use crate::update::FlashApi;
+use crate::flashapi::FlashApi;
 
 use k256::elliptic_curve::consts::U32;
 use sha2::{Digest, Sha256, Sha384};
@@ -155,7 +155,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
     ///
     /// This is an exclusive constructor for `boot OR update OR swap` `IMAGES` i.e. only way to
     /// create [`RustbootImage`] instances.
-    pub(crate) fn open_partition(part: Part) -> Result<ImageType<'static>> {
+    pub fn open_partition(part: Part) -> Result<ImageType<'static>> {
         match part.part_id() {
             PartId::PartBoot => {
                 let mut size = 0x0;
@@ -385,11 +385,63 @@ impl PartDescriptor<Update> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum SectFlags {
+    NewFlag,
+    SwappingFlag,
+    BackupFlag,
+    UpdatedFlag,
+    None,
+}
+
+impl SectFlags {
+    pub fn has_new_flag(&self) -> bool {
+        self == &SectFlags::NewFlag
+    }
+
+    pub fn has_swapping_flag(&self) -> bool {
+        self == &SectFlags::SwappingFlag
+    }
+
+    pub fn has_backup_flag(&self) -> bool {
+        self == &SectFlags::BackupFlag
+    }
+
+    pub fn has_updated_flag(&self) -> bool {
+        self == &SectFlags::UpdatedFlag
+    }
+
+    pub fn set_swapping_flag(mut self) -> Self {
+        self = SectFlags::SwappingFlag;
+        self
+    }
+
+    pub fn set_backup_flag(mut self) -> Self {
+        self = SectFlags::BackupFlag;
+        self
+    }
+
+    pub fn set_updated_flag(mut self) -> Self {
+        self = SectFlags::UpdatedFlag;
+        self
+    }
+
+    pub fn from(&self) -> Option<u8> {
+        match self {
+            NewFlag => Some(0x0F),
+            SwappingFlag => Some(0x07),
+            BackupFlag => Some(0x03),
+            UpdatedFlag => Some(0x00),
+            _ => None,
+        }
+    }
+}
+
 /// A struct to describe the layout and contents of a given image/partition.
 /// The 2 generic type parameters indicate `partition type` and `partition state`.
 #[repr(C)]
 #[derive(Debug)]
-pub(crate) struct RustbootImage<'a, Part: ValidPart, State: TypeState> {
+pub struct RustbootImage<'a, Part: ValidPart, State: TypeState> {
     pub part_desc: &'a mut OnceCell<PartDescriptor<Part>>,
     state: Option<State>,
 }
@@ -399,7 +451,7 @@ pub(crate) struct RustbootImage<'a, Part: ValidPart, State: TypeState> {
 /// Each variant of [`ImageType`] represents a partition and its state.
 /// As you can see we have 6 valid `partition-state` variants.
 #[derive(Debug)]
-pub(crate) enum ImageType<'a> {
+pub enum ImageType<'a> {
     BootInNewState(RustbootImage<'a, Boot, StateNew>),
     UpdateInNewState(RustbootImage<'a, Update, StateNew>),
     NoStateSwap(RustbootImage<'a, Swap, NoState>),
@@ -643,7 +695,7 @@ fn verify_ec256_signature<D: Digest<OutputSize = U32>, const N: u16>(
     match N {
         #[cfg(feature = "secp256k1")]
         IMG_TYPE_AUTH_ECC256 => {
-            let ecc256_verifier = Secp256k1Signature(import_pubkey::<64>()?);
+            let ecc256_verifier = Secp256k1Signature(import_pubkey::<64>(PubkeyTypes::Secp256k1)?);
             let res = ecc256_verifier.verify(digest, signature)?;
             match res {
                 true => Ok(true),
@@ -656,7 +708,31 @@ fn verify_ec256_signature<D: Digest<OutputSize = U32>, const N: u16>(
     }
 }
 
-/// todo
-fn import_pubkey<const N: usize>() -> Result<[u8; N]> {
-    todo!()
+enum PubkeyTypes {
+    Secp256k1,
+    Ed25519,
+    NistP256,
+    NistP384,
+}
+
+/// Imports a raw public key embedded in the bootloader.
+///
+/// *Note: this function will be extended to add support for HW 
+/// secure elements*
+fn import_pubkey<const N: usize>(pk: PubkeyTypes) -> Result<[u8; N]> {
+    match pk {
+        PubkeyTypes::Secp256k1 => {
+            let mut test_pubkey = [0u8; N];
+            let embedded_pubkey = [
+                0x74, 0xBF, 0x5D, 0xE9, 0xF8, 0x69, 0x69, 0x44, 0x35, 0xAE, 0xB7, 0x39, 0x6F, 0xA1,
+                0x40, 0x11, 0xB6, 0xA1, 0x7F, 0x2D, 0x8A, 0x86, 0xB9, 0x58, 0xBC, 0x4A, 0x51, 0xF7,
+                0xF3, 0x0F, 0x23, 0x77, 0x78, 0x0E, 0x11, 0x46, 0x95, 0x3A, 0x1D, 0xDF, 0x69, 0xCD,
+                0x34, 0x23, 0xFE, 0x63, 0x05, 0x15, 0x30, 0x43, 0xBB, 0x9E, 0x75, 0x63, 0xE0, 0x41,
+                0x6A, 0x70, 0xCE, 0x16, 0x0A, 0x60, 0x2A, 0x38,
+            ];
+            test_pubkey.copy_from_slice(&embedded_pubkey[..]);
+            Ok(test_pubkey)
+        }
+        _ => todo!(),
+    }
 }

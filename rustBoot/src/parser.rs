@@ -1,127 +1,10 @@
-#![no_std]
-#![allow(warnings)]
 
 use core::convert::TryInto;
 use core::usize;
 
 use crate::image::image::{PartId, RustbootImage, Swappable, TypeState, ValidPart};
-use crate::target::*;
+use crate::constants::*;
 use crate::{Result, RustbootError};
-
-pub const IMAGE_HEADER_SIZE: usize = 0x100;
-pub const IMAGE_HEADER_OFFSET: usize = 0x8;
-
-pub const HDR_VERSION: u16 = 0x01;
-pub const HDR_VERSION_LEN: usize = 0x4;
-pub const HDR_TIMESTAMP_LEN: usize = 0x8;
-pub const HDR_IMG_TYPE: u16 = 0x4;
-pub const HDR_IMG_TYPE_LEN: usize = 0x2;
-pub const HDR_IMG_TYPE_APP: u16 = 0x0001;
-pub const HDR_MASK_LOWBYTE: u16 = 0x00FF;
-pub const HDR_MASK_HIGHBYTE: u16 = 0xFF00;
-pub const HDR_SIGNATURE: u16 = 0x20;
-pub const HDR_PADDING: u8 = 0xFF;
-
-pub const SECT_FLAG_NEW: u8 = 0x0F;
-
-/// Enumerated BOOT partition
-pub const BOOT_TRAILER_ADDRESS: usize = BOOT_PARTITION_ADDRESS + PARTITION_SIZE;
-pub const BOOT_FWBASE: usize = BOOT_PARTITION_ADDRESS + IMAGE_HEADER_SIZE;
-/// Enumerated UPDATE partition
-pub const UPDATE_TRAILER_ADDRESS: usize = UPDATE_PARTITION_ADDRESS + PARTITION_SIZE;
-pub const UPDATE_FWBASE: usize = UPDATE_PARTITION_ADDRESS + IMAGE_HEADER_SIZE;
-/// Enumerated SWAP partition
-pub const SWAP_BASE: usize = SWAP_PARTITION_ADDRESS;
-
-pub const RUSTBOOT_MAGIC: usize = 0x54535552; // RUST
-pub const RUSTBOOT_MAGIC_TRAIL: usize = 0x544F4F42; // BOOT
-
-pub const PART_STATUS_LEN: usize = 1;
-pub const MAGIC_TRAIL_LEN: usize = 4;
-
-/*  Hash Config */
-
-// SHA256 constants
-pub const HDR_SHA256: u16 = 0x0003;
-pub const SHA256_DIGEST_SIZE: usize = 32;
-// SHA384 constants
-pub const HDR_SHA384: u16 = 0x0013;
-pub const SHA384_DIGEST_SIZE: usize = 48;
-
-// SHA384 constants
-pub const HDR_PUBKEY_DIGEST: u16 = 0x0010;
-#[cfg(feature = "sha256")]
-pub const PUBKEY_DIGEST_SIZE: usize = 32;
-#[cfg(feature = "sha384")]
-pub const PUBKEY_DIGEST_SIZE: usize = 48;
-
-
-// NVM_FLASH_WRITEONCE
-#[cfg(feature = "ext_flash")]
-pub const FLASHBUFFER_SIZE: usize = SECTOR_SIZE;
-pub const FLASHBUFFER_SIZE: usize = IMAGE_HEADER_SIZE;
-
-/* Signature Config */
-pub const ECC_SIGNATURE_SIZE: usize = 64;
-
-// EC256 constants
-#[cfg(feature = "secp256k1")]
-pub const HDR_IMG_TYPE_AUTH: u16 = 0x0200;
-// ED25519 constants
-#[cfg(feature = "ed25519")]
-pub const HDR_IMG_TYPE_AUTH: u16 = 0x0100;
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum SectFlags {
-    NewFlag,
-    SwappingFlag,
-    BackupFlag,
-    UpdatedFlag,
-    None,
-}
-
-impl SectFlags {
-    pub fn has_new_flag(&self) -> bool {
-        self == &SectFlags::NewFlag
-    }
-
-    pub fn has_swapping_flag(&self) -> bool {
-        self == &SectFlags::SwappingFlag
-    }
-
-    pub fn has_backup_flag(&self) -> bool {
-        self == &SectFlags::BackupFlag
-    }
-
-    pub fn has_updated_flag(&self) -> bool {
-        self == &SectFlags::UpdatedFlag
-    }
-
-    pub fn set_swapping_flag(mut self) -> Self {
-        self = SectFlags::SwappingFlag;
-        self
-    }
-
-    pub fn set_backup_flag(mut self) -> Self {
-        self = SectFlags::BackupFlag;
-        self
-    }
-
-    pub fn set_updated_flag(mut self) -> Self {
-        self = SectFlags::UpdatedFlag;
-        self
-    }
-
-    pub fn from(&self) -> Option<u8> {
-        match self {
-            NewFlag => Some(0x0F),
-            SwappingFlag => Some(0x07),
-            BackupFlag => Some(0x03),
-            UpdatedFlag => Some(0x00),
-            _ => None,
-        }
-    }
-}
 
 /// A function to parse the image-header contained in a `boot or update` partition, for a given `TLV`. It
 /// takes as input a ref to [`RustbootImage`] and a [`Tags`] variant.
@@ -392,8 +275,7 @@ fn extract_signature<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
 
 #[cfg(test)]
 mod tests {
-    use libc_print::libc_println;
-
+    // use libc_print::libc_println;
     use super::*;
 
     const PAD1: &[u8] = &[0x20, 0x01, 0xff, 0x02, 0x03];
@@ -449,7 +331,7 @@ mod tests {
     fn padding_test() {
         let val = match check_for_padding(PAD1) {
             Ok((remainder, val)) => {
-                libc_println!("incorrect padding: {:?}", remainder);
+                // libc_println!("incorrect padding: {:?}", remainder);
                 remainder
             }
             Err(_e) => &[],
@@ -458,7 +340,7 @@ mod tests {
 
         let val = match check_for_padding(PAD2) {
             Ok((remainder, val)) => {
-                libc_println!("padding: {:?}", val);
+                // libc_println!("padding: {:?}", val);
                 val
             }
             Err(_e) => &[],
@@ -470,7 +352,7 @@ mod tests {
     fn parse_version() {
         let val = match extract_version(DATA) {
             Ok((remainder, version)) => {
-                libc_println!("version: {:?}", version);
+                // libc_println!("version: {:?}", version);
                 version
             }
             Err(_e) => &[],
@@ -482,7 +364,7 @@ mod tests {
     fn parse_timestamp() {
         let val = match extract_timestamp(DATA) {
             Ok((remainder, timestamp)) => {
-                libc_println!("timestamp: {:?}", timestamp);
+                // libc_println!("timestamp: {:?}", timestamp);
                 timestamp
             }
             Err(_e) => &[],
@@ -494,7 +376,7 @@ mod tests {
     fn parse_img_type() {
         let val = match extract_img_type(DATA) {
             Ok((remainder, img_type)) => {
-                libc_println!("img_type: {:?}", img_type);
+                // libc_println!("img_type: {:?}", img_type);
                 img_type
             }
             Err(_e) => &[],
@@ -506,7 +388,7 @@ mod tests {
     fn parse_digest() {
         let val = match extract_digest(DATA) {
             Ok((remainder, digest)) => {
-                libc_println!("digest: {:?}", digest);
+                // libc_println!("digest: {:?}", digest);
                 digest
             }
             Err(_e) => &[],
@@ -525,7 +407,7 @@ mod tests {
     fn parse_pubkey_digest() {
         let val = match extract_digest(DATA) {
             Ok((remainder, digest)) => {
-                libc_println!("pubkey digest: {:?}", digest);
+                // libc_println!("pubkey digest: {:?}", digest);
                 digest
             }
             Err(_e) => &[],
@@ -544,7 +426,7 @@ mod tests {
     fn parse_signature() {
         let val = match extract_signature(DATA) {
             Ok((remainder, signature)) => {
-                libc_println!("signature: {:?}", signature);
+                // libc_println!("signature: {:?}", signature);
                 signature
             }
             Err(_e) => &[],

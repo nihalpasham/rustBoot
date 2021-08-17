@@ -1,13 +1,5 @@
-pub mod update_flash;
 
-use crate::image::image::*;
-use crate::Result;
-pub trait UpdateInterface: FlashApi {
-    fn rustboot_start(self) -> !;
-    fn update_trigger(self) -> Result<()>;
-    fn update_success(self) -> Result<()>;
-}
-
+use crate::image::image::{ValidPart, PartDescriptor};
 pub trait FlashApi: Copy {
     fn flash_trailer_write<Part: ValidPart>(
         self,
