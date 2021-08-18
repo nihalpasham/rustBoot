@@ -717,7 +717,7 @@ enum PubkeyTypes {
 
 /// Imports a raw public key embedded in the bootloader.
 ///
-/// *Note: this function will be extended to add support for HW 
+/// *Note: this function can be extended to add support for HW 
 /// secure elements*
 fn import_pubkey<const N: usize>(pk: PubkeyTypes) -> Result<[u8; N]> {
     match pk {

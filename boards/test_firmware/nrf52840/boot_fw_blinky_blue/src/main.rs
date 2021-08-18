@@ -1,5 +1,5 @@
-#![no_main]
 #![no_std]
+#![no_main]
 #![allow(warnings)]
 #![allow(non_snake_case)]
 
