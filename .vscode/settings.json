@@ -4,4 +4,10 @@
         "boards/Cargo.toml",
     ],
     "rust-analyzer.checkOnSave.allTargets": false,
+    "rust-analyzer.updates.channel": "nightly",
+    "files.associations": {
+        "*.x": "linkerscript"
+    },
+    "cortex-debug.registerUseNaturalFormat": false,
+    "cortex-debug.variableUseNaturalFormat": false
 }

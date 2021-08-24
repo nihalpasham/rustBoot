@@ -1,21 +1,24 @@
-
 use core::{
     ops::{Add, Sub},
     usize,
 };
 
-use cortex_m;
 use nrf52840_hal as hal;
 
 use crate::FlashInterface;
 use hal::pac::{Peripherals, NVMC};
+use nrf52840_constants::*;
 
-pub const FLASH_PAGE_SIZE: usize = 4096;
-pub const STACK_LOW: usize = 0x20_000_000;
-pub const STACK_UP: usize = 0x20_040_000;
-pub const IVT_SIZE: usize = 0x100;
-pub const BASE_ADDR: usize = 0x2f000;
-pub const FW_ADDR: usize = BASE_ADDR + IVT_SIZE;
+#[rustfmt::skip]
+mod nrf52840_constants {
+    pub const FLASH_PAGE_SIZE : u32 = 4096;
+    pub const STACK_LOW       : u32 = 0x20_000_000;
+    pub const STACK_UP        : u32 = 0x20_040_000;
+    pub const RB_HDR_SIZE     : u32 = 0x100;
+    pub const BASE_ADDR       : u32 = 0x2f000;
+    pub const VTR_TABLE_SIZE  : u32 = 0x100;
+    pub const FW_RESET_VTR    : u32 = BASE_ADDR + RB_HDR_SIZE + VTR_TABLE_SIZE + 1;
+}
 
 pub struct FlashWriterEraser {
     nvmc: NVMC,
@@ -94,7 +97,7 @@ impl FlashInterface for FlashWriterEraser {
     fn hal_flash_erase(&self, addr: usize, len: usize) {
         let starting_page = addr as u32;
         let ending_page = (addr + len) as u32;
-        for addr in (starting_page..ending_page).step_by(FLASH_PAGE_SIZE) {
+        for addr in (starting_page..ending_page).step_by(FLASH_PAGE_SIZE as usize) {
             // Enable erasing
             self.nvmc.config.write(|w| w.wen().een());
             // Wait until writing is done
@@ -113,14 +116,14 @@ impl FlashInterface for FlashWriterEraser {
 
 pub fn preboot() {}
 
-struct RefinedUsize<const MIN: usize, const MAX: usize, const VAL: usize>(usize);
+struct RefinedUsize<const MIN: u32, const MAX: u32, const VAL: u32>(u32);
 
-impl<const MIN: usize, const MAX: usize, const VAL: usize> RefinedUsize<MIN, MAX, VAL> {
-    pub fn bounded_int(i: usize) -> Self {
+impl<const MIN: u32, const MAX: u32, const VAL: u32> RefinedUsize<MIN, MAX, VAL> {
+    pub fn bounded_int(i: u32) -> Self {
         assert!(i >= MIN && i <= MAX);
         RefinedUsize(i)
     }
-    pub fn single_valued_int(i: usize) -> Self {
+    pub fn single_valued_int(i: u32) -> Self {
         assert!(i == VAL);
         RefinedUsize(i)
     }
@@ -133,10 +136,10 @@ pub fn boot_from(fw_base_address: usize) -> ! {
     unsafe {
         let base_img_addr = fw_base_address as u32;
         let stack_pointer = RefinedUsize::<STACK_LOW, STACK_UP, 0>::bounded_int(
-            *(fw_base_address as *const u32) as usize).0 as u32;
-        let reset_vector = RefinedUsize::<0, 0, FW_ADDR>::single_valued_int(
-            *((fw_base_address + 4) as *const u32) as usize).0;
-        let jump_vector = core::mem::transmute::<usize, extern "C" fn() -> !>(reset_vector);
+            *(fw_base_address as *const u32)).0;
+        let reset_vector = RefinedUsize::<0, 0, FW_RESET_VTR>::single_valued_int(
+            *((fw_base_address + 4) as *const u32)).0;
+        let jump_vector = core::mem::transmute::<usize, extern "C" fn() -> !>(reset_vector as usize);
 
         cortex_m::asm::dsb();
         cortex_m::asm::isb();

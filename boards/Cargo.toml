@@ -15,5 +15,5 @@ lto = false
 [profile.release]
 debug = true
 lto = true
-opt-level = "z"
+opt-level = "s"
 panic = "abort"

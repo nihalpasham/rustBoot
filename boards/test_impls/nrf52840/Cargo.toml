@@ -1,14 +1,32 @@
 [package]
+build = "build.rs"
+edition = "2018"
 name = "nrf52840"
 version = "0.1.0"
-edition = "2018"
-build = "build.rs"
+
+# makes `cargo check --all-targets` work
+[[bin]]
+bench = false
+doctest = false
+name = "nrf52840"
+test = false
 
 [dependencies]
-rustBoot-update = {path = "../../rustBoot-update"}
-rustBoot-hal = {path = "../../rustBoot-hal", default-features = false, features = ["nrf52840"]}
-cortex-m = "0.7.3"
 cortex-m-rt = "0.6.15"
+defmt = "0.2.3"
+defmt-rtt = {version = "0.2.0"}
+panic-probe = {version = "0.2.0", features = ["print-defmt"]}
+rustBoot-hal = {path = "../../rustBoot-hal", default-features = false, features = ["nrf52840"]}
+rustBoot-update = {path = "../../rustBoot-update"}
 
+[features]
+default = ['defmt-default']
+# these features are required by defmt
+defmt-debug = []
+defmt-default = []
+defmt-error = []
+defmt-info = []
+defmt-trace = []
+defmt-warn = []
 
 # [workspace]

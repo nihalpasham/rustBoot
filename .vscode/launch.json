@@ -1,0 +1,94 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "cwd": "${workspaceRoot}",
+            "executable": "./boards/target/thumbv7em-none-eabihf/release/nrf52840",
+            "name": "PyOCD rustBoot attach",
+            "request": "attach",
+            "type": "cortex-debug",
+            "servertype": "pyocd",
+            // "showDevDebugOutput": true,
+        },
+        {
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "cwd": "${workspaceRoot}",
+            "executable": "./boards/target/thumbv7em-none-eabihf/release/nrf52840",
+            "gdbTarget": ":3333",
+            "name": "(OpenOCD) rustBoot launch",
+            "device": "nRF52840",
+            "svdFile": "./boards/test_impls/nrf52840/nrf52840.svd",
+            // NOTE requires openOCD 0.11.0+
+            "postLaunchCommands": [
+                "monitor rtt server start 8765 0",
+                // should span the *right* part of RAM
+                "monitor rtt setup 0x2003fbc4 0x30 \"SEGGER RTT\"",
+                "monitor rtt start",
+            ],
+            "configFiles": [
+                // for this dev board we need to override the default transport ..
+                "interface/cmsis-dap.cfg",
+                "target/nrf52.cfg",
+            ],
+            // .. so use this instead of the interface in `configFiles`
+            "openOCDPreConfigLaunchCommands": [
+                //     "source [find interface/cmsis-dap.cfg]",
+                "transport select swd",
+            ],
+        },
+        {
+            "cwd": "${workspaceRoot}",
+            "name": "Attach Debug",
+            "request": "attach",
+            "type": "cortex-debug",
+            "servertype": "external",
+            "gdbTarget": ":3333",
+            // TODO adjust all these to fit your system, program and hardware
+            "executable": "./boards/target/thumbv7em-none-eabihf/release/nrf52840",
+            "gdbPath": "arm-none-eabi-gdb", // or gdb or multiarch-gdb
+            // "svdFile": "nrf52840.svd", // optional
+        },
+        {
+            "preLaunchTask": "${defaultBuildTask}",
+            "type": "probe-rs-debug",
+            "request": "launch",
+            "name": "rustBoot launch",
+            "program_binary": "${workspaceFolder}/boards/target/thumbv7em-none-eabihf/release/nrf52840",
+            "chip": "nRF52840_xxAA",
+            "connect_under_reset": false,
+            "speed": 24000,
+            "runtimeExecutable": "probe-rs-debugger",
+            "runtimeArgs": [
+                "debug",
+                "--dap"
+            ],
+            "core_index": 0,
+            "flashing_enabled": true,
+            "reset_after_flashing": true,
+            "halt_after_reset": true,
+            "console_log_level": "Info",
+            // "svdFile": "${workspaceRoot}/nrf52840.svd"
+        },
+        {
+            "type": "probe-rs-debug",
+            "request": "attach",
+            "name": "rustBoot attach",
+            "server": "127.0.0.1:50001",
+            "cwd": "${workspaceFolder}",
+            "program_binary": "${workspaceFolder}/boards/target/thumbv7em-none-eabihf/release/nrf52840",
+            "chip": "nRF52840_xxAA",
+            "connect_under_reset": false,
+            "speed": 24000,
+            "core_index": 0,
+            "flashing_enabled": false,
+            "reset_after_flashing": false,
+            "halt_after_reset": true,
+            "console_log_level": "Info"
+        }
+    ]
+}

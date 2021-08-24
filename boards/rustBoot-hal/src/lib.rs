@@ -4,7 +4,7 @@
 #[cfg(feature = "nrf")]
 pub mod nrf;
 
-/// This is the main trait that abstracts the necessary HW-specific flash operations 
+/// This is the trait that abstracts out the necessary HW-specific flash operations 
 /// such as
 /// - `writing to flash` - we can arbitrary blob of data to arbitrary location in flash
 /// - `erasing a flash page` - erase a page of flash, given the address (i.e. first word) of the page 

@@ -3,7 +3,8 @@
 #![allow(warnings)]
 #![allow(non_snake_case)]
 
-use panic_halt as _;
+use defmt_rtt as _;
+use panic_probe as _;
 use nrf52840_hal as hal;
 use cortex_m_rt::entry;
 

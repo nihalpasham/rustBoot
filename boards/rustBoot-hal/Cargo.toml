@@ -5,11 +5,27 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# makes `cargo check --all-targets` (used by Rust-Analyzer) work
+[lib]
+bench = false
+doctest = false
+test = false
+
 [dependencies]
+defmt = "0.2.3"
 nrf52840-hal = "0.13.0"
 cortex-m = "0.7.3"
 
 [features]
+default = ["nrf", "nrf52840", "defmt-default"]
+# these features are required by defmt
+defmt-default = []
+defmt-trace = []
+defmt-debug = []
+defmt-info = []
+defmt-warn = []
+defmt-error = []
+
 nrf = []
 nrf52840 = ["nrf"]
-default = ["nrf", "nrf52840"]
+

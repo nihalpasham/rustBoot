@@ -1,0 +1,23 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"command": "cargo run -- build rustBoot-only nrf52840",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"label": "build rustBoot-only"
+		},
+		{
+			"type": "shell",
+			"command": "probe-rs-debugger debug --dap --port 50001",
+			"label": "run-probe-rs-debug-server"
+		},
+	],
+	
+}

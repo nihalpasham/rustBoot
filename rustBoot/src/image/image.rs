@@ -6,10 +6,24 @@ use crate::{Result, RustbootError};
 
 use crate::flashapi::FlashApi;
 
-use k256::elliptic_curve::consts::U32;
+use core::ops::Add;
+#[cfg(feature = "secp256k1")]
+use k256::{
+    ecdsa::VerifyingKey,
+    elliptic_curve::{generic_array::GenericArray, FieldSize, consts::U32},
+    EncodedPoint, Secp256k1,
+};
+#[cfg(feature = "nistp256")]
+use p256::{
+    ecdsa::VerifyingKey,
+    elliptic_curve::{generic_array::GenericArray, FieldSize, consts::U32},
+    EncodedPoint, NistP256,
+};
+
 use sha2::{Digest, Sha256, Sha384};
 
 use core::convert::TryInto;
+use core::fmt::Display;
 use core::lazy::OnceCell;
 
 /// Singleton to ensure we only ever have one instance of the `BOOT` partition
@@ -549,7 +563,9 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                         integrity_check = true;
                         Some(stored_hash.as_ptr())
                     }
-                    Err(e) => return Err(e),
+                    Err(e) => {
+                        return Err(e);
+                    }
                 };
                 if integrity_check.eq(&true) {
                     match self.part_desc.get_mut() {
@@ -576,7 +592,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
     /// - `IMG_TYPE_AUTH_ED25519` (ed25519)
     pub fn verify_authenticity<const N: u16>(&mut self) -> Result<bool> {
         match N {
-            #[cfg(feature = "secp256k1")]
+            #[cfg(feature = "nistp256")]
             HDR_IMG_TYPE_AUTH => {
                 let mut auth_check = false;
                 let signature_type = HDR_SIGNATURE;
@@ -589,7 +605,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                 let computed_hash = match res {
                     Ok(stored_signature) => {
                         let (img_type_val) = parse_tlv(self, Tags::ImgType)?;
-                        let val = img_type_val[0] as u16 + (img_type_val[1] as u16) << 8;
+                        let val = img_type_val[0] as u16 + ((img_type_val[1] as u16) << 8);
                         if ((val & 0xFF00) != N) {
                             return Err(RustbootError::InvalidValue);
                         }
@@ -598,13 +614,15 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                             self, fw_size,
                         )?;
                         let computed_hash = Some(hasher2.clone().finalize().as_ptr());
-                        auth_check = verify_ec256_signature::<Sha256, HDR_IMG_TYPE_AUTH>(
+                        auth_check = verify_ecc256_signature::<Sha256, HDR_IMG_TYPE_AUTH>(
                             hasher2,
                             &stored_signature,
                         )?;
                         computed_hash
                     }
-                    Err(e) => return Err(e),
+                    Err(e) => {
+                        return Err(e);
+                    }
                 };
                 if auth_check.eq(&true) {
                     match self.part_desc.get_mut() {
@@ -664,9 +682,10 @@ where
                     offset -= block_size;
                 }
                 offset = 0x0; // reset offset to use as `fw_base`.
+                block_size = 0x40; // reset block_size
                 while size > 0 {
-                    if offset > size {
-                        block_size = offset - size;
+                    if size < block_size {
+                        block_size = size;
                     }
                     hasher.update(
                         &part[IMAGE_HEADER_SIZE + offset..IMAGE_HEADER_SIZE + offset + block_size],
@@ -688,18 +707,39 @@ where
 /// Performs the signature verification; take as argument, a pre-updated
 /// [`Digest`] instance thats needs to be finalized and the associated signature
 /// to be verified.
-fn verify_ec256_signature<D: Digest<OutputSize = U32>, const N: u16>(
+fn verify_ecc256_signature<D: Digest<OutputSize = U32>, const N: u16>(
     digest: D,
     signature: &[u8],
 ) -> Result<bool> {
     match N {
+        #[cfg(feature = "nistp256")]
+        IMG_TYPE_AUTH_ECC256 => {
+            if let VerifyingKeyTypes::VKeyNistP256(vk) = import_pubkey(PubkeyTypes::NistP256)? {
+                let ecc256_verifier = NistP256Signature { verify_key: vk };
+                let res = ecc256_verifier.verify(digest, signature)?;
+                match res {
+                    true => Ok(true),
+                    false => Err(RustbootError::FwAuthFailed),
+                }
+            } else {
+                Err(RustbootError::Unreachable)
+            }
+        }
         #[cfg(feature = "secp256k1")]
         IMG_TYPE_AUTH_ECC256 => {
-            let ecc256_verifier = Secp256k1Signature(import_pubkey::<64>(PubkeyTypes::Secp256k1)?);
+            let ecc256_verifier = Secp256k1Signature {
+                verify_key: import_pubkey(PubkeyTypes::Secp256k1)?,
+            };
             let res = ecc256_verifier.verify(digest, signature)?;
             match res {
-                true => Ok(true),
-                false => Err(RustbootError::FwAuthFailed),
+                true => {
+                    defmt::info!("verify_ecc256_success");
+                    Ok(true)
+                }
+                false => {
+                    defmt::info!("verify_ecc256_failed");
+                    Err(RustbootError::FwAuthFailed)
+                }
             }
         }
         #[cfg(feature = "ed25519")]
@@ -715,14 +755,24 @@ enum PubkeyTypes {
     NistP384,
 }
 
+enum VerifyingKeyTypes {
+    #[cfg(feature = "secp256k1")]
+    VKey256k1(VerifyingKey),
+    #[cfg(feature = "nistp256")]
+    VKeyNistP256(VerifyingKey),
+    VKeyEd25519,
+    VKeyNistP384,
+}
+
+
 /// Imports a raw public key embedded in the bootloader.
 ///
-/// *Note: this function can be extended to add support for HW 
+/// *Note: this function can be extended to add support for HW
 /// secure elements*
-fn import_pubkey<const N: usize>(pk: PubkeyTypes) -> Result<[u8; N]> {
+fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
     match pk {
+        #[cfg(feature = "secp256k1")]
         PubkeyTypes::Secp256k1 => {
-            let mut test_pubkey = [0u8; N];
             let embedded_pubkey = [
                 0x74, 0xBF, 0x5D, 0xE9, 0xF8, 0x69, 0x69, 0x44, 0x35, 0xAE, 0xB7, 0x39, 0x6F, 0xA1,
                 0x40, 0x11, 0xB6, 0xA1, 0x7F, 0x2D, 0x8A, 0x86, 0xB9, 0x58, 0xBC, 0x4A, 0x51, 0xF7,
@@ -730,8 +780,30 @@ fn import_pubkey<const N: usize>(pk: PubkeyTypes) -> Result<[u8; N]> {
                 0x34, 0x23, 0xFE, 0x63, 0x05, 0x15, 0x30, 0x43, 0xBB, 0x9E, 0x75, 0x63, 0xE0, 0x41,
                 0x6A, 0x70, 0xCE, 0x16, 0x0A, 0x60, 0x2A, 0x38,
             ];
-            test_pubkey.copy_from_slice(&embedded_pubkey[..]);
-            Ok(test_pubkey)
+            let untagged_bytes: &GenericArray<u8, <FieldSize<Secp256k1> as Add>::Output> =
+                GenericArray::from_slice(&embedded_pubkey[..]);
+            let sec1_encoded_pubkey = EncodedPoint::from_untagged_bytes(untagged_bytes);
+            // `try_from` is fallible i.e. it will check to see if the point is on the curve.
+            let secp256k1_vk = VerifyingKey::from_encoded_point(&sec1_encoded_pubkey)
+                .map_err(|_| RustbootError::ECCError);
+            Ok(VerifyingKeyTypes::VKey256k1(secp256k1_vk?))
+        }
+        #[cfg(feature = "nistp256")]
+        PubkeyTypes::NistP256 => {
+            let embedded_pubkey = [
+                0x74, 0xBF, 0x5D, 0xE9, 0xF8, 0x69, 0x69, 0x44, 0x35, 0xAE, 0xB7, 0x39, 0x6F, 0xA1,
+                0x40, 0x11, 0xB6, 0xA1, 0x7F, 0x2D, 0x8A, 0x86, 0xB9, 0x58, 0xBC, 0x4A, 0x51, 0xF7,
+                0xF3, 0x0F, 0x23, 0x77, 0x78, 0x0E, 0x11, 0x46, 0x95, 0x3A, 0x1D, 0xDF, 0x69, 0xCD,
+                0x34, 0x23, 0xFE, 0x63, 0x05, 0x15, 0x30, 0x43, 0xBB, 0x9E, 0x75, 0x63, 0xE0, 0x41,
+                0x6A, 0x70, 0xCE, 0x16, 0x0A, 0x60, 0x2A, 0x38,
+            ];
+            let untagged_bytes: &GenericArray<u8, <FieldSize<NistP256> as Add>::Output> =
+                GenericArray::from_slice(&embedded_pubkey[..]);
+            let sec1_encoded_pubkey = EncodedPoint::from_untagged_bytes(untagged_bytes);
+            // `try_from` is fallible i.e. it will check to see if the point is on the curve.
+            let p256_vk = VerifyingKey::from_encoded_point(&sec1_encoded_pubkey)
+                .map_err(|_| RustbootError::ECCError);
+            Ok(VerifyingKeyTypes::VKeyNistP256(p256_vk?))
         }
         _ => todo!(),
     }

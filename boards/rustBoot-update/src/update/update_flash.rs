@@ -1,13 +1,13 @@
 use core::marker::PhantomData;
 
 use crate::hal::hal::*;
+use rustBoot::constants::*;
 use rustBoot::image::image::*;
 use rustBoot::parser::*;
-use rustBoot::constants::*;
 use rustBoot::{Result, RustbootError};
 
+use super::UpdateInterface;
 use rustBoot::flashapi::FlashApi;
-use super::{UpdateInterface};
 use rustBoot_hal::FlashInterface;
 
 struct RefinedUsize<const MIN: usize, const MAX: usize, const VAL: usize>(usize);
@@ -277,16 +277,20 @@ where
                         || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                     {
                         match self.rustboot_update(true) {
-                            Err(_v) => loop {}, // all boot options exhausted
+                            Err(_v) => {
+                                defmt::info!("all boot options exhausted");
+                                panic!("all boot options exhausted")
+                            } // all boot options exhausted
                             Ok(ref mut img) => {
                                 // Emergency update successful, try to re-authenticate boot image.
                                 if (img.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                                     || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                                 {
-                                    loop {} // something went wrong after the emergency update
+                                    panic!("something went wrong after the emergency update") // something went wrong after the emergency update
                                 }
                             }
                         }
+                        // panic!()
                     }
                 }
                 ImageType::BootInSuccessState(ref mut img) => {
@@ -294,13 +298,16 @@ where
                         || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                     {
                         match self.rustboot_update(true) {
-                            Err(_v) => loop {}, // all boot options exhausted
+                            Err(_v) => {
+                                defmt::info!("all boot options exhausted");
+                                panic!("all boot options exhausted")
+                            } // all boot options exhausted
                             Ok(ref mut img) => {
                                 // Emergency update successful, try to re-authenticate boot image.
                                 if (img.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                                     || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                                 {
-                                    loop {} // something went wrong after the emergency update
+                                    panic!("something went wrong after the emergency update") // something went wrong after the emergency update
                                 }
                             }
                         }

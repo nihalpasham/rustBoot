@@ -1,9 +1,8 @@
-
 use core::convert::TryInto;
 use core::usize;
 
-use crate::image::image::{PartId, RustbootImage, Swappable, TypeState, ValidPart};
 use crate::constants::*;
+use crate::image::image::{PartId, RustbootImage, Swappable, TypeState, ValidPart};
 use crate::{Result, RustbootError};
 
 /// A function to parse the image-header contained in a `boot or update` partition, for a given `TLV`. It
@@ -145,15 +144,16 @@ pub enum Tags {
 
 impl Tags {
     #[rustfmt::skip]
+    /// The ids are reversed to account for endianess 
     fn get_id(self) -> &'static [u8] {
         match self {
-            Self::Version       => &[0x00, 0x01],
-            Self::TimeStamp     => &[0x00, 0x02],
-            Self::ImgType       => &[0x00, 0x04],
-            Self::Digest256     => &[0x00, 0x03],
-            Self::Digest384     => &[0x00, 0x13],
-            Self::PubkeyDigest  => &[0x00, 0x10],
-            Self::Signature     => &[0x00, 0x20],
+            Self::Version       => &[0x01, 0x00],
+            Self::TimeStamp     => &[0x02, 0x00],
+            Self::ImgType       => &[0x04, 0x00],
+            Self::Digest256     => &[0x03, 0x00],
+            Self::Digest384     => &[0x13, 0x00],
+            Self::PubkeyDigest  => &[0x10, 0x00],
+            Self::Signature     => &[0x20, 0x00],
             Self::EndOfHeader   => &[0x00, 0x00],
         }
     }
@@ -186,7 +186,7 @@ fn extract_version<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, version) = take(8u32)(input)?;
     let (lengthvalue, version_check) = take(2u32)(version)?;
     let (value, version_len) = take(2u32)(lengthvalue)?;
-    let len = (version_len[1] as u16 | (version_len[0] as u16) << 8) as usize;
+    let len = (version_len[0] as u16 | (version_len[1] as u16) << 8) as usize;
     if version_check == Tags::Version.get_id() && len == HDR_VERSION_LEN {
         Ok((remainder, value))
     } else {
@@ -201,7 +201,7 @@ fn extract_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, timestamp) = take(12u32)(remainder)?;
     let (lengthvalue, timestamp_check) = take(2u32)(timestamp)?;
     let (value, timestamp_len) = take(2u32)(lengthvalue)?;
-    let len = (timestamp_len[1] as u16 | (timestamp_len[0] as u16) << 8) as usize;
+    let len = (timestamp_len[0] as u16 | (timestamp_len[1] as u16) << 8) as usize;
     if timestamp_check == Tags::TimeStamp.get_id() && len == HDR_TIMESTAMP_LEN {
         Ok((remainder, value))
     } else {
@@ -216,7 +216,7 @@ fn extract_img_type<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, img_type) = take(6u32)(remainder)?;
     let (lengthvalue, img_type_check) = take(2u32)(img_type)?;
     let (value, timestamp_len) = take(2u32)(lengthvalue)?;
-    let len = (timestamp_len[1] as u16 | (timestamp_len[0] as u16) << 8) as usize;
+    let len = (timestamp_len[0] as u16 | (timestamp_len[1] as u16) << 8) as usize;
     if img_type_check == Tags::ImgType.get_id() && len == HDR_IMG_TYPE_LEN {
         Ok((remainder, value))
     } else {
@@ -229,7 +229,7 @@ fn extract_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
     let (remainder, typelen) = take(4u32)(remainder)?;
-    let len = (typelen[3] as u16 | (typelen[2] as u16) << 8) as usize;
+    let len = (typelen[2] as u16 | (typelen[3] as u16) << 8) as usize;
     let (remainder, digest) = take(len)(remainder)?;
     let (_, digest_check) = take(2u32)(typelen)?;
     if (digest_check == Tags::Digest256.get_id() && len == SHA256_DIGEST_SIZE)
@@ -246,7 +246,7 @@ fn extract_pubkey_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
     let (remainder, typelen) = take(4u32)(remainder)?;
-    let len = (typelen[3] as u16 | (typelen[2] as u16) << 8) as usize;
+    let len = (typelen[2] as u16 | (typelen[3] as u16) << 8) as usize;
     let (remainder, digest) = take(len)(remainder)?;
     let (_, digest_check) = take(2u32)(typelen)?;
     if (digest_check == Tags::PubkeyDigest.get_id() && len == SHA256_DIGEST_SIZE)
@@ -263,7 +263,7 @@ fn extract_signature<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
     let (remainder, typelen) = take(4u32)(remainder)?;
-    let len = (typelen[3] as u16 | (typelen[2] as u16) << 8) as usize;
+    let len = (typelen[2] as u16 | (typelen[3] as u16) << 8) as usize;
     let (remainder, signature) = take(len)(remainder)?;
     let (_, signature_check) = take(2u32)(typelen)?;
     if signature_check == Tags::Signature.get_id() && len == ECC_SIGNATURE_SIZE {
@@ -285,37 +285,37 @@ mod tests {
     const DATA: &[u8] = &[
         // 0x54, 0x53, 0x55, 0x52, // magic
         // 0x65, 0x51, 0x48, 0x54, // size
-        0x00, 0x01, 0x00, 0x04, // version type & len
+        0x01, 0x00, 0x04, 0x00, // version type & len
         0x01, 0x02, 0x03, 0x04, // version value
 
         0xff, 0xff, 0xff, 0xff, // padding bytes
 
-        0x00, 0x02, 0x00, 0x08, // timestamp type & len
+        0x02, 0x00, 0x08, 0x00, // timestamp type & len
         0x11, 0x11, 0x11, 0x11, // timestamp value
         0x22, 0x22, 0x22, 0x22, 
 
-        0x00, 0x04, 0x00, 0x02, // img type and len
+        0x04, 0x00, 0x02, 0x00, // img type and len
         0x02, 0x00, 
 
         0xff, 0xff, 0xff, 0xff, // padding bytes
         0xff, 0xff,
 
         // 32 byte digest type and len
-        0x00, 0x03, 0x00, 0x20, 
+        0x03, 0x00, 0x20, 0x00, 
         // digest value
         0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
         0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
         0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
         0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 
         // 32-byte pubkey digest type and len
-        0x00, 0x10, 0x00, 0x20, 
+        0x10, 0x00, 0x20, 0x00, 
         // pubkey digest value
         0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 
         0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 
         0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 
         0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 
         // signature type and len
-        0x00, 0x20, 0x00, 0x40, 
+        0x20, 0x00, 0x40, 0x00, 
         // signature value
         0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
         0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44,
@@ -396,16 +396,16 @@ mod tests {
         assert_eq!(
             val,
             &[
-                0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
-                0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
-                0x55, 0x55, 0x55, 0x55,
+                0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
+                0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
+                0x33, 0x33, 0x33, 0x33,
             ]
         )
     }
 
     #[test]
     fn parse_pubkey_digest() {
-        let val = match extract_digest(DATA) {
+        let val = match extract_pubkey_digest(DATA) {
             Ok((remainder, digest)) => {
                 // libc_println!("pubkey digest: {:?}", digest);
                 digest
@@ -415,9 +415,9 @@ mod tests {
         assert_eq!(
             val,
             &[
-                0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
-                0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
-                0x33, 0x33, 0x33, 0x33,
+                0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
+                0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
+                0x55, 0x55, 0x55, 0x55,
             ]
         )
     }

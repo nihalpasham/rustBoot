@@ -1,0 +1,12 @@
+[package]
+authors = ["Nihal Pasham <Twitter: @npashi>"]
+edition = "2018"
+name = "xtask"
+publish = false
+version = "0.1.0"
+
+
+[dependencies]
+anyhow = "1.0.38"
+xshell = "0.1.9"
+rustBoot = {path = "../rustBoot"}

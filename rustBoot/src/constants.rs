@@ -67,9 +67,12 @@ pub const FLASHBUFFER_SIZE: usize = IMAGE_HEADER_SIZE;
 /* Signature Config */
 pub const ECC_SIGNATURE_SIZE: usize = 64;
 
-// EC256 constants
-#[cfg(feature = "secp256k1")]
+// NIST-P256 constants
+#[cfg(feature = "nistp256")]
 pub const HDR_IMG_TYPE_AUTH: u16 = 0x0200;
+// ECC-SECPK1 constants
+#[cfg(feature = "secp256k1")]
+pub const HDR_IMG_TYPE_AUTH: u16 = 0x0000;
 // ED25519 constants
 #[cfg(feature = "ed25519")]
 pub const HDR_IMG_TYPE_AUTH: u16 = 0x0100;
