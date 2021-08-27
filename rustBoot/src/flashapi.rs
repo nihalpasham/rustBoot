@@ -1,7 +1,7 @@
 
-use crate::image::image::{ValidPart, PartDescriptor};
+use crate::image::image::{PartDescriptor, Swappable, ValidPart};
 pub trait FlashApi: Copy {
-    fn flash_trailer_write<Part: ValidPart>(
+    fn flash_trailer_write<Part: ValidPart + Swappable>(
         self,
         part: &PartDescriptor<Part>,
         offset: usize,

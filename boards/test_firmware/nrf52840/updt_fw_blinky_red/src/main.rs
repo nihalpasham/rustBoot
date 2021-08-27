@@ -3,7 +3,7 @@
 #![allow(warnings)]
 #![allow(non_snake_case)]
 
-use defmt_rtt as _;
+// use defmt_rtt as _;
 use panic_probe as _;
 use nrf52840_hal as hal;
 use cortex_m_rt::entry;
@@ -14,29 +14,43 @@ use hal::prelude::*;
 use hal::timer::Timer;
 use hal::pac::Peripherals;
 
+// use rustBoot_hal::nrf::nrf52840::FlashWriterEraser;
+// use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
+
 #[entry]
 fn main() -> ! {
     let p = Peripherals::take().unwrap();
     let pins = Pins::new(p0::Parts::new(p.P0), p1::Parts::new(p.P1));
 
     let mut red_led = pins.red_led.into_push_pull_output(Level::Low);
-    let mut green_led = pins.green_led.into_push_pull_output(Level::Low);
+    // let mut green_led = pins.green_led.into_push_pull_output(Level::Low);
 
-    green_led.set_high();
-    red_led.set_high();
+    // red_led.set_high();
 
     let mut timer = Timer::new(p.TIMER0);
+    let mut count = 0u8;
 
-    // Alternately flash the red, green and blue leds
-    loop {
-        green_led.set_high();
+    // Alternately flash red leds
+    while count < 5 {
+        red_led.set_high();
+        timer.delay(2_000_000); // 2s
         red_led.set_low();
-        timer.delay(250_000); // 250ms
+        timer.delay(2_000_000); // 2s
+        red_led.set_high();
+        timer.delay(2_000_000); // 2s
+        count += 1;
+    }
+
+    // let updater = FlashUpdater::new(FlashWriterEraser::new());
+    // updater.update_success();
+
+    loop {
+        red_led.set_low();
+        timer.delay(1_000_000); // 1s
         red_led.set_high();
         timer.delay(1_000_000); // 1s
-        green_led.set_low();
-        red_led.set_high();
-        timer.delay(250_000); // 250ms
+        red_led.set_low();
+        timer.delay(1_000_000); // 1s
     }
 }
 

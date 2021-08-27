@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![allow(non_snake_case)]
 
 use defmt_rtt as _; // global logger
 use panic_probe as _;
@@ -12,6 +11,15 @@ use cortex_m_rt::entry;
 #[entry]
 fn main() -> ! {
     let updater = FlashUpdater::new(FlashWriterEraser::new());
-    defmt::info!("start rustBoot");
-    updater.rustboot_start()
+    defmt::info!("trigger update");
+    match updater.update_trigger() {
+        Ok(_v) => {
+            defmt::info!("start rustBoot");
+            updater.rustboot_start()
+        }
+        Err(e) => {
+            defmt::info!("failed to trigger update");
+            panic!("failed to trigger update {}", e)
+        }
+    }
 }

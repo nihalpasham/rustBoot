@@ -3,7 +3,7 @@
 #![allow(warnings)]
 #![allow(non_snake_case)]
 
-use defmt_rtt as _;
+// use defmt_rtt as _;
 use panic_probe as _;
 use nrf52840_hal as hal;
 use cortex_m_rt::entry;
@@ -19,24 +19,28 @@ fn main() -> ! {
     let p = Peripherals::take().unwrap();
     let pins = Pins::new(p0::Parts::new(p.P0), p1::Parts::new(p.P1));
 
-    let mut blue_led = pins.blue_led.into_push_pull_output(Level::Low);
+    // let mut blue_led = pins.blue_led.into_push_pull_output(Level::Low);
     let mut green_led = pins.green_led.into_push_pull_output(Level::Low);
 
-    green_led.set_high();
-    blue_led.set_high();
-
     let mut timer = Timer::new(p.TIMER0);
+    let mut count = 0u8;
 
-    // Alternately flash the red, green and blue leds
-    loop {
+    // flash green leds
+    while count < 5 {
+        timer.delay(2_000_000); // 2s
         green_led.set_high();
-        blue_led.set_high();
-        timer.delay(250_000); // 250ms
-        blue_led.set_low();
+        timer.delay(2_000_000); // 2s
+        green_led.set_low();
+        timer.delay(2_000_000); // 2s
+        count += 1;
+    }
+
+    loop {
+        timer.delay(1_000_000); // 1s
+        green_led.set_high();
         timer.delay(1_000_000); // 1s
         green_led.set_low();
-        blue_led.set_high();
-        timer.delay(250_000); // 250ms
+        timer.delay(1_000_000); // 1s
     }
 }
 

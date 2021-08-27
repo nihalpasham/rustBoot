@@ -20,6 +20,7 @@ fn main() -> Result<(), anyhow::Error> {
         ["flash", "rustBoot", board]    => flash_rustBoot(board),
         ["build", "rustBoot-only", board] => build_rustBoot_only(board),
         ["build-sign-flash", "rustBoot", board] => full_image_flash(board),
+        ["erase-and-flash-trailer-magic", board] => erase_and_flash_trailer_magic(board),
         _ => {
             println!("USAGE: cargo xtask test rustBoot");
             println!("OR");
@@ -48,7 +49,7 @@ fn build_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
         root_dir()
             .join("boards/test_firmware")
             .join(target)
-            .join("boot_fw_blinky_blue"),
+            .join("boot_fw_blinky_green"),
     )?;
     cmd!("cargo build --release").run()?;
     let _p = xshell::pushd(
@@ -108,6 +109,7 @@ fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
 fn full_image_flash(target: &&str) -> Result<(), anyhow::Error> {
     build_rustBoot(target)?;
     sign_packages(target)?;
+    cmd!("pyocd erase -t nrf52 --mass-erase").run()?;
     flash_signed_fwimages(target)?;
     flash_rustBoot(target)?;
     Ok(())
@@ -117,4 +119,24 @@ fn root_dir() -> PathBuf {
     let mut xtask_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     xtask_dir.pop();
     xtask_dir
+}
+
+/// to be used ONLY for testing.
+fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
+    match *target {
+        "nrf52840" => {
+            let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
+            // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
+            cmd!("pyocd erase -t nrf52840 -s 0x0").run()?; 
+            let boot_trailer_magic  = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t nrf52840 -s {boot_trailer_magic}").run()?;
+            cmd!("pyocd flash -t nrf52840 --base-address {boot_trailer_magic} trailer_magic.bin").run()?;
+
+            let updt_trailer_magic  = format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t nrf52840 -s {updt_trailer_magic}").run()?;
+            cmd!("pyocd flash -t nrf52840 --base-address {updt_trailer_magic} trailer_magic.bin").run()?;
+            Ok(())
+        }
+        _ => todo!(),
+    }
 }

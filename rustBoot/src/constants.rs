@@ -1,7 +1,7 @@
 
 // **** TARGET PLATFORM - FLASH PARTIONINING **** 
 
-pub const SECTOR_SIZE: usize = 4096;
+pub const SECTOR_SIZE: usize = 0x1000;
 pub const PARTITION_SIZE: usize = 0x28000;
 
 pub const BOOT_PARTITION_ADDRESS: usize = 0x2f000; 

@@ -54,7 +54,8 @@ where
         let addr = part.hdr.unwrap() as usize + offset;
         self.iface.hal_flash_erase(addr, len);
     }
-    fn flash_trailer_write<Part: ValidPart>(
+
+    fn flash_trailer_write<Part: ValidPart + Swappable>(
         self,
         part: &PartDescriptor<Part>,
         offset: usize,
@@ -90,7 +91,6 @@ where
         if (dst_part.part.part_id() == PartId::PartSwap) {
             dst_sector_offset = 0;
         }
-
         self.flash_erase(dst_part, dst_sector_offset, SECTOR_SIZE);
         while (pos < SECTOR_SIZE) {
             if (src_sector_offset + pos < (src_part.fw_size + IMAGE_HEADER_SIZE + FLASHBUFFER_SIZE))
@@ -113,7 +113,7 @@ where
 
         match (updt, swap) {
             (ImageType::UpdateInUpdatingState(mut updt), ImageType::NoStateSwap(swap)) => {
-                /* Use biggest size for the swap */
+                /* use largest size for the swap */
                 let mut total_size = 0usize;
                 let mut sector = 0usize;
                 let mut flag = SectFlags::None;
@@ -123,6 +123,7 @@ where
                     let boot_part = match boot {
                         // Explicitly check both possible Boot states
                         ImageType::BootInNewState(ref boot) => {
+                            defmt::info!("inBootnewstate");
                             let boot_fw_size = boot.part_desc.get().unwrap().fw_size; // can be unwrapped as it was checked during init.
                             let update_fw_size = updt_part.fw_size;
                             total_size = boot_fw_size + IMAGE_HEADER_SIZE;
@@ -132,6 +133,18 @@ where
                             boot.part_desc.get()
                         }
                         ImageType::BootInSuccessState(ref boot) => {
+                            defmt::info!("inBootsuccessstate");
+                            let boot_fw_size = boot.part_desc.get().unwrap().fw_size; // can be unwrapped as it was checked during init.
+                            let update_fw_size = updt_part.fw_size;
+                            total_size = boot_fw_size + IMAGE_HEADER_SIZE;
+                            if ((update_fw_size + IMAGE_HEADER_SIZE) > total_size) {
+                                total_size = update_fw_size + IMAGE_HEADER_SIZE;
+                            }
+                            boot.part_desc.get()
+                        }
+                        // in case of rollback
+                        ImageType::BootInTestingState(ref boot) => {
+                            defmt::info!("inBoottestingstate");
                             let boot_fw_size = boot.part_desc.get().unwrap().fw_size; // can be unwrapped as it was checked during init.
                             let update_fw_size = updt_part.fw_size;
                             total_size = boot_fw_size + IMAGE_HEADER_SIZE;
@@ -154,20 +167,25 @@ where
                         // before starting the swap.
                         if ((update_type & HDR_MASK_LOWBYTE) != HDR_IMG_TYPE_APP)
                             || ((update_type & HDR_MASK_HIGHBYTE) != HDR_IMG_TYPE_AUTH)
-                        {
+                        {   
                             return Err(RustbootError::ECCError);
                         }
                         if (!updt_part.hdr_ok
                             || updt.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                             || updt.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
-                        {
-                            return Err(RustbootError::FwAuthFailed);
+                        {   
+                            panic!("firmware authentication failed");
                         }
                     }
 
                     // disallow downgrades
                     match boot {
                         ImageType::BootInNewState(ref boot) => {
+                            defmt::info!(
+                                "upt_version={}, boot_version={}",
+                                updt.get_firmware_version()?,
+                                boot.get_firmware_version()?
+                            );
                             if (!rollback
                                 && (updt.get_firmware_version()? <= boot.get_firmware_version()?))
                             {
@@ -181,14 +199,15 @@ where
                                 return Err(RustbootError::FwAuthFailed);
                             }
                         }
-                        _ => return Err(RustbootError::InvalidState),
+                        _ => {
+                            return Err(RustbootError::InvalidState);
+                        }
                     }
 
                     /* Interruptible swap
                      * The status is saved in the sector flags of the update partition.
                      * If something goes wrong, the operation will be resumed upon reboot.
                      */
-
                     let boot_part = boot_part.unwrap();
                     let updt_part = updt.part_desc.get().unwrap();
                     let swap_part = swap.part_desc.get().unwrap();
@@ -196,10 +215,11 @@ where
                         if updt_part.get_flags(sector).is_err()
                             || updt_part.get_flags(sector)?.has_new_flag()
                         {
-                            flag.set_swapping_flag();
+                            flag = flag.set_swapping_flag();
                             self.copy_sector(updt_part, swap_part, sector);
+                            defmt::info!("first copy_sector call");
                             if (((sector + 1) * SECTOR_SIZE) < PARTITION_SIZE) {
-                                updt_part.set_flags(self, sector, flag);
+                                updt_part.set_flags(self, sector, flag)?;
                             }
                         }
                         if flag.has_swapping_flag() {
@@ -207,10 +227,11 @@ where
                             if (size > SECTOR_SIZE) {
                                 size = SECTOR_SIZE;
                             }
-                            flag.set_backup_flag();
+                            flag = flag.set_backup_flag();
+                            defmt::info!("second copy_sector call");
                             self.copy_sector(boot_part, updt_part, sector);
                             if (((sector + 1) * SECTOR_SIZE) < PARTITION_SIZE) {
-                                updt_part.set_flags(self, sector, flag);
+                                updt_part.set_flags(self, sector, flag)?;
                             }
                         }
                         if flag.has_backup_flag() {
@@ -218,10 +239,11 @@ where
                             if (size > SECTOR_SIZE) {
                                 size = SECTOR_SIZE;
                             }
-                            flag.set_updated_flag();
+                            flag = flag.set_updated_flag();
+                            defmt::info!("3rd copy_sector call");
                             self.copy_sector(swap_part, boot_part, sector);
                             if (((sector + 1) * SECTOR_SIZE) < PARTITION_SIZE) {
-                                updt_part.set_flags(self, sector, flag);
+                                updt_part.set_flags(self, sector, flag)?;
                             }
                         }
                         sector += 1;
@@ -266,10 +288,16 @@ where
         // Check the BOOT partition for state - if it is still in TESTING, trigger rollback.
         if let ImageType::BootInTestingState(_v) = boot {
             self.update_trigger();
-            self.rustboot_update(true);
+            match self.rustboot_update(true) {
+                Ok(_v) => {},
+                Err(_e) => {panic!("rollback failed.")}
+            }
         // Check the UPDATE partition for state - if it is marked as UPDATING, trigger update.
         } else if let ImageType::UpdateInUpdatingState(_v) = updt {
-            self.rustboot_update(false);
+            match self.rustboot_update(false){
+                Ok(_v) => {},
+                Err(_e) => {panic!("update-swap failed.")}
+            }
         } else {
             match boot {
                 ImageType::BootInNewState(ref mut img) => {
@@ -286,11 +314,11 @@ where
                                 if (img.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                                     || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                                 {
-                                    panic!("something went wrong after the emergency update") // something went wrong after the emergency update
+                                    panic!("something went wrong after the emergency update")
+                                    // something went wrong after the emergency update
                                 }
                             }
                         }
-                        // panic!()
                     }
                 }
                 ImageType::BootInSuccessState(ref mut img) => {
@@ -307,7 +335,8 @@ where
                                 if (img.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                                     || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                                 {
-                                    panic!("something went wrong after the emergency update") // something went wrong after the emergency update
+                                    panic!("something went wrong after the emergency update")
+                                    // something went wrong after the emergency update
                                 }
                             }
                         }
@@ -337,20 +366,33 @@ where
                 hal_preboot();
                 hal_boot_from(base_img_addr)
             }
-            _ => loop {},
+            // If an update is successful, this is the state of the boot partition.
+            ImageType::BootInTestingState(img) => {
+                // defmt::info!("update swapped - boot in testingstate");
+                let boot_part = img.part_desc.get().unwrap();
+                let base_img_addr = RefinedUsize::<0, 0, BOOT_FWBASE>::single_valued_int(
+                    boot_part.fw_base as usize,
+                )
+                .0;
+                hal_preboot();
+                hal_boot_from(base_img_addr)
+            }
+            _ => panic!("reached an unreachable state"),
         }
     }
 
     fn update_trigger(self) -> Result<()> {
         let updt = PartDescriptor::open_partition(Update).unwrap();
-        let state = StateUpdating.from().unwrap();
         Self::flash_unlock();
         match updt {
             ImageType::UpdateInNewState(img) => {
                 let new_img = img.into_updating_state();
                 let part_desc = new_img.part_desc.get();
                 match part_desc {
-                    Some(part) => part.set_partition_state(self, state),
+                    Some(part) => {
+                        defmt::info!("update did indeed trigger");
+                        part.set_state(self, new_img.get_state())
+                    }
                     None => return Err(RustbootError::__Nonexhaustive),
                 };
             }
@@ -363,14 +405,13 @@ where
 
     fn update_success(self) -> Result<()> {
         let boot = PartDescriptor::open_partition(Boot).unwrap();
-        let state = StateSuccess.from().unwrap();
         Self::flash_unlock();
         match boot {
             ImageType::BootInTestingState(img) => {
                 let new_img = img.into_success_state();
                 let part_desc = new_img.part_desc.get();
                 match part_desc {
-                    Some(part) => part.set_partition_state(self, state),
+                    Some(part) => part.set_state(self, new_img.get_state()),
                     None => return Err(RustbootError::__Nonexhaustive),
                 };
             }

@@ -56,18 +56,17 @@ impl FlashInterface for FlashWriterEraser {
                 unsafe {
                     *dst = *src; // 4-byte write
                 };
-                src = ((src as u32) + 4) as *mut u32; // increment pointer by 4
-                dst = ((dst as u32) + 4) as *mut u32; // increment pointer by 4
-
                 // Wait until writing is done
                 while self.nvmc.ready.read().ready().is_busy() {}
+                src = ((src as u32) + 4) as *mut u32; // increment pointer by 4
+                dst = ((dst as u32) + 4) as *mut u32; // increment pointer by 4
                 idx += 4;
             } else {
                 // else do a single byte write i.e. 1-byte write
                 let mut val = 0u32;
                 let val_bytes = ((&mut val) as *mut u32) as *mut u8;
-                let offset = (address + idx) - (((address + idx) >> 2) << 2);
-                dst = ((dst as u32) - offset) as *mut u32;
+                let offset = (address + idx) - (((address + idx) >> 2) << 2); // offset from nearest word aligned address
+                dst = ((dst as u32) - offset) as *mut u32; // subtract offset from dst addr
                 unsafe {
                     val = *dst; // assign current val at dst to val
                                 // store data byte at idx to `val`. `val_bytes` is a byte-pointer to val.
@@ -78,30 +77,27 @@ impl FlashInterface for FlashWriterEraser {
                 self.nvmc.config.write(|w| w.wen().wen());
                 while self.nvmc.readynext.read().readynext().is_busy() {}
                 unsafe {
-                    *dst = val; // Technically this is a 1-byte write but ONLY
-                                // full 32-bit words can be written to Flash using the NVMC interface
+                    *dst = val; // Technically this is a 1-byte write ONLY
+                                // but only full 32-bit words can be written to Flash using the NVMC interface
                 };
-                src = ((src as u32) + 1) as *mut u32; // increment pointer by 1
-                dst = ((dst as u32) + 1) as *mut u32; // increment pointer by 1
-
                 // Wait until writing is done
                 while self.nvmc.ready.read().ready().is_busy() {}
+                src = ((src as u32) + 1) as *mut u32; // increment pointer by 1
+                dst = ((dst as u32) + 1) as *mut u32; // increment pointer by 1
                 idx += 1;
             }
         }
     }
-    fn hal_flash_lock() {}
-
-    fn hal_flash_unlock() {}
 
     fn hal_flash_erase(&self, addr: usize, len: usize) {
         let starting_page = addr as u32;
         let ending_page = (addr + len) as u32;
+        // defmt::info!("starting_page={}, ending_page={}, len={}", starting_page, ending_page, len);
         for addr in (starting_page..ending_page).step_by(FLASH_PAGE_SIZE as usize) {
             // Enable erasing
             self.nvmc.config.write(|w| w.wen().een());
             // Wait until writing is done
-            while self.nvmc.ready.read().ready().is_busy() {}
+            while self.nvmc.readynext.read().readynext().is_busy() {}
             // Erase page starting at addr
             self.nvmc
                 .erasepage()
@@ -112,6 +108,8 @@ impl FlashInterface for FlashWriterEraser {
     }
 
     fn hal_init() {}
+    fn hal_flash_lock() {}
+    fn hal_flash_unlock() {}
 }
 
 pub fn preboot() {}

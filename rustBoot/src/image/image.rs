@@ -10,13 +10,13 @@ use core::ops::Add;
 #[cfg(feature = "secp256k1")]
 use k256::{
     ecdsa::VerifyingKey,
-    elliptic_curve::{generic_array::GenericArray, FieldSize, consts::U32},
+    elliptic_curve::{consts::U32, generic_array::GenericArray, FieldSize},
     EncodedPoint, Secp256k1,
 };
 #[cfg(feature = "nistp256")]
 use p256::{
     ecdsa::VerifyingKey,
-    elliptic_curve::{generic_array::GenericArray, FieldSize, consts::U32},
+    elliptic_curve::{consts::U32, generic_array::GenericArray, FieldSize},
     EncodedPoint, NistP256,
 };
 
@@ -33,6 +33,7 @@ static mut UPDT: OnceCell<PartDescriptor<Update>> = OnceCell::new();
 /// Singleton to ensure we only ever have one instance of the `SWAP` partition
 static mut SWAP: OnceCell<PartDescriptor<Swap>> = OnceCell::new();
 
+#[derive(Format)]
 pub enum States {
     New(StateNew),
     Updating(StateUpdating),
@@ -46,21 +47,24 @@ pub trait TypeState: Sealed {
     fn from(&self) -> Option<u8>;
 }
 /// Any `rustboot state` implementing this marker trait is updateable. `Updateable`, here indicates
-/// (legal) states that are allowed to transition from `StateTesting` to `StateUpdating` or
-/// vice-versa.
+/// (legally) allowed state-transitions i.e. from
+/// - `New` to `Updating` - this transition is only applicable to the update partition.
+/// - `New | Success` to `Testing` this transition is only applicable to the boot partition
+/// - `Testing` to `Success` - this transition is only applicable to the boot partition
 ///
-/// *Note: Not all `rustboot states` are updateable. The only 2 updateable states are*
-/// - [`StateTesting`] - if the boot partition is still marked as 'statetesting` after an
-/// update, a roll-back is triggered
+/// *Note: There are only 3 updateable states for now*
 /// - [`StateUpdating`] - if the update partition contains a downloaded update and is
 /// marked as `stateupdating`, an update will be triggered
+/// - [`StateTesting`] - if the boot partition is still marked as 'statetesting` after an
+/// update, a roll-back is triggered
+/// - [`StateSuccess`] - if an update was successful, it is confirmed by marking it so. 
 pub trait Updateable: Sealed + TypeState {}
 
 /// Represents the state of a partition/image. [`StateNew`] refers to
 /// a state when an image has not been staged for boot, or triggered for an update.
 ///
 /// - If an image is present, no flags are active.
-#[derive(Debug)]
+#[derive(Debug, Format)]
 pub struct StateNew;
 impl TypeState for StateNew {
     fn from(&self) -> Option<u8> {
@@ -70,7 +74,7 @@ impl TypeState for StateNew {
 /// Represents the state of a partition/image. This state is ONLY
 /// valid in the `UPDATE` partition. The image is marked for update and should replace
 /// the current image in `BOOT`.
-#[derive(Debug)]
+#[derive(Debug, Format)]
 pub struct StateUpdating;
 impl TypeState for StateUpdating {
     fn from(&self) -> Option<u8> {
@@ -82,7 +86,7 @@ impl Updateable for StateUpdating {}
 /// valid in the `BOOT` partition. The image has just been swapped, and is pending
 /// reboot. If present after reboot, it means that the updated image failed to boot,
 /// despite being correctly verified. This particular situation triggers a rollback.
-#[derive(Debug)]
+#[derive(Debug, Format)]
 pub struct StateTesting;
 impl TypeState for StateTesting {
     fn from(&self) -> Option<u8> {
@@ -93,17 +97,19 @@ impl Updateable for StateTesting {}
 /// Represents the state of a given partition/image. This state is ONLY
 /// valid in the `BOOT` partition. `Success` here indicates that image currently stored
 /// in BOOT has been successfully staged at least once, and the update is now complete.
-#[derive(Debug)]
+#[derive(Debug, Format)]
 pub struct StateSuccess;
 impl TypeState for StateSuccess {
     fn from(&self) -> Option<u8> {
         Some(0x00)
     }
 }
+impl Updateable for StateSuccess {}
+
 /// We use the [`NoState`] type to represent `non-existent state`.
 ///
 /// **Example:** the `swap partition` has no state field and does not need one.
-#[derive(Debug)]
+#[derive(Debug, Format)]
 pub struct NoState;
 impl TypeState for NoState {
     fn from(&self) -> Option<u8> {
@@ -261,7 +267,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 /// Open and initialize a new partition of type `SWAP`.
                 /// This is an exclusive constructor for the `swap` partition.
                 let part_desc = PartDescriptor {
-                    hdr: None,
+                    hdr: Some(SWAP_PARTITION_ADDRESS as *const u8),
                     fw_base: SWAP_BASE as *const u8,
                     sha_hash: None,
                     trailer: None,
@@ -284,8 +290,8 @@ impl<Part: ValidPart> PartDescriptor<Part> {
 }
 
 impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
-    fn get_part_status(&self) -> Result<States> {
-        let magic_trailer = unsafe { *self.get_partition_magic()? };
+    pub fn get_part_status(&self) -> Result<States> {
+        let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
             return Err(RustbootError::InvalidImage);
         }
@@ -305,9 +311,9 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
         updater: impl FlashApi,
         state: &State,
     ) -> Result<bool> {
-        let magic_trailer = unsafe { *self.get_partition_magic()? };
+        let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
-            self.set_partition_magic(updater);
+            self.set_partition_trailer_magic(updater);
         }
         let current_state = unsafe { *self.get_partition_state()? };
         let new_state = state.from().unwrap();
@@ -317,11 +323,11 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
         Ok(true)
     }
 
-    fn get_partition_magic(&self) -> Result<*const u32> {
+    fn get_partition_trailer_magic(&self) -> Result<*const u32> {
         Ok(self.get_trailer_at_offset(0)? as *const u32)
     }
 
-    fn set_partition_magic(&self, updater: impl FlashApi) -> Result<()> {
+    fn set_partition_trailer_magic(&self, updater: impl FlashApi) -> Result<()> {
         let trailer_magic = (&RUSTBOOT_MAGIC_TRAIL as *const usize) as *const u8;
         Ok(updater.flash_trailer_write(self, 0, trailer_magic, MAGIC_TRAIL_LEN))
     }
@@ -351,7 +357,7 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
 impl PartDescriptor<Update> {
     pub fn get_flags(&self, sector: usize) -> Result<SectFlags> {
         let sector_position = sector >> 1;
-        let magic_trailer = unsafe { *self.get_partition_magic()? };
+        let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
             return Err(RustbootError::InvalidImage);
         }
@@ -360,7 +366,7 @@ impl PartDescriptor<Update> {
         if (sector == (sector_position << 1)) {
             flags = res & 0x0F;
         } else {
-            flags = (res & 0x0F) >> 4;
+            flags = (res & 0xF0) >> 4;
         }
         match flags {
             0x0F => Ok(SectFlags::NewFlag),
@@ -377,7 +383,7 @@ impl PartDescriptor<Update> {
     pub fn set_flags(&self, updater: impl FlashApi, sector: usize, flag: SectFlags) -> Result<()> {
         let newflag = flag.from().ok_or(RustbootError::InvalidSectFlag)?;
         let sector_position = sector >> 1;
-        let magic_trailer = unsafe { *self.get_partition_magic()? };
+        let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
             return Err(RustbootError::InvalidImage);
         }
@@ -389,7 +395,7 @@ impl PartDescriptor<Update> {
             flags = ((newflag & 0x0F) << 4) | (res & 0x0F);
         }
         if flags != res {
-            self.set_update_sector_flags(updater, sector_position, flags);
+            self.set_update_sector_flags(updater, sector_position, flags)?;
         }
         Ok(())
     }
@@ -399,7 +405,9 @@ impl PartDescriptor<Update> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+use defmt::Format;
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Format)]
 pub enum SectFlags {
     NewFlag,
     SwappingFlag,
@@ -442,10 +450,10 @@ impl SectFlags {
 
     pub fn from(&self) -> Option<u8> {
         match self {
-            NewFlag => Some(0x0F),
-            SwappingFlag => Some(0x07),
-            BackupFlag => Some(0x03),
-            UpdatedFlag => Some(0x00),
+            SectFlags::NewFlag => Some(0x0F),
+            SectFlags::SwappingFlag => Some(0x07),
+            SectFlags::BackupFlag => Some(0x03),
+            SectFlags::UpdatedFlag => Some(0x00),
             _ => None,
         }
     }
@@ -533,7 +541,7 @@ impl<'a, Part: ValidPart + Swappable, State: Updateable> RustbootImage<'a, Part,
     pub fn get_image_type(&self) -> Result<u16> {
         let (val) = parse_tlv(self, Tags::ImgType)?;
         let image_type =
-            u16::from_be_bytes(val.try_into().map_err(|_| RustbootError::InvalidValue)?);
+            u16::from_le_bytes(val.try_into().map_err(|_| RustbootError::InvalidValue)?);
         Ok(image_type)
     }
 }
@@ -558,6 +566,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                         let hasher = compute_img_hash::<Part, State, Sha256, N>(self, fw_size)?;
                         let computed_hash = hasher.finalize();
                         if (computed_hash.as_slice() != stored_hash) {
+                            defmt::info!("stored_hash={}, computed_hash={}", stored_hash, computed_hash.as_slice());
                             return Err(RustbootError::IntegrityCheckFailed);
                         }
                         integrity_check = true;
@@ -649,7 +658,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
 ///
 /// To get the actual hash output, we call the hasher's finalize mthod.
 ///
-/// *Note - `Offset` represents an offset (the `SHA_TLV` field) from the start of header
+/// *Note - `offset` represents an offset (the `SHA_TLV` field) from the start of header
 /// (includes type and length fields).*
 fn compute_img_hash<Part, State, D, const N: usize>(
     img: &RustbootImage<Part, State>,
@@ -732,14 +741,8 @@ fn verify_ecc256_signature<D: Digest<OutputSize = U32>, const N: u16>(
             };
             let res = ecc256_verifier.verify(digest, signature)?;
             match res {
-                true => {
-                    defmt::info!("verify_ecc256_success");
-                    Ok(true)
-                }
-                false => {
-                    defmt::info!("verify_ecc256_failed");
-                    Err(RustbootError::FwAuthFailed)
-                }
+                true => Ok(true),
+                false => Err(RustbootError::FwAuthFailed),
             }
         }
         #[cfg(feature = "ed25519")]
@@ -764,7 +767,6 @@ enum VerifyingKeyTypes {
     VKeyNistP384,
 }
 
-
 /// Imports a raw public key embedded in the bootloader.
 ///
 /// *Note: this function can be extended to add support for HW
@@ -777,7 +779,7 @@ fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
             let untagged_bytes: &GenericArray<u8, <FieldSize<Secp256k1> as Add>::Output> =
                 GenericArray::from_slice(&embedded_pubkey[..]);
             let sec1_encoded_pubkey = EncodedPoint::from_untagged_bytes(untagged_bytes);
-            // `try_from` is fallible i.e. it will check to see if the point is on the curve.
+            // `from_encoded_point` is fallible i.e. it will check to see if the point (i.e. pubkey) is on the curve.
             let secp256k1_vk = VerifyingKey::from_encoded_point(&sec1_encoded_pubkey)
                 .map_err(|_| RustbootError::ECCError);
             Ok(VerifyingKeyTypes::VKey256k1(secp256k1_vk?))
@@ -794,7 +796,7 @@ fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
             let untagged_bytes: &GenericArray<u8, <FieldSize<NistP256> as Add>::Output> =
                 GenericArray::from_slice(&embedded_pubkey[..]);
             let sec1_encoded_pubkey = EncodedPoint::from_untagged_bytes(untagged_bytes);
-            // `try_from` is fallible i.e. it will check to see if the point is on the curve.
+            // `from_encoded_point` is fallible i.e. it will check to see if the point (i.e. pubkey) is on the curve.
             let p256_vk = VerifyingKey::from_encoded_point(&sec1_encoded_pubkey)
                 .map_err(|_| RustbootError::ECCError);
             Ok(VerifyingKeyTypes::VKeyNistP256(p256_vk?))

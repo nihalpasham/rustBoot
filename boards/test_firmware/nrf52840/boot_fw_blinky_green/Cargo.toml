@@ -1,14 +1,13 @@
 [package]
-name = "nrf52840_updtfw"
+name = "nrf52840_bootfw"
 version = "0.1.0"
 edition = "2018"
 build = "build.rs"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 # makes `cargo check --all-targets` work
 [[bin]]
-name = "nrf52840_updtfw"
+name = "nrf52840_bootfw"
 bench = false
 doctest = false
 test = false
