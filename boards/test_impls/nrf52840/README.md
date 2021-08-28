@@ -1,5 +1,5 @@
 
-We have one example for the [nrf52840-mdk](https://wiki.makerdiary.com/nrf52840-mdk/). This is a maker-diary board. So, it has its own custom led configuration. If you're using a different board, you'll probably need to edit `test-firmware implementations` to accomodate for the differences. Just make sure you **dont change** the name of files/folders.
+We have one example for the [nrf52840-mdk](https://wiki.makerdiary.com/nrf52840-mdk/). This is a maker-diary board. So, it has its own custom led configuration. If you're using a different board, you'll probably need to edit `test-firmware implementations` to accomodate for the differences. Just make sure you **dont change** the name of files/folders or the folder structure.
 
 - In order to test this example you'll need a couple of things - `windows with WSL2, pyocd, python3 installed`
 - If you've managed to install all of them, you can simply call `cargo xtask build-sign-flash rustBoot nrf52840`. This will build, sign and flash all 3 packages (i.e. bootloader + bootfw + updatefw) onto the board.

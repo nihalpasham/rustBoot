@@ -10,28 +10,28 @@ rustBoot is a standalone bootloader, written entirely in `Rust`, designed to run
 
 ## So, how does `rustBoot` help?
 
-![What is rustBoot](https://user-images.githubusercontent.com/20253082/131207667-6e565963-5b6a-40a8-a541-3ca151b939e2.png "So, how does rustBoot help")
+![What is rustBoot](https://user-images.githubusercontent.com/20253082/131219611-56c3a5a2-8ea9-4232-a32a-a93910e93de5.png "So, how does rustBoot help")
 
 
 ## Goals or objectives:
 
 - **Compliance with the [IETF-SUIT](https://datatracker.ietf.org/wg/suit/about/) standard** i.e.
-    - rustBoot will not require the use of specific protocols or data link interfaces to transfer `updates` to a device. 
-    - transferring an `update` should be delegated to the firmware/OS to avoid size or computational limitations along with a drastic reduction in attack surface.
+    - one of its requirements is to not require the use of specific protocols or data link interfaces to transfer `updates` to a device. 
+    - transferring an `update` should be delegated to the firmware/OS to avoid `size or computational` limitations (along with a drastic reduction in attack surface).
 - **Reliable updates:**
-    - rustBoot will perform a swap operation via the `A/B partitions method` to replace currently active firmware with a newly received update and at the same time store a back-up copy of it in the secondary passive partition.
+    - rustBoot will perform swap operations via the `A/B or multi-slot partitioning method` to replace currently active firmware with a newly received update and at the same time store a back-up copy of it in a (passive) secondary partition.
 - **Predictablility over Performance:** 
     - one of rustBoot's core design objectives is to keep it simple and avoid complexity. So, there will be little to no application of meta or async programming constructs. 
-    - Not that we need the extra performance, rustBoot can already hit sub-second boot-times as we've stripped it down to the bare-essentials.
+    - not that we need the extra performance, rustBoot can already hit sub-second secure boot-times as we've stripped it down to the bare-essentials.
 - **Zero-dynamic memory allocation:**
-    - to make it highly portable, rustBoot uses a zero-dymnamic memory allocation architecture i.e. no heap required. 
+    - to make it highly portable, rustBoot relies on a zero dymnamic memory allocation architecture i.e. no heap required. 
 - **Memory safety & type-state programming:** 
-    - The entire bootloader is written in rust's safe-fragment with a limited set of well-defined api(s) for unsafe HW access.
-    - As a result, something like parsing headers (i.e. container-formats) in rustBoot is much safer. 
-    - rustBoot takes advantage of rust's powerful type-system to instantiate global singletons along with making invalid boot-states unrepresentable at compile time. 
-- **Formal guarantees:** this is *aspirational* at this point but we think its doable
-    - *property-based testing via symbolic execution:* for safer container-format parsing.
-    - *deductive verification:* for critical sections of code.(ex: swapping contents of boot and update partitions.)
+    - the entire bootloader is written in rust's safe-fragment with a limited set of well-defined api(s) for unsafe HW access.
+    - as a consequence, it makes rustBoot immune to a whole host of memory safety bugs. ex: things like parsing image-headers (i.e. container-formats) in rustBoot is much safer.
+    - rustBoot takes advantage of rust's powerful type-system to make `invalid boot-states unrepresentable at compile time` and along with constructs such as sealed states, global singletons, it improves the overall security of the entire code-base.
+- **Formal guarantees:** this is *aspirational* at this point but we think its do-able
+    - *property-based testing via symbolic execution:* to formally verify rustBoot's parser.
+    - *deductive verification:* for critical sections of code (ex: swapping contents of boot and update partitions).
 
 ## Project layout:
 
@@ -49,15 +49,22 @@ Additionally, the project includes a folder called `xtask` to simplify the `buil
 
 For detailed instructions on usage, you can take a look at the `readme` page for each board under - `boards/test_impls/{board-name}`
 
+## rustBoot's high-level design
+
+![rustBoot – Secure bootloader architecture](https://user-images.githubusercontent.com/20253082/131221352-12e742c9-f88f-42ba-98a5-f0f3e6109e94.png "rustBoot – Secure bootloader architecture")
+
+![rustBoot – Application interface](https://user-images.githubusercontent.com/20253082/131221381-c1c81a2a-b93f-41ee-b6c0-a201d286eee0.png "rustBoot – Application interface")
+
+
 ## Acknowledgment: 
 
-rustBoot's design has been heavy influenced by that of [wolfBoot](https://github.com/wolfSSL/wolfBoot). It borrows much of wolfBoot's reliable update design and implementation (its pretty much what we were looking for) easy integration of crates (such as board, HALs drivers etc.) developed by the [embedded-rust](https://crates.io/categories/embedded) community.
+rustBoot's design is influenced by that of [wolfBoot](https://github.com/wolfSSL/wolfBoot). It borrows much of wolfBoot's reliable flash-update design and builds on it with rust's guarantees of memory safety, safer parsing libraries, compile-time state-checks and easy integration of crates (such as boards, HALs drivers etc.) developed by the [embedded-rust](https://crates.io/categories/embedded) community.
 
 ## Future roadmap:
-- switch to `rust based KMI` that's more scalable for firmware-signing, manifest-header creation and key-generation (currently the lone available example uses `wolfboot's` python implementation for this.)
-- support for `firmware transport` over end-end mutually authenticated and encrypted channels via [ockam-networking-libraries](https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme).
+- switch to a `rust-based KMI` system for firmware-signing, manifest-header creation and key-generation to improve scalability and security (currently the lone available example uses `wolfboot's` python implementation for this). 
 - support for external flash devices
 - support for ARM TrustZone-M and A and certified secure hardware elements - `microchip ATECC608a, NXP SE050, STSAFE-100`
+- support for a highly secure and efficient `firmware transport` method over end-end mutually authenticated and encrypted channels via [ockam-networking-libraries](https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme).
 - many more examples with test implementations for a variety of boards.
 
 ## Support:
@@ -72,4 +79,4 @@ Parts of rustBoot were derived from the C implementaion of `wolfBoot`. So, rustB
 at your option.
 
 ## Contributing:
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the MIT license, shall be dual licensed as above, without any additional terms or conditions.
