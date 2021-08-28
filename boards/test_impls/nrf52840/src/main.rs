@@ -22,4 +22,5 @@ fn main() -> ! {
             panic!("failed to trigger update {}", e)
         }
     }
+
 }

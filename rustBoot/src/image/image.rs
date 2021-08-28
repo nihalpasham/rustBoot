@@ -175,7 +175,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
     ///
     /// This is an exclusive constructor for `boot OR update OR swap` `IMAGES` i.e. only way to
     /// create [`RustbootImage`] instances.
-    pub fn open_partition(part: Part) -> Result<ImageType<'static>> {
+    pub fn open_partition(part: Part, updater: impl FlashApi) -> Result<ImageType<'static>> {
         match part.part_id() {
             PartId::PartBoot => {
                 let mut size = 0x0;
@@ -198,7 +198,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                     part: Boot,
                 };
 
-                match part_desc.get_part_status()? {
+                match part_desc.get_part_status(updater)? {
                     States::New(state) => Ok(ImageType::BootInNewState(RustbootImage {
                         part_desc: unsafe {
                             BOOT.set(part_desc);
@@ -243,7 +243,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                     sha_ok: false,
                     part: Update,
                 };
-                match part_desc.get_part_status()? {
+                match part_desc.get_part_status(updater)? {
                     States::New(state) => Ok(ImageType::UpdateInNewState(RustbootImage {
                         part_desc: unsafe {
                             UPDT.set(part_desc);
@@ -290,10 +290,10 @@ impl<Part: ValidPart> PartDescriptor<Part> {
 }
 
 impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
-    pub fn get_part_status(&self) -> Result<States> {
+    pub fn get_part_status(&self, updater: impl FlashApi) -> Result<States> {
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
-            return Err(RustbootError::InvalidImage);
+            self.set_partition_trailer_magic(updater);
         }
         let state = unsafe { *self.get_partition_state()? };
         let state = match state {

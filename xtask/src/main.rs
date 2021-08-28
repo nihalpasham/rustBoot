@@ -81,14 +81,10 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
         "nrf52840" => {
             let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            let boot_trailer_magic  = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
             cmd!("pyocd flash -t nrf52840 --base-address {boot_part_addr} nrf52840_bootfw_v1234_signed.bin").run()?;
-            cmd!("pyocd flash -t nrf52840 --base-address {boot_trailer_magic} trailer_magic.bin").run()?;
 
             let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
-            let updt_trailer_magic  = format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
             cmd!("pyocd flash -t nrf52840 --base-address {updt_part_addr} nrf52840_updtfw_v1235_signed.bin").run()?;
-            cmd!("pyocd flash -t nrf52840 --base-address {updt_trailer_magic} trailer_magic.bin").run()?;
             Ok(())
         }
         _ => todo!(),
