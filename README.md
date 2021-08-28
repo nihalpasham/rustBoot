@@ -10,7 +10,7 @@ rustBoot is a standalone bootloader, written entirely in `Rust`, designed to run
 
 ## So, how does `rustBoot` help?
 
-![What is rustBoot](https://user-images.githubusercontent.com/20253082/131219611-56c3a5a2-8ea9-4232-a32a-a93910e93de5.png "So, how does rustBoot help")
+![What is rustBoot](https://user-images.githubusercontent.com/20253082/131221494-5a71d8a1-012e-456f-a6e4-40e455198b9b.png "So, how does rustBoot help")
 
 
 ## Goals or objectives:
