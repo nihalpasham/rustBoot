@@ -11,16 +11,5 @@ use cortex_m_rt::entry;
 #[entry]
 fn main() -> ! {
     let updater = FlashUpdater::new(FlashWriterEraser::new());
-    defmt::info!("trigger update");
-    match updater.update_trigger() {
-        Ok(_v) => {
-            defmt::info!("start rustBoot");
-            updater.rustboot_start()
-        }
-        Err(e) => {
-            defmt::info!("failed to trigger update");
-            panic!("failed to trigger update {}", e)
-        }
-    }
-
+    updater.rustboot_start()
 }

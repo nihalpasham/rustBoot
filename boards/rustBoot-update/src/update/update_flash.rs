@@ -164,17 +164,16 @@ where
                         // before starting the swap.
                         if ((update_type & HDR_MASK_LOWBYTE) != HDR_IMG_TYPE_APP)
                             || ((update_type & HDR_MASK_HIGHBYTE) != HDR_IMG_TYPE_AUTH)
-                        {   
+                        {
                             return Err(RustbootError::ECCError);
                         }
                         if (!updt_part.hdr_ok
                             || updt.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                             || updt.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
-                        {   
+                        {
                             panic!("firmware authentication failed");
                         }
                     }
-
                     // disallow downgrades
                     match boot {
                         ImageType::BootInNewState(ref boot) => {
@@ -192,11 +191,7 @@ where
                             }
                         }
                         ImageType::BootInTestingState(ref boot) => {
-                            if (rollback
-                                && (boot.get_firmware_version()? <= updt.get_firmware_version()?))
-                            {
-                                return Err(RustbootError::FwAuthFailed);
-                            }
+                            // do nothing as we actually want to rollback
                         }
                         _ => {
                             return Err(RustbootError::InvalidState);
@@ -221,10 +216,6 @@ where
                             }
                         }
                         if flag.has_swapping_flag() {
-                            let mut size = total_size - (sector * SECTOR_SIZE);
-                            if (size > SECTOR_SIZE) {
-                                size = SECTOR_SIZE;
-                            }
                             flag = flag.set_backup_flag();
                             self.copy_sector(boot_part, updt_part, sector);
                             if (((sector + 1) * SECTOR_SIZE) < PARTITION_SIZE) {
@@ -232,10 +223,6 @@ where
                             }
                         }
                         if flag.has_backup_flag() {
-                            let mut size = total_size - (sector * SECTOR_SIZE);
-                            if (size > SECTOR_SIZE) {
-                                size = SECTOR_SIZE;
-                            }
                             flag = flag.set_updated_flag();
                             self.copy_sector(swap_part, boot_part, sector);
                             if (((sector + 1) * SECTOR_SIZE) < PARTITION_SIZE) {
@@ -256,8 +243,8 @@ where
                 let boot = PartDescriptor::open_partition(Boot, self).unwrap();
                 // the only valid state for the boot partition after a swap is `newState`
                 let new_img = match boot {
-                // Transition from current boot state to `StateTesting`. This step consumes the old
-                // bootImage (i.e. struct) and returns a new bootImage with the new state.
+                    // Transition from current boot state to `StateTesting`. This step consumes the old
+                    // bootImage (i.e. struct) and returns a new bootImage with the new state.
                     ImageType::BootInNewState(img) => img.into_testing_state(),
                     _ => return Err(RustbootError::InvalidState),
                 };
@@ -287,14 +274,18 @@ where
         if let ImageType::BootInTestingState(_v) = boot {
             self.update_trigger();
             match self.rustboot_update(true) {
-                Ok(_v) => {},
-                Err(_e) => {panic!("rollback failed.")}
+                Ok(_v) => {}
+                Err(_e) => {
+                    panic!("rollback failed.")
+                }
             }
         // Check the UPDATE partition for state - if it is marked as UPDATING, trigger update.
         } else if let ImageType::UpdateInUpdatingState(_v) = updt {
-            match self.rustboot_update(false){
-                Ok(_v) => {},
-                Err(_e) => {panic!("update-swap failed.")}
+            match self.rustboot_update(false) {
+                Ok(_v) => {}
+                Err(_e) => {
+                    panic!("update-swap failed.")
+                }
             }
         } else {
             match boot {
@@ -386,9 +377,7 @@ where
                 let new_img = img.into_updating_state();
                 let part_desc = new_img.part_desc.get();
                 match part_desc {
-                    Some(part) => {
-                        part.set_state(self, new_img.get_state())
-                    }
+                    Some(part) => part.set_state(self, new_img.get_state()),
                     None => return Err(RustbootError::__Nonexhaustive),
                 };
             }

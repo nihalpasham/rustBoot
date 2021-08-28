@@ -14,12 +14,14 @@ use hal::prelude::*;
 use hal::timer::Timer;
 use hal::pac::Peripherals;
 
+use rustBoot_hal::nrf::nrf52840::FlashWriterEraser;
+use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
+
 #[entry]
 fn main() -> ! {
     let p = Peripherals::take().unwrap();
     let pins = Pins::new(p0::Parts::new(p.P0), p1::Parts::new(p.P1));
 
-    // let mut blue_led = pins.blue_led.into_push_pull_output(Level::Low);
     let mut green_led = pins.green_led.into_push_pull_output(Level::Low);
 
     let mut timer = Timer::new(p.TIMER0);
@@ -27,20 +29,23 @@ fn main() -> ! {
 
     // flash green leds
     while count < 5 {
-        timer.delay(2_000_000); // 2s
+        timer.delay(250_000); // 250ms
         green_led.set_high();
-        timer.delay(2_000_000); // 2s
+        timer.delay(250_000); // 250ms
         green_led.set_low();
-        timer.delay(2_000_000); // 2s
+        timer.delay(250_000); // 250ms
         count += 1;
     }
 
+    let updater = FlashUpdater::new(FlashWriterEraser::new());
+    updater.update_trigger();
+
     loop {
-        timer.delay(1_000_000); // 1s
+        timer.delay(500_000); // 500ms
         green_led.set_high();
-        timer.delay(1_000_000); // 1s
+        timer.delay(500_000); // 500ms
         green_led.set_low();
-        timer.delay(1_000_000); // 1s
+        timer.delay(500_000); // 500ms
     }
 }
 
