@@ -49,22 +49,40 @@ Additionally, the project includes a folder called `xtask` to simplify the `buil
 
 For detailed instructions on usage, you can take a look at the `readme` page for each board under - `boards/test_impls/{board-name}`
 
+- In short, all you need to do is implement the `FlashInterface` trait for your board (abstracts out the necessary HW-specific flash operations such as writing/readin/erasing). 
+    - *Note: I'm still contemplating switching to something like embedded-storage. Please feel free to chime-in if you have suggestions here.*
+- choose a suitable memory layout for your board's micro-architecture. 
+- use the methods available in the `UpdateInterface` trait to trigger and confirm firmware updates. (note downloading and installing the update is handled by whatever firmware/OS you're running).
+
 ## rustBoot's high-level design
 
 ![rustBoot – Secure bootloader architecture](https://user-images.githubusercontent.com/20253082/131221352-12e742c9-f88f-42ba-98a5-f0f3e6109e94.png "rustBoot – Secure bootloader architecture")
 ![rustBoot – Application interface](https://user-images.githubusercontent.com/20253082/131221381-c1c81a2a-b93f-41ee-b6c0-a201d286eee0.png "rustBoot – Application interface")
 
+## Features:
+
+- A/B or multi-slot partitioning of the flash device. 
+- elliptic curve cryptography for integrity and authenticity verification using [RustCrypto](https://github.com/RustCrypto) 
+- a tiny hardware abstraction layer for non-volatile memory (i.e. flash) programming.
+- anti-rollback protection via version numbering. 
+- a fully memory safe core-bootloader implementation with safe parsers and flash-update logic.
+- power-interruptible firmware updates along with the assurance of fall-back availability.
+
+## Future roadmap:
+- switch to a `rust-based KMI` for firmware-signing, manifest-header creation and key-generation to improve scalability and security (currently the lone available example uses `wolfboot's` python implementation for this). 
+- support for external flash devices
+- support for ARM TrustZone-M and A and certified secure hardware elements - `microchip ATECC608a, NXP SE050, STSAFE-100`
+- support for a highly secure and efficient `firmware transport` method over end-end mutually authenticated and encrypted channels via [ockam-networking-libraries](https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme).
+- many more examples with `test implementations` for a variety of boards.
+
+## Documentation:
+
+[Todo] - we'll probably need an entire book here.
 
 ## Acknowledgment: 
 
 rustBoot's design is influenced by that of [wolfBoot](https://github.com/wolfSSL/wolfBoot). It borrows much of wolfBoot's reliable flash-update design and builds on it with rust's memory safety guarantees, safer parsing libraries, compile-time state-transition checks and easy integration of crates (such as boards, HALs drivers etc.) developed by the [embedded-rust](https://crates.io/categories/embedded) community.
 
-## Future roadmap:
-- switch to a `rust-based KMI` system for firmware-signing, manifest-header creation and key-generation to improve scalability and security (currently the lone available example uses `wolfboot's` python implementation for this). 
-- support for external flash devices
-- support for ARM TrustZone-M and A and certified secure hardware elements - `microchip ATECC608a, NXP SE050, STSAFE-100`
-- support for a highly secure and efficient `firmware transport` method over end-end mutually authenticated and encrypted channels via [ockam-networking-libraries](https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme).
-- many more examples with test implementations for a variety of boards.
 
 ## Support:
 For questions, issues, feature requests, and other changes, please file an issue in the github project.
