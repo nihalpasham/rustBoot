@@ -29,7 +29,6 @@ fn main() -> ! {
 
     // Alternately flash red leds
     while count < 5 {
-        red_led.set_low();
         timer.delay(250_000); // 250ms
         red_led.set_high();
         timer.delay(250_000); // 250ms
@@ -38,11 +37,14 @@ fn main() -> ! {
         count += 1;
     }
 
-    let updater = FlashUpdater::new(FlashWriterEraser::new());
-    updater.update_success();
+    let flash_writer = FlashWriterEraser{nvmc: p.NVMC};
+    let updater = FlashUpdater::new(flash_writer);
+    match updater.update_success() {
+        Ok(_v) => {},
+        Err(e) => panic!("failed to confirm update: {}", e)
+    };
 
     loop {
-        red_led.set_low();
         timer.delay(500_000); // 500ms
         red_led.set_high();
         timer.delay(500_000); // 500ms

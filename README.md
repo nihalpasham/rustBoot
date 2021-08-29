@@ -52,13 +52,12 @@ For detailed instructions on usage, you can take a look at the `readme` page for
 ## rustBoot's high-level design
 
 ![rustBoot – Secure bootloader architecture](https://user-images.githubusercontent.com/20253082/131221352-12e742c9-f88f-42ba-98a5-f0f3e6109e94.png "rustBoot – Secure bootloader architecture")
-
 ![rustBoot – Application interface](https://user-images.githubusercontent.com/20253082/131221381-c1c81a2a-b93f-41ee-b6c0-a201d286eee0.png "rustBoot – Application interface")
 
 
 ## Acknowledgment: 
 
-rustBoot's design is influenced by that of [wolfBoot](https://github.com/wolfSSL/wolfBoot). It borrows much of wolfBoot's reliable flash-update design and builds on it with rust's guarantees of memory safety, safer parsing libraries, compile-time state-checks and easy integration of crates (such as boards, HALs drivers etc.) developed by the [embedded-rust](https://crates.io/categories/embedded) community.
+rustBoot's design is influenced by that of [wolfBoot](https://github.com/wolfSSL/wolfBoot). It borrows much of wolfBoot's reliable flash-update design and builds on it with rust's memory safety guarantees, safer parsing libraries, compile-time state-transition checks and easy integration of crates (such as boards, HALs drivers etc.) developed by the [embedded-rust](https://crates.io/categories/embedded) community.
 
 ## Future roadmap:
 - switch to a `rust-based KMI` system for firmware-signing, manifest-header creation and key-generation to improve scalability and security (currently the lone available example uses `wolfboot's` python implementation for this). 

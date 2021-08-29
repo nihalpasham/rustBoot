@@ -4,18 +4,44 @@
 #![allow(non_snake_case)]
 
 // use defmt_rtt as _;
-use panic_probe as _;
-use nrf52840_hal as hal;
 use cortex_m_rt::entry;
+use panic_probe as _;
 
-use hal::gpio::{p0, p1, Level, Disconnected};
-use hal::twim::{self, Twim};
+use nrf52840_hal as hal;
+use hal::gpio::{p0, p1, Disconnected, Level};
+use hal::pac::Peripherals;
 use hal::prelude::*;
 use hal::timer::Timer;
-use hal::pac::Peripherals;
+use hal::twim::{self, Twim};
 
 use rustBoot_hal::nrf::nrf52840::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
+
+// SCB Application Interrupt and Reset Control Register Definitions
+const SCB_AIRCR_VECTKEY_Pos: u32 = 16; // SCB AIRCR: VECTKEY Position
+const SCB_AIRCR_PRIGROUP_Pos: u32 = 8; // SCB AIRCR: PRIGROUP Position
+const SCB_AIRCR_PRIGROUP_Msk: u32 = (7u32 << SCB_AIRCR_PRIGROUP_Pos); // SCB AIRCR: PRIGROUP Mask
+const SCB_AIRCR_SYSRESETREQ_Pos: u32 = 2; // SCB AIRCR: SYSRESETREQ Position
+const SCB_AIRCR_SYSRESETREQ_Msk: u32 = (1u32 << SCB_AIRCR_SYSRESETREQ_Pos); // SCB AIRCR: SYSRESETREQ Mask
+
+/// System Reset
+/// 
+/// Initiates a system reset request to reset the MCU.
+#[inline]
+pub fn nvic_systemreset() -> ! {
+    let mut core_peripherals = hal::pac::CorePeripherals::take().unwrap();
+    let mut scb = core_peripherals.SCB;
+    cortex_m::asm::dsb();
+    unsafe {
+        scb.aircr.write(
+            (0x5FA << SCB_AIRCR_VECTKEY_Pos)
+                | (scb.aircr.read() & SCB_AIRCR_PRIGROUP_Msk)
+                | SCB_AIRCR_SYSRESETREQ_Msk,
+        );
+    }
+    cortex_m::asm::dsb();
+    loop {}
+}
 
 #[entry]
 fn main() -> ! {
@@ -37,16 +63,14 @@ fn main() -> ! {
         count += 1;
     }
 
-    let updater = FlashUpdater::new(FlashWriterEraser::new());
-    updater.update_trigger();
-
-    loop {
-        timer.delay(500_000); // 500ms
-        green_led.set_high();
-        timer.delay(500_000); // 500ms
-        green_led.set_low();
-        timer.delay(500_000); // 500ms
+    let flash_writer = FlashWriterEraser{nvmc: p.NVMC};
+    let updater = FlashUpdater::new(flash_writer);
+    match updater.update_trigger() {
+        Ok(_v) => {},
+        Err(e) => panic!("couldnt trigger update: {}", e)
     }
+
+    nvic_systemreset();
 }
 
 // Macro to re-defines nrf-mdk pins.

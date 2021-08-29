@@ -12,7 +12,7 @@ name = "nrf52840"
 test = false
 
 [dependencies]
-cortex-m-rt = "0.6.15"
+cortex-m-rt = "0.6.14"
 defmt = "0.2.3"
 defmt-rtt = {version = "0.2.0"}
 panic-probe = {version = "0.2.0", features = ["print-defmt"]}

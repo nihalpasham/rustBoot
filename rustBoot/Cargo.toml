@@ -27,13 +27,10 @@ k256 = {version = "0.9.0", default-features = false, features = ["ecdsa"], optio
 p256 = {version = "0.9.0", default-features = false, features = ["ecdsa"]}
 signature = {version = "1.3.1", default-features = false, features = ["digest-preview"]}
 nom = {version = "6.2.1", default-features = false}
-# rustBoot-hal = {path = "../rustBoot-hal", default-features = false}
 # libc-print = "0.1.16"
 
 [dev-dependencies]
 # libc-print = "0.1.16"
-cortex-m-rt = "0.6.15"
-cortex-m = "0.7.3"
 
 [features]
 ext_flash = []

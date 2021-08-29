@@ -21,7 +21,7 @@ mod nrf52840_constants {
 }
 
 pub struct FlashWriterEraser {
-    nvmc: NVMC,
+    pub nvmc: NVMC,
 }
 
 impl FlashWriterEraser {
