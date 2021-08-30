@@ -10,10 +10,19 @@ rustBoot is a standalone bootloader, written entirely in `Rust`, designed to run
 
 ## So, how does `rustBoot` help?
 
-![What is rustBoot](https://user-images.githubusercontent.com/20253082/131221494-5a71d8a1-012e-456f-a6e4-40e455198b9b.png "So, how does rustBoot help")
+rustBoot aims to offer an OS and micro-architecture agnostic (i.e. highly portable) secure bootloader which is 
+
+- standards-based, easy to integrate (into existing embedded software projects) and eliminates duplication of work for every project. 
+
+
+![What is rustBoot](https://user-images.githubusercontent.com/20253082/131283947-98b77b33-65e9-4a6a-b554-4ec6fb4813c2.png "So, how does rustBoot help")
 
 
 ## Goals or objectives:
+
+A secure-bootloader is a complex project, despite its small size. The effort involved in developing/integrating one can be overwhelming. (key-management, code-safety, trust-chains, reliable back-ups etc.)
+
+rustBoot's purpose is to help simplify the entire process. Some of its primary goals are  
 
 - **Compliance with the [IETF-SUIT](https://datatracker.ietf.org/wg/suit/about/) standard** i.e.
     - one of its requirements is to not require the use of specific protocols or data link interfaces to transfer `updates` to a device. 
@@ -50,10 +59,10 @@ Additionally, the project includes a folder called `xtask` to simplify the `buil
 For detailed instructions on usage, you can take a look at the `readme` page for each board under - `boards/test_impls/{board-name}`
 
 In short, you'll need 3 things:
-- **flash api:** implement the `FlashInterface` trait for your board (abstracts out the necessary HW-specific flash operations such as writing/readin/erasing). 
+- **flash-api:** implement the `FlashInterface` trait for your board (abstracts out the necessary HW-specific flash operations such as writing/readin/erasing). 
     - *Note: I'm still contemplating switching to something like embedded-storage. Please feel free to chime-in if you have suggestions here.*
-- **memory layout:** choose a suitable memory layout based on your board's micro-architecture and make. 
-- **firmware api:** use the methods from the `UpdateInterface` trait in your firmware to trigger and confirm firmware updates. (note - downloading and installing the update is to be handled by whatever firmware/OS you're running).
+- **memory-layout:** choose a suitable memory layout based on your board's micro-architecture and make. 
+- **firmware-api:** use the methods from the `UpdateInterface` trait in your firmware to trigger and confirm firmware updates. (note - downloading and installing the update is to be handled by whatever firmware/OS you're running).
 
 ## rustBoot's high-level design
 
@@ -71,7 +80,7 @@ In short, you'll need 3 things:
 
 ## Future roadmap:
 - switch to a `rust-based KMI` for manifest-header creation, key-generation and firmware signing to improve scalability and security (currently the lone available example uses `wolfboot's` python implementation for this). 
-- support for external flash devices
+- support for external flash devices and serial/console logging interfaces.
 - support for ARM TrustZone-M and A and certified secure hardware elements - `microchip ATECC608a, NXP SE050, STSAFE-100`
 - support for a highly secure and efficient `firmware transport` method over end-end mutually authenticated and encrypted channels via [ockam-networking-libraries](https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme).
 - many more examples with `test implementations` for a variety of boards.
@@ -94,7 +103,7 @@ Parts of rustBoot were derived from the C implementaion of `wolfBoot`. So, rustB
 * GNU General Public License v2.0 
 * MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
 
-at your option.
+at your option but GNU GPL v2.0 will apply in case of conflicts between the two.
 
 ## Contributing:
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the MIT license, shall be dual licensed as above, without any additional terms or conditions.
