@@ -75,7 +75,7 @@ PS C:\Users\Nil\devspace\rust\projects\rb>
 
 ## Blinky(s):
 
-**blinks blue before image verification and swap:**
+**blinks green before image verification and swap:**
 
 [![blinky_bootfw_green](https://user-images.githubusercontent.com/20253082/131297750-05136516-c7e6-428d-807d-5a574eda5c3e.png)
 ](https://user-images.githubusercontent.com/20253082/131297185-8e93a741-f23a-492e-bcab-26c4c0b7efe4.mp4)
