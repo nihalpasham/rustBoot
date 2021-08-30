@@ -77,9 +77,10 @@ PS C:\Users\Nil\devspace\rust\projects\rb>
 
 **blinks blue before image verification and swap:**
 
-![blinky_bootfw_green](https://user-images.githubusercontent.com/20253082/131297185-8e93a741-f23a-492e-bcab-26c4c0b7efe4.mp4)
+[![blinky_bootfw_green](https://user-images.githubusercontent.com/20253082/131297750-05136516-c7e6-428d-807d-5a574eda5c3e.png)
+](https://user-images.githubusercontent.com/20253082/131297185-8e93a741-f23a-492e-bcab-26c4c0b7efe4.mp4)
 
 **blinks red after image verification and swap:**
 
-![blinky_updtfw_red](https://user-images.githubusercontent.com/20253082/131295835-2941dd5e-775a-4798-9e46-a6225b0d9e02.mp4)
+[![blinky_updtfw_red](https://user-images.githubusercontent.com/20253082/131297971-b59506f5-8940-4798-a959-876d82965e5b.png)](https://user-images.githubusercontent.com/20253082/131295835-2941dd5e-775a-4798-9e46-a6225b0d9e02.mp4)
 
