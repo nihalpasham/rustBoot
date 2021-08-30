@@ -72,3 +72,14 @@ $ pyocd flash -t nrf52840 --base-address 0x58000 nrf52840_updtfw_v1235_signed.bi
     Finished in 4.995s
 PS C:\Users\Nil\devspace\rust\projects\rb>
 ```
+
+## Blinky(s):
+
+**blinks blue before image verification and swap:**
+
+![blinky_bootfw_green](https://user-images.githubusercontent.com/20253082/131297185-8e93a741-f23a-492e-bcab-26c4c0b7efe4.mp4)
+
+**blinks red after image verification and swap:**
+
+![blinky_updtfw_red](https://user-images.githubusercontent.com/20253082/131295835-2941dd5e-775a-4798-9e46-a6225b0d9e02.mp4)
+
