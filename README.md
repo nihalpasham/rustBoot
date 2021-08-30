@@ -7,16 +7,11 @@ rustBoot is a standalone bootloader, written entirely in `Rust`, designed to run
 
 ![Why rustBoot](https://user-images.githubusercontent.com/20253082/131207633-8fb5afc9-e879-407e-bf33-3a342f1adad3.png "Why build another bootloader")
 
-
 ## So, how does `rustBoot` help?
 
-rustBoot aims to offer an OS and micro-architecture agnostic (i.e. highly portable) secure bootloader which is 
-
-- standards-based, easy to integrate (into existing embedded software projects) and eliminates duplication of work for every project. 
-
+rustBoot aims to offer an OS and micro-architecture agnostic (i.e. highly portable) secure bootloader which is standards-based, easy to integrate (into existing embedded software projects) and eliminates duplication of work for every project. 
 
 ![What is rustBoot](https://user-images.githubusercontent.com/20253082/131283947-98b77b33-65e9-4a6a-b554-4ec6fb4813c2.png "So, how does rustBoot help")
-
 
 ## Goals or objectives:
 
