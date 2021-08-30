@@ -6,8 +6,8 @@ We have one example for the [nrf52840-mdk](https://wiki.makerdiary.com/nrf52840-
 - In order to confirm that its working, I've configured the `bootfw to blink green` for a few seconds, trigger an update and then reset. Upon reset, the bootloader verifies the update and swaps the contents of boot and update partitions. If everything checks out, it boots into the update, `blinks a red led` and finally sets the confirmation flag to indicate that the update was successful. 
 
 *Note:* 
-- *just a test-example, it does not contain a valid root-of-trust, the embedded public-key is placed in the signing tools folder.* 
-- *as the bootfw in this example does not include a networking stack, we'll flash both partitions with blinky firmware (i.e. bootfw-green and updfw-red) and have the bootfw manually trigger a reset to start the update process.*
+- *just a test-example, it does not contain a valid root-of-trust, the embedded public-key is placed in the signing_tools folder.* 
+- *as the bootfw in this example does not include a networking stack, we flash both partitions with blinky firmware (i.e. bootfw-green and updfw-red) and have the bootfw manually trigger a reset to start the update process.*
 
 Here's the command line output that should be produced.
 
