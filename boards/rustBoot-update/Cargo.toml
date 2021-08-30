@@ -5,7 +5,7 @@ edition = "2018"
 authors = ["Twitter: @npashi <nihal.pasham@gmail.com>"]
 categories = ["embedded", "no_std", "authentication"]
 description = """
-This crate is a rustBoot-based bootloader dependency. It allows for multi-slot partioning of a flash device 
+This crate is a rustBoot-based bootloader dependency. It allows for multi-slot partitioning of a flash device 
 and can be used to perform power-interruptible A/B updates, written in pure-Rust .
 """
 documentation = ""

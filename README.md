@@ -13,7 +13,7 @@ rustBoot aims to offer an OS and micro-architecture agnostic (i.e. highly portab
 
 ![What is rustBoot](https://user-images.githubusercontent.com/20253082/131283947-98b77b33-65e9-4a6a-b554-4ec6fb4813c2.png "So, how does rustBoot help")
 
-## Goals or objectives:
+## Goals and objectives:
 
 A secure-bootloader is a complex project, despite its small size. The effort involved in developing/integrating one can be overwhelming. (key-management, code-safety, trust-chains, reliable back-ups etc.)
 
