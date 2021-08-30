@@ -61,7 +61,6 @@ impl Secp256k1Signature {
                 &Signature::try_from(signature).map_err(|_| RustbootError::BadSignature)?,
             )
             .is_ok();
-        defmt::info!("verify_actual={}", res);
         Ok(res)
     }
 }
