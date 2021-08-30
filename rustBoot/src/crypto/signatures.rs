@@ -53,7 +53,6 @@ impl Secp256k1Signature {
     ///
     /// Returns a `bool` if successful else an error.
     pub fn verify<D: Digest<OutputSize = U32>>(self, digest: D, signature: &[u8]) -> Result<bool> {
-        defmt::info!("secp256k1_enter");
         let res = self
             .verify_key
             .verify_digest(
