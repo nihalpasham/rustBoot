@@ -24,12 +24,12 @@ rustBoot is a standalone bootloader, written entirely in `Rust`, designed to run
     - one of rustBoot's core design objectives is to keep it simple and avoid complexity. So, there will be little to no application of meta or async programming constructs. 
     - not that we need the extra performance, rustBoot can already hit sub-second secure boot-times as we've stripped it down to the bare-essentials.
 - **Zero-dynamic memory allocation:**
-    - to make it highly portable, rustBoot relies on a zero dymnamic memory allocation architecture i.e. no heap required. 
+    - to make it highly portable, apart from its modular design, rustBoot relies on a zero dymnamic memory allocation architecture i.e. no heap required. 
 - **Memory safety & type-state programming:** 
     - the entire bootloader is written in rust's safe-fragment with a limited set of well-defined api(s) for unsafe HW access.
     - as a consequence, it makes rustBoot immune to a whole host of memory safety bugs. ex: things like parsing image-headers (i.e. container-formats) in rustBoot is much safer.
     - rustBoot takes advantage of rust's powerful type-system to make `invalid boot-states unrepresentable at compile time` and along with constructs such as sealed states, global singletons, it improves the overall security of the entire code-base.
-- **Formal guarantees:** this is *aspirational* at this point but we think its do-able
+- **Formal guarantees:** an *aspirational* goal at this point but we think its do-able
     - *property-based testing via symbolic execution:* to formally verify rustBoot's parser.
     - *deductive verification:* for critical sections of code (ex: swapping contents of boot and update partitions).
 
@@ -39,20 +39,21 @@ This project's folder structure is divided into 2 workspaces.
 - **core-bootloader:** 
      - resides in its own folder called `rustBoot`
 - **hardware abstraction layer**
-    - the *boards* folder contains all hardware-specific code. It houses a few other neccessary folders
+    - the *boards* folder contains all hardware-specific code. It houses other neccessary folders
         - **rustBoot-hal:** contains flash-hal (read/write/erase) impls for a specific board.
         - **rust-update:** this crate/folder contains all of the board-agnostic A/B update logic.
         - **test_firmware:** contains test firmware (i.e. blinky-led firmware) for the boot and update partitions for a specific board.
         - **test_impls:** contains a test implementation of the bootoloader for a specific board.
 
-Additionally, the project includes a folder called `xtask` to simplify the `build-sign-flash` process involved.
+Additionally, the project includes a folder called `xtask` to simplify the `build-sign-flash` process.
 
 For detailed instructions on usage, you can take a look at the `readme` page for each board under - `boards/test_impls/{board-name}`
 
-- In short, all you need to do is implement the `FlashInterface` trait for your board (abstracts out the necessary HW-specific flash operations such as writing/readin/erasing). 
+In short, you'll need 3 things:
+- **flash api:** implement the `FlashInterface` trait for your board (abstracts out the necessary HW-specific flash operations such as writing/readin/erasing). 
     - *Note: I'm still contemplating switching to something like embedded-storage. Please feel free to chime-in if you have suggestions here.*
-- choose a suitable memory layout for your board's micro-architecture. 
-- use the methods available in the `UpdateInterface` trait to trigger and confirm firmware updates. (note downloading and installing the update is handled by whatever firmware/OS you're running).
+- **memory layout:** choose a suitable memory layout based on your board's micro-architecture and make. 
+- **firmware api:** use the methods from the `UpdateInterface` trait in your firmware to trigger and confirm firmware updates. (note - downloading and installing the update is to be handled by whatever firmware/OS you're running).
 
 ## rustBoot's high-level design
 
@@ -69,7 +70,7 @@ For detailed instructions on usage, you can take a look at the `readme` page for
 - power-interruptible firmware updates along with the assurance of fall-back availability.
 
 ## Future roadmap:
-- switch to a `rust-based KMI` for firmware-signing, manifest-header creation and key-generation to improve scalability and security (currently the lone available example uses `wolfboot's` python implementation for this). 
+- switch to a `rust-based KMI` for manifest-header creation, key-generation and firmware signing to improve scalability and security (currently the lone available example uses `wolfboot's` python implementation for this). 
 - support for external flash devices
 - support for ARM TrustZone-M and A and certified secure hardware elements - `microchip ATECC608a, NXP SE050, STSAFE-100`
 - support for a highly secure and efficient `firmware transport` method over end-end mutually authenticated and encrypted channels via [ockam-networking-libraries](https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme).
@@ -77,7 +78,7 @@ For detailed instructions on usage, you can take a look at the `readme` page for
 
 ## Documentation:
 
-[Todo] - we'll probably need an entire book here.
+**[todo!]** - `rustBoot-book` goes here.
 
 ## Acknowledgment: 
 

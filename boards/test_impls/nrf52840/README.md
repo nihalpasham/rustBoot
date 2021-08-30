@@ -1,11 +1,11 @@
 
-We have one example for the [nrf52840-mdk](https://wiki.makerdiary.com/nrf52840-mdk/). This is a maker-diary board. So, it has its own custom led configuration. If you're using a different board, you'll probably need to edit `test-firmware implementations` to accomodate for the differences. Just make sure you **dont change** the name of files/folders or the folder structure.
+We have one example for the [nrf52840-mdk](https://wiki.makerdiary.com/nrf52840-mdk/). This is a maker-diary board. It has a custom led configuration. If you're using a different version of the board, you'll probably need to edit `test-firmware implementations` to accomodate for differences. Just make sure you **dont change** the name of files/folders or the folder structure, as `cargo xtask` looks for these file/folder names.
 
 - In order to test this example you'll need a couple of things - `windows with WSL2, pyocd, python3 installed`
 - If you've managed to install all of them, you can simply call `cargo xtask build-sign-flash rustBoot nrf52840`. This will build, sign and flash all 3 packages (i.e. bootloader + bootfw + updatefw) onto the board.
 - In order to confirm that its working, I've configured the `bootfw to blink green` for a few seconds, trigger an update and then reset. Upon reset, the bootloader verifies the update and swaps the contents of boot and update partitions. If everything checks out, it boots into the update, `blinks a red led` and finally sets the confirmation flag to indicate that the update was successful. 
 
-*Note: as the bootfw in this example does not include a networking stack, we'll flash both partitions with blinky firmware (i.e.(bootfw-green and updfw-red) and have the bootfw manually trigger a reset to start the update process.*
+*Note: as the bootfw in this example does not include a networking stack, we'll flash both partitions with blinky firmware (i.e. bootfw-green and updfw-red) and have the bootfw manually trigger a reset to start the update process.*
 
 Here's the command line output that should be produced.
 
