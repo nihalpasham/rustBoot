@@ -74,6 +74,7 @@ In short, you'll need 3 things:
 - power-interruptible firmware updates along with the assurance of fall-back availability.
 
 ## Future roadmap:
+
 - switch to a `rust-based KMI` for manifest-header creation, key-generation and firmware signing to improve scalability and security (currently the lone available example uses `wolfboot's` python implementation for this). 
 - support for external flash devices and serial/console logging interfaces.
 - support for ARM TrustZone-M and A and certified secure hardware elements - `microchip ATECC608a, NXP SE050, STSAFE-100`
@@ -86,19 +87,17 @@ In short, you'll need 3 things:
 
 ## Acknowledgment: 
 
-rustBoot's design is influenced by that of [wolfBoot](https://github.com/wolfSSL/wolfBoot). It borrows much of wolfBoot's reliable flash-update design and builds on it with rust's memory safety guarantees, safer parsing libraries, compile-time state-transition checks and easy integration of crates (such as boards, HALs drivers etc.) developed by the [embedded-rust](https://crates.io/categories/embedded) community.
-
+rustBoot's design is inspired by that of [wolfBoot](https://github.com/wolfSSL/wolfBoot). It borrows some of wolfBoot's reliable-update design-ideas and builds on it with rust's memory safety guarantees, safer parsing libraries, compile-time state-transition checks and easy integration of crates (such as boards, HALs drivers etc.) developed by the [embedded-rust](https://crates.io/categories/embedded) community.
 
 ## Support:
+
 For questions, issues, feature requests, and other changes, please file an issue in the github project.
 
 ## License:
-Parts of rustBoot were derived from the C implementaion of `wolfBoot`. So, rustBoot is licensed under either of
 
-* GNU General Public License v2.0 
+rustBoot is licensed under 
+ 
 * MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
-
-at your option but GNU GPL v2.0 will apply in case of conflicts between the two.
 
 ## Contributing:
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the MIT license, shall be dual licensed as above, without any additional terms or conditions.
