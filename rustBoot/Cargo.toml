@@ -11,9 +11,9 @@ and update capabilities, written in pure-Rust .
 documentation = ""
 homepage = ""
 keywords = ["security", "bootloader", "firmware", "authentication", "update"]
-license = "Apache 2.0 or MIT"
+license = "GNU GPL v2.0 or MIT"
 readme = "README.md"
-repository = ""
+repository = "https://github.com/nihalpasham/rustBoot"
 # Each example should have an explicit `[[example]]` section here to
 # ensure that the correct features are enabled.
 # autoexamples = false
