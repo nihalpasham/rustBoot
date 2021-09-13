@@ -11,7 +11,7 @@ and can be used to perform power-interruptible A/B updates, written in pure-Rust
 documentation = ""
 homepage = ""
 keywords = ["security", "bootloader", "firmware", "authentication", "update"]
-license = "GNU GPL v2.0 or MIT"
+license = "MIT"
 readme = "README.md"
 repository = "https://github.com/nihalpasham/rustBoot"
 
