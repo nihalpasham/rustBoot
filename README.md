@@ -87,7 +87,7 @@ In short, you'll need 3 things:
 
 ## Acknowledgment: 
 
-rustBoot's design is inspired by that of [wolfBoot](https://github.com/wolfSSL/wolfBoot). It borrows some of wolfBoot's reliable-update design-ideas and builds on it with rust's memory safety guarantees, safer parsing libraries, compile-time state-transition checks and easy integration of crates (such as boards, HALs drivers etc.) developed by the [embedded-rust](https://crates.io/categories/embedded) community.
+rustBoot's design was influenced by [wolfBoot](https://github.com/wolfSSL/wolfBoot). It borrows wolfBoot's reliable-update design idea and builds on it with rust's memory safety guarantees, safer parsing libraries, compile-time state-transition checks and easy integration of crates (such as boards, HALs drivers etc.) developed by the [embedded-rust](https://crates.io/categories/embedded) community.
 
 ## Support:
 
