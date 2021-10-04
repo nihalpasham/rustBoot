@@ -1,0 +1,11 @@
+# =============================================================================
+# Build configuration options for Cortex-A i.e. Aarch64
+# =============================================================================
+
+[build]
+target = "aarch64-unknown-none-softfloat"
+
+rustflags = [
+  "-C", "link-arg=-Ttest_impls/rpi4/link.ld",
+  "-C", "target-cpu=cortex-a72"
+]

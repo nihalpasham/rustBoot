@@ -4,6 +4,8 @@
 #[cfg(feature = "nrf")]
 pub mod nrf;
 
+pub mod rpi;
+
 /// This is the trait that abstracts out the necessary HW-specific flash operations 
 /// such as
 /// - `writing to flash` - we can arbitrary blob of data to arbitrary location in flash
