@@ -8,6 +8,12 @@ pub const BOOT_PARTITION_ADDRESS: usize = 0x2f000;
 pub const SWAP_PARTITION_ADDRESS: usize = 0x57000;
 pub const UPDATE_PARTITION_ADDRESS: usize = 0x58000;
 
+// **** RAM BOOT options for staged OS (update_ram only) ****
+
+pub const DTS_BOOT_ADDRESS: usize = 0xa0000;  
+pub const DTS_UPDATE_ADDRESS: usize = 0x10a0000;
+pub const RAM_LOAD_ADDRESS: usize = 0x3000000;
+pub const LOAD_DTS_ADDRESS: usize = 0x4000000;
 
 // **** rustBoot constants ****
 

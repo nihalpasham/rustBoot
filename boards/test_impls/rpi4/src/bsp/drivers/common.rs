@@ -33,7 +33,7 @@ impl<T> ops::Deref for MMIODerefWrapper<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { &*(self.start_addr as *const _) }
+        unsafe { &*(self.start_addr as *const T) }
     }
 }
 
