@@ -2614,14 +2614,14 @@ impl EMMCController {
     /// - EMMC_OK indicates the current card successfully initialized.
     /// - !EMMC_OK if card initialize failed with code identifying error.
     pub fn emmc_init_card(&self) -> SdResult {
-        unsafe {
-            let mmio_addr = MMIO_LEGACY_EMMC_CONF as *mut u32;
-            warn!("from_emmc_init_card, val: 0x{:08x}", *mmio_addr);
-            warn!("from_emmc_init_card, val: 0x{:08x}", *mmio_addr & 0xFFFFFFFD);
-            let val = *mmio_addr & 0xFFFFFFFD;
-            *mmio_addr = val;
-            warn!("from_emmc_init_card, val: 0x{:08x}, mmio_addr: {:p}\n", *mmio_addr, mmio_addr);
-        }
+        // unsafe {
+        //     let mmio_addr = MMIO_LEGACY_EMMC_CONF as *mut u32;
+        //     warn!("from_emmc_init_card, val: 0x{:08x}", *mmio_addr);
+        //     warn!("from_emmc_init_card, val: 0x{:08x}", *mmio_addr & 0xFFFFFFFD);
+        //     let val = *mmio_addr & 0xFFFFFFFD;
+        //     *mmio_addr = val;
+        //     warn!("from_emmc_init_card, val: 0x{:08x}, mmio_addr: {:p}\n", *mmio_addr, mmio_addr);
+        // }
         let mut resp = self.emmc_reset_card();
 
         // Reset the card.
