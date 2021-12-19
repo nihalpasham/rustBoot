@@ -4,8 +4,8 @@
 
 //! GPIO Driver.
 
-use crate::sync::{NullLock, interface::Mutex};
 use super::common::MMIODerefWrapper;
+use crate::sync::{interface::Mutex, NullLock};
 use tock_registers::{
     interfaces::{ReadWriteable, Writeable},
     register_bitfields, register_structs,

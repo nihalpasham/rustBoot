@@ -9,11 +9,11 @@
 //! - <https://github.com/raspberrypi/documentation/files/1888662/BCM2837-ARM-Peripherals.-.Revised.-.V2-1.pdf>
 //! - <https://developer.arm.com/documentation/ddi0183/latest>
 
-use crate::{println, print};
-use crate::sync::{NullLock, interface::Mutex};
+use super::common::MMIODerefWrapper;
 use crate::arch::cpu_core;
 use crate::log::console;
-use super::common::MMIODerefWrapper;
+use crate::sync::{interface::Mutex, NullLock};
+use crate::{print, println};
 use core::fmt;
 use tock_registers::{
     interfaces::{Readable, Writeable},

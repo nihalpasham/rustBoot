@@ -4,15 +4,15 @@
 #![allow(non_snake_case)]
 
 // use defmt_rtt as _;
-use panic_probe as _;
-use nrf52840_hal as hal;
 use cortex_m_rt::entry;
+use nrf52840_hal as hal;
+use panic_probe as _;
 
-use hal::gpio::{p0, p1, Level, Disconnected};
-use hal::twim::{self, Twim};
+use hal::gpio::{p0, p1, Disconnected, Level};
+use hal::pac::Peripherals;
 use hal::prelude::*;
 use hal::timer::Timer;
-use hal::pac::Peripherals;
+use hal::twim::{self, Twim};
 
 use rustBoot_hal::nrf::nrf52840::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
@@ -37,11 +37,11 @@ fn main() -> ! {
         count += 1;
     }
 
-    let flash_writer = FlashWriterEraser{nvmc: p.NVMC};
+    let flash_writer = FlashWriterEraser { nvmc: p.NVMC };
     let updater = FlashUpdater::new(flash_writer);
     match updater.update_success() {
-        Ok(_v) => {},
-        Err(e) => panic!("failed to confirm update: {}", e)
+        Ok(_v) => {}
+        Err(e) => panic!("failed to confirm update: {}", e),
     };
 
     loop {

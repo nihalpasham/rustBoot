@@ -8,4 +8,3 @@ pub trait UpdateInterface: FlashApi {
     fn update_trigger(self) -> Result<()>;
     fn update_success(self) -> Result<()>;
 }
-

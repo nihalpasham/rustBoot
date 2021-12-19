@@ -7,12 +7,12 @@
 use cortex_m_rt::entry;
 use panic_probe as _;
 
-use nrf52840_hal as hal;
 use hal::gpio::{p0, p1, Disconnected, Level};
 use hal::pac::Peripherals;
 use hal::prelude::*;
 use hal::timer::Timer;
 use hal::twim::{self, Twim};
+use nrf52840_hal as hal;
 
 use rustBoot_hal::nrf::nrf52840::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
@@ -25,7 +25,7 @@ const SCB_AIRCR_SYSRESETREQ_Pos: u32 = 2; // SCB AIRCR: SYSRESETREQ Position
 const SCB_AIRCR_SYSRESETREQ_Msk: u32 = (1u32 << SCB_AIRCR_SYSRESETREQ_Pos); // SCB AIRCR: SYSRESETREQ Mask
 
 /// System Reset
-/// 
+///
 /// Initiates a system reset request to reset the MCU.
 #[inline]
 pub fn nvic_systemreset() -> ! {
@@ -63,11 +63,11 @@ fn main() -> ! {
         count += 1;
     }
 
-    let flash_writer = FlashWriterEraser{nvmc: p.NVMC};
+    let flash_writer = FlashWriterEraser { nvmc: p.NVMC };
     let updater = FlashUpdater::new(flash_writer);
     match updater.update_trigger() {
-        Ok(_v) => {},
-        Err(e) => panic!("couldnt trigger update: {}", e)
+        Ok(_v) => {}
+        Err(e) => panic!("couldnt trigger update: {}", e),
     }
 
     nvic_systemreset();

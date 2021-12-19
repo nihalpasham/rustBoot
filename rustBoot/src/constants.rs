@@ -1,16 +1,15 @@
-
-// **** TARGET PLATFORM - FLASH PARTIONINING **** 
+// **** TARGET PLATFORM - FLASH PARTIONINING ****
 
 pub const SECTOR_SIZE: usize = 0x1000;
 pub const PARTITION_SIZE: usize = 0x28000;
 
-pub const BOOT_PARTITION_ADDRESS: usize = 0x2f000; 
+pub const BOOT_PARTITION_ADDRESS: usize = 0x2f000;
 pub const SWAP_PARTITION_ADDRESS: usize = 0x57000;
 pub const UPDATE_PARTITION_ADDRESS: usize = 0x58000;
 
 // **** RAM BOOT options for staged OS (update_ram only) ****
 
-pub const DTS_BOOT_ADDRESS: usize = 0xa0000;  
+pub const DTS_BOOT_ADDRESS: usize = 0xa0000;
 pub const DTS_UPDATE_ADDRESS: usize = 0x10a0000;
 pub const RAM_LOAD_ADDRESS: usize = 0x3000000;
 pub const LOAD_DTS_ADDRESS: usize = 0x4000000;
@@ -64,7 +63,6 @@ pub const PUBKEY_DIGEST_SIZE: usize = 32;
 #[cfg(feature = "sha384")]
 pub const PUBKEY_DIGEST_SIZE: usize = 48;
 
-
 // NVM_FLASH_WRITEONCE
 #[cfg(feature = "ext_flash")]
 pub const FLASHBUFFER_SIZE: usize = SECTOR_SIZE;
@@ -82,4 +80,3 @@ pub const HDR_IMG_TYPE_AUTH: u16 = 0x0000;
 // ED25519 constants
 #[cfg(feature = "ed25519")]
 pub const HDR_IMG_TYPE_AUTH: u16 = 0x0100;
-

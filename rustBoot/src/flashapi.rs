@@ -1,4 +1,3 @@
-
 use crate::image::image::{PartDescriptor, Swappable, ValidPart};
 pub trait FlashApi: Copy {
     fn flash_trailer_write<Part: ValidPart + Swappable>(

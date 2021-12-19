@@ -4,10 +4,9 @@
 
 //! A panic handler that infinitely waits.
 
-use crate::log::console;
 use crate::arch::cpu_core;
+use crate::log::console;
 use core::{fmt, panic::PanicInfo};
-
 
 fn _panic_print(args: fmt::Arguments) {
     use fmt::Write;

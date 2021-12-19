@@ -2,7 +2,8 @@
 #![allow(non_snake_case)]
 #![deny(unused_must_use)]
 
-use rustBoot::constants::{BOOT_PARTITION_ADDRESS, UPDATE_PARTITION_ADDRESS, PARTITION_SIZE};
+use rustBoot::constants::{BOOT_PARTITION_ADDRESS, PARTITION_SIZE, UPDATE_PARTITION_ADDRESS};
+use std::path::Path;
 use std::{env, path::PathBuf};
 
 use xshell::cmd;
@@ -40,7 +41,22 @@ fn test_rustBoot() -> Result<(), anyhow::Error> {
 
 fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
     let _p = xshell::pushd(root_dir().join("boards/test_impls").join(target))?;
-    cmd!("cargo build --release").run()?;
+    match target {
+        &"rpi4" => {
+            cmd!("cargo build --release --features log").run()?;
+            if Path::new("kernel8.img").exists() {
+                cmd!("powershell -command \"del kernel8.img\"").run()?;
+            }
+            cmd!("rust-objcopy --strip-all -O binary ..\\..\\target\\aarch64-unknown-none-softfloat\\release\\kernel kernel8.img").run()?;
+        }
+        &"nrf52840" => {
+            cmd!("cargo build --release").run()?;
+        }
+        _ => {
+            println!("board not supported");
+        }
+    }
+
     Ok(())
 }
 
@@ -123,14 +139,17 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
         "nrf52840" => {
             let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
             // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
-            cmd!("pyocd erase -t nrf52840 -s 0x0").run()?; 
-            let boot_trailer_magic  = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t nrf52840 -s 0x0").run()?;
+            let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
             cmd!("pyocd erase -t nrf52840 -s {boot_trailer_magic}").run()?;
-            cmd!("pyocd flash -t nrf52840 --base-address {boot_trailer_magic} trailer_magic.bin").run()?;
+            cmd!("pyocd flash -t nrf52840 --base-address {boot_trailer_magic} trailer_magic.bin")
+                .run()?;
 
-            let updt_trailer_magic  = format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            let updt_trailer_magic =
+                format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
             cmd!("pyocd erase -t nrf52840 -s {updt_trailer_magic}").run()?;
-            cmd!("pyocd flash -t nrf52840 --base-address {updt_trailer_magic} trailer_magic.bin").run()?;
+            cmd!("pyocd flash -t nrf52840 --base-address {updt_trailer_magic} trailer_magic.bin")
+                .run()?;
             Ok(())
         }
         _ => todo!(),

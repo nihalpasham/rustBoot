@@ -2,5 +2,5 @@
 #![allow(warnings)]
 #![feature(once_cell)]
 
-pub mod update;
 pub mod hal;
+pub mod update;

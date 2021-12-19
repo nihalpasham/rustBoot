@@ -5,7 +5,7 @@
 //! BSP driver support.
 
 use super::common::interface::{DeviceDriver, DriverManager};
-use crate::bsp::global::{GPIO, PL011_UART};
+use crate::{bsp::global::{GPIO, PL011_UART, EMMC2_CONT}, info};
 
 //--------------------------------------------------------------------------------------------------
 // Private Definitions
@@ -45,5 +45,12 @@ impl DriverManager for BSPDriverManager {
     fn post_device_driver_init(&self) {
         // Configure PL011Uart's output pins.
         GPIO.map_pl011_uart();
+        // initialize EMMC2 controller (i.e. sd card driver). 
+        // Note: emmc2 HW is to be initialized only after we fully initialize the uart instance
+        // as we'll need the ability to `print` debug and error info prior to emmc2 initialization.
+        match &EMMC2_CONT.emmc_init_card() {
+            &super::sdhost::SdResult::EMMC_OK => {},
+            _ => {info!("failed to initialize EMMC2")}
+        }
     }
 }

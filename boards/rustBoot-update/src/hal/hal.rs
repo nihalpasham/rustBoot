@@ -1,5 +1,4 @@
-
-use rustBoot_hal::{preboot, boot_from};
+use rustBoot_hal::{boot_from, preboot};
 
 // Arch-specific code
 pub fn hal_preboot() {

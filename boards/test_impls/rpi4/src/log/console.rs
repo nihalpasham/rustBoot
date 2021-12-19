@@ -8,12 +8,11 @@
 // Public Definitions
 //--------------------------------------------------------------------------------------------------
 
-use crate::bsp::drivers::{uart0::PanicUart, gpio::PanicGPIO};
-use crate::bsp::memory_map;
+use crate::bsp::drivers::{gpio::PanicGPIO, uart0::PanicUart};
 use crate::bsp::global;
+use crate::bsp::memory_map;
 
 use core::fmt;
-
 
 /// Console write functions.
 pub trait Write {

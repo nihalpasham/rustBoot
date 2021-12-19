@@ -4,7 +4,7 @@
 
 //! BSP Processor code. Top-level BSP file for the Raspberry Pi 4.
 
-use super::drivers::{gpio::GPIO, uart0::PL011Uart};
+use super::drivers::{gpio::GPIO, sdhost::EMMCController, uart0::PL011Uart};
 use super::memory_map;
 
 //--------------------------------------------------------------------------------------------------
@@ -19,11 +19,13 @@ pub static BOOT_CORE_ID: u64 = 0;
 //--------------------------------------------------------------------------------------------------
 // Global instances
 //--------------------------------------------------------------------------------------------------
-pub(crate) static GPIO: GPIO  =
-    unsafe { GPIO::new(memory_map::map::mmio::GPIO_START) };
+pub(crate) static GPIO: GPIO = unsafe { GPIO::new(memory_map::map::mmio::GPIO_START) };
 
 pub(crate) static PL011_UART: PL011Uart =
     unsafe { PL011Uart::new(memory_map::map::mmio::PL011_UART_START) };
+
+pub(crate) static EMMC2_CONT: EMMCController =
+    unsafe { EMMCController::new(memory_map::map::mmio::EMMC_START) };
 
 //--------------------------------------------------------------------------------------------------
 // Public Code

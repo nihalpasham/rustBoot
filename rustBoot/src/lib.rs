@@ -2,11 +2,11 @@
 #![allow(warnings)]
 #![feature(once_cell)]
 
-pub mod image;
-mod crypto;
 pub mod constants;
-pub mod parser;
+mod crypto;
 pub mod flashapi;
+pub mod image;
+pub mod parser;
 
 use core::fmt;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,12 +17,12 @@ pub enum RustbootError {
     InvalidState,
     /// Firmware authentication failed
     FwAuthFailed,
-    /// Image integrity verification failed. 
+    /// Image integrity verification failed.
     IntegrityCheckFailed,
     /// The val of the size field in an image header is not valid
     InvalidFirmwareSize,
     /// Type, length, value triple does not exist i.e. tried to parse the header
-    /// for a given a `field_type` but we reached the `end of header`. 
+    /// for a given a `field_type` but we reached the `end of header`.
     TLVNotFound,
     /// The hash output or length is invalid .
     BadHashValue,
@@ -45,7 +45,7 @@ pub enum RustbootError {
     InvalidValue,
     /// Attempt to reinitialize a global mutable static.  
     StaticReinit,
-    /// The sector flag value is invalid 
+    /// The sector flag value is invalid
     InvalidSectFlag,
 
     #[doc(hidden)]

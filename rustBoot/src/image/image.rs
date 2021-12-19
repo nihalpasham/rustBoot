@@ -57,7 +57,7 @@ pub trait TypeState: Sealed {
 /// marked as `stateupdating`, an update will be triggered
 /// - [`StateTesting`] - if the boot partition is still marked as 'statetesting` after an
 /// update, a roll-back is triggered
-/// - [`StateSuccess`] - if an update was successful, it is confirmed by marking it so. 
+/// - [`StateSuccess`] - if an update was successful, it is confirmed by marking it so.
 pub trait Updateable: Sealed + TypeState {}
 
 /// Represents the state of a partition/image. [`StateNew`] refers to

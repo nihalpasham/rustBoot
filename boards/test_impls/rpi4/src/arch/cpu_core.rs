@@ -4,16 +4,8 @@
 
 //! Architectural processor code.
 //!
-//! # Orientation
-//!
-//! Since arch modules are imported into generic modules using the path attribute, the path of this
-//! file is:
-//!
-//! crate::arch::cpu_core
-//! 
 
 use cortex_a::asm;
-
 pub use asm::nop;
 //--------------------------------------------------------------------------------------------------
 // Public Code

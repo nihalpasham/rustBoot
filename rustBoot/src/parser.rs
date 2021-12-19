@@ -144,7 +144,7 @@ pub enum Tags {
 
 impl Tags {
     #[rustfmt::skip]
-    /// The ids are reversed to account for endianess 
+    /// The ids are reversed to account for endianess
     fn get_id(self) -> &'static [u8] {
         match self {
             Self::Version       => &[0x01, 0x00],
