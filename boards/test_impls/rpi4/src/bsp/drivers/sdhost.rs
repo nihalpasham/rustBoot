@@ -127,8 +127,8 @@ register_bitfields! {
     /// This register is used to configure the EMMC module.
    CONTROL0 [
 
-        /// Wite as zero read as don't care
-        _reserved OFFSET(0) NUMBITS(1) [],
+        /// LED
+        LED OFFSET(0) NUMBITS(1) [],
         /// Use 4 data lines (true = enable)
         HCTL_DWIDTH OFFSET(1) NUMBITS(1) [],
         /// Select high speed mode (true = enable)
@@ -138,7 +138,17 @@ register_bitfields! {
         /// Use 8 data lines (true = enable)
         HCTL_8BIT OFFSET(5) NUMBITS(1) [],
         /// Write as zero read as don't care
-        _reserved2 OFFSET(6) NUMBITS(10) [],
+        _reserved2 OFFSET(6) NUMBITS(2) [],
+        /// Buspower
+        BUSPOWER OFFSET(8) NUMBITS(1) [],
+        /// Busvoltage
+        BUSVOLTAGE OFFSET(9) NUMBITS(3) [
+            V1_8 = 0b101,
+            V3_0 = 0b110,
+            V3_3 = 0b111,
+        ],
+        /// Write as zero read as don't care
+        _reserved3 OFFSET(12) NUMBITS(4) [],
         /// Stop the current transaction at the next block gap
         GAP_STOP OFFSET(16) NUMBITS(1) [],
         /// Restart a transaction last stopped using the GAP_STOP
@@ -154,7 +164,7 @@ register_bitfields! {
         /// Enable alternate boot mode access
         ALT_BOOT_EN OFFSET(22) NUMBITS(1) [],
         /// Write as zero read as don't care
-        _reserved3 OFFSET(23) NUMBITS(9) [],
+        _reserved4 OFFSET(23) NUMBITS(9) [],
     ],
 
    /// This register is used to configure the EMMC module.
@@ -236,8 +246,8 @@ register_bitfields! {
         DATA_DONE OFFSET(1) NUMBITS(1) [],
         /// Data transfer has stopped at block gap
         BLOCK_GAP OFFSET(2) NUMBITS(1) [],
-        /// Write as zero read as don't care
-        _reserved OFFSET(3) NUMBITS(1) [],
+        /// DMA Interrupt
+        DMA_INT OFFSET(3) NUMBITS(1) [],
         /// Data can be written to DATA register
         WRITE_RDY OFFSET(4) NUMBITS(1) [],
         /// DATA register contains data to be read
@@ -245,7 +255,7 @@ register_bitfields! {
         /// Write as zero read as don't care
         _reserved1 OFFSET(6) NUMBITS(2) [],
         /// Card made interrupt request
-        CARD OFFSET(8) NUMBITS(1) [],
+        CARD_INT OFFSET(8) NUMBITS(1) [],
         /// Write as zero read as don't care
         _reserved2 OFFSET(9) NUMBITS(3) [],
         /// Clock retune request was made
@@ -793,8 +803,9 @@ mod rpi4_constants {
     /*--------------------------------------------------------------------------
     						  SD CARD FREQUENCIES							   
     --------------------------------------------------------------------------*/
-    pub const FREQ_SETUP  : usize = 400000; // 400 Khz
-    pub const FREQ_NORMAL : usize = 25000000; // 25 Mhz
+    pub const FREQ_SETUP  : usize = 400_000; // 400 Khz
+    pub const FREQ_NORMAL : usize = 25_000_000; // 25 Mhz
+    pub const BASE_CLOCK  : usize = 50_000_000; // 50Mhz
 
     /*--------------------------------------------------------------------------
     						  CMD 41 BIT SELECTIONS							    
@@ -852,7 +863,7 @@ pub enum SdResult {
     EMMC_READ_ERROR,
     EMMC_MOUNT_FAIL,
     EMMC_CARD_STATE(u32),
-    NONE
+    NONE,
 }
 
 /*--------------------------------------------------------------------------
@@ -1398,16 +1409,6 @@ impl CSD {
     }
 }
 
-// struct Partition {
-// 		root_cluster: u32,					// Active partition rootCluster
-// 		sector_per_cluster: u32,			// Active partition sectors per cluster
-// 		bytes_per_sector: u32,				// Active partition bytes per sector
-// 		first_data_sector: u32,				// Active partition first data sector
-// 		data_sectors: u32,					// Active partition data sectors
-// 		unused_sectors: u32,				// Active partition unused sectors
-// 		reserved_sector_count: u32,			// Active partition reserved sectors
-// 	}
-
 //--------------------------------------------------------------------------
 //                          SD CARD DESCRIPTION RECORD
 //--------------------------------------------------------------------------
@@ -1451,9 +1452,9 @@ pub const R1_ERRORS_MASK: u32 = 0xfff9c004;
 pub const ST_APP_CMD: u32 = 0x00000020;
 
 /// The new SDHCI-compliant EMMC2 interface doesn't appear on the GPIOs -
-/// it has dedicated pins, but to allow booting from SD card without a 
-/// completely new boot ROM it is possible to map the old ARASAN/EMMC/SDIO 
-/// interface to those dedicated pins. 
+/// it has dedicated pins, but to allow booting from SD card without a
+/// completely new boot ROM it is possible to map the old ARASAN/EMMC/SDIO
+/// interface to those dedicated pins.
 ///
 /// This is controlled by bit 1 of 0x7e2000d0 - 0=EMMC2, 1=legacy EMMC.
 static mut MMIO_LEGACY_EMMC_CONF: u32 = 0x7e2000d0; //
@@ -1496,13 +1497,13 @@ impl EMMCController {
 
     pub fn emmc_debug_response(&self, resp: SdResult) -> SdResult {
         info!(
-            "EMMC: Status: {:x}, control1: {:x}, interrupt: {:x}\n",
+            "EMMC: STATUS: 0x{:08x}, CONTROL1: 0x{:08x}, INTERRUPT: 0x{:08x}\n",
             self.registers.EMMC_STATUS.get(),
             self.registers.EMMC_CONTROL1.get(),
             self.registers.EMMC_INTERRUPT.get()
         );
         info!(
-            "EMMC: Command {:?}, resp: {:?}, {:x}, {:?}, {:?}, {:?}\n",
+            "EMMC: CMD {:?}, resp: {:?}, RESP3: 0x{:08x}, RESP2: 0x{:08x}, RESP1: 0x{:08x}, RESP0: 0x{:08x}\n",
             unsafe { EMMC_CARD.last_cmd.cmd_name },
             resp,
             self.registers.EMMC_RESP3.get(),
@@ -1523,11 +1524,7 @@ impl EMMCController {
         let mut time_diff: u64 = 0; // Zero time difference
         let mut start_time: u64 = 0; // Zero start time
         let t_mask: u32 = mask | INT_ERROR_MASK as u32; // Add fatal error masks to mask provided
-        warn!("from_emmc_wait_for_interrupt, interrupt_en: 0x{:08x}", self.registers.EMMC_IRPT_EN.get());
-        warn!("from_emmc_wait_for_interrupt, interrupt_mask: 0x{:08x}", self.registers.EMMC_IRPT_MASK.get());
-        warn!("from_emmc_wait_for_interrupt, interrupt: 0x{:08x}", self.registers.EMMC_INTERRUPT.get());
-        warn!("from_emmc_wait_for_interrupt, mask: 0x{:08x}, t_mask: 0x{:08x}, int_error_mask: 0x{:08x}", mask, t_mask, INT_ERROR_MASK);
-        warn!("from_emmc_wait_for_interrupt, interrupt & t_mask: 0x{:08x}", self.registers.EMMC_INTERRUPT.get() & t_mask);
+
         while (self.registers.EMMC_INTERRUPT.get() & t_mask) == 0 && (time_diff < 1000000) {
             if start_time == 0 {
                 start_time = timer_get_tick_count()
@@ -1538,13 +1535,8 @@ impl EMMCController {
             } // Time difference between start time and now
         }
 
-        warn!("from_emmc_wait_for_interrupt: td: {:?}", time_diff);
         let ival = self.registers.EMMC_INTERRUPT.get(); // Fetch all the interrupt flags
-        warn!("from_emmc_wait_for_interrupt, interrupt_en: 0x{:08x}", self.registers.EMMC_IRPT_EN.get());
-        warn!("from_emmc_wait_for_interrupt, interrupt_mask: 0x{:08x}", self.registers.EMMC_IRPT_MASK.get());
-        warn!("from_emmc_wait_for_interrupt, ival: 0x{:08x}", ival);
-        warn!("from_emmc_wait_for_interrupt, ival & INT_CMD_TIMEOUT: 0x{:08x}", (ival & INT_CMD_TIMEOUT as u32));
-        warn!("from_emmc_wait_for_interrupt, ival & INT_DATA_TIMEOUT: 0x{:08x}", (ival & INT_DATA_TIMEOUT as u32));
+
         if time_diff >= 1000000                         // No response recieved, timeout occurred
             || (ival & INT_CMD_TIMEOUT as u32) != 0     // Command timeout occurred 
             || (ival & INT_DATA_TIMEOUT as u32) != 0
@@ -1590,10 +1582,6 @@ impl EMMCController {
         let mut time_diff: u64 = 0; // Zero time difference
         let mut start_time: u64 = 0; // Zero start time
 
-        warn!("from emmc_wait_for_command, cmd_inhibit: {:?}", self.registers.EMMC_STATUS.matches_all(STATUS::CMD_INHIBIT.val(1)));
-        warn!("from emmc_wait_for_command1, interrupt: 0x{:08x}", self.registers.EMMC_INTERRUPT.get());
-        warn!("from emmc_wait_for_command1, int_error_mask: 0x{:08x}", INT_ERROR_MASK);
-        warn!("from emmc_wait_for_command1, interrupt & mask: 0x{:08x}", (self.registers.EMMC_INTERRUPT.get() & INT_ERROR_MASK as u32));
         while (self.registers.EMMC_STATUS.matches_all(STATUS::CMD_INHIBIT.val(1)))	  // Command inhibit signal
             && (self.registers.EMMC_INTERRUPT.get() & INT_ERROR_MASK as u32) == 0   // No error occurred
             && (time_diff < 1000000)
@@ -1606,11 +1594,6 @@ impl EMMCController {
             } // Time difference between start and now
         }
 
-        warn!("from emmc_wait_for_command, cmd_inhibit: {:?}", self.registers.EMMC_STATUS.matches_all(STATUS::CMD_INHIBIT.val(1)));
-        warn!("from emmc_wait_for_command2, interrupt: 0x{:08x}", self.registers.EMMC_INTERRUPT.get());
-        warn!("from emmc_wait_for_command2, int_error_mask: 0x{:08x}", INT_ERROR_MASK);
-        warn!("from emmc_wait_for_command2, interrupt & mask: 0x{:08x}", (self.registers.EMMC_INTERRUPT.get() & INT_ERROR_MASK as u32));
-        warn!("from_emmc_wait_for_command, td: {:?}", time_diff);
         if (time_diff >= 1000000)
             || (self.registers.EMMC_INTERRUPT.get() & INT_ERROR_MASK as u32) != 0
         // Error occurred or it timed out
@@ -1672,11 +1655,26 @@ impl EMMCController {
 
         // Display raw CSD - values of my SANDISK ultra 16GB shown under each
         info!(
-            "CSD Contents :  {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} \n",
-            buffer[3], buffer[2], buffer[1], buffer[0], buffer[7], buffer[6], buffer[5], buffer[4],
-		                /*    40       e0           00      32          5b          59          00    */
-		    buffer[11], buffer[10], buffer[9], buffer[8], buffer[15], buffer[14], buffer[13], buffer[12]
-            /*    00       73          a7         7f        80          0a          40          00 */
+            "CSD Contents : {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x}\
+            {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x}",
+            buffer[3],
+            buffer[2],
+            buffer[1],
+            buffer[0],
+            buffer[7],
+            buffer[6],
+            buffer[5],
+            buffer[4],
+            /* 00 40 0e 00 32 5b 59 00  */
+            buffer[11],
+            buffer[10],
+            buffer[9],
+            buffer[8],
+            buffer[15],
+            buffer[14],
+            buffer[13],
+            buffer[12] 
+            /* 00 ed c8 7f 80 0a 40 40  */
         );
 
         // Populate CSD structure
@@ -1701,9 +1699,9 @@ impl EMMCController {
         if csd.csd0.matches_all(CEMMC_STRUCTURE::CEMMC_VERSION_2) {
             // CSD VERSION 2.0
             // Basically absorbs bottom of buf[4] to align to next byte 		    // @@75-70  ** Correct
-            csd.csd2.set(((buffer[11] & 0x3F) as u32) << 16); // @69-64
-            csd.csd2.set((buffer[10] as u32) << 8); // @63-56
-            csd.csd2.set(buffer[9] as u32); // @55-48
+            let mut card_capacity =
+                ((buffer[11] & 0x3F) as u32) << 16 | (buffer[10] as u32) << 8 | buffer[9] as u32; // @55-48, @63-56, @69-64
+            csd.csd2.set(card_capacity);
             unsafe {
                 EMMC_CARD.card_capacity = csd.csd2.get() as u64;
                 EMMC_CARD.card_capacity *= 512 * 1024; // Calculate Card capacity
@@ -1766,10 +1764,9 @@ impl EMMCController {
             .modify(FILE_FORMAT.val(((buffer[12] & 0x0c) >> 2) as u32)); // @10-11    **correct
         csd.csd3.modify(ECC.val((buffer[12] & 0x03) as u32)); // @8-9      **corrrect
 
-        info!("
-            cemmc_structure={:?}, spec_vers={:?}, taac={:02x}, nsac={:02x}, tran_speed={:02x}, ccc={:04x} \n 
-                read_bl_len={:?}, read_bl_partial={:?}, write_blk_misalign={:?}, read_blk_misalign={:?} \n
-                dsr_imp={:?}, sector_size ={:?}, erase_blk_en={:?}\n",
+        info!("cemmc_structure={:?}, spec_vers={:?}, taac=0x{:02X}, nsac=0x{:02X}, tran_speed=0x{:02X},\
+             ccc=0x{:04X}, read_bl_len=0x{:02X}, read_bl_partial={:0b}b, write_blk_misalign={:0b}b,\
+             read_blk_misalign={:0b}b, dsr_imp={:0b}b, sector_size =0x{:02X}, erase_blk_en={:0b}b",
             csd.csd0.read(CEMMC_STRUCTURE),
             csd.csd0.read(SPEC_VERS),
             csd.csd0.read(TAAC),
@@ -1787,15 +1784,16 @@ impl EMMCController {
 
         if csd.csd0.matches_all(CEMMC_STRUCTURE::CEMMC_VERSION_2) {
             info!(
-                "CSD 2.0: ver2_c_size = {:?} card capacity: {:?} \n",
+                "CSD 2.0: ver2_c_size = 0x{:02X}, card capacity: {:?} bytes or {:.02}GiB",
                 csd.csd2.get(),
-                unsafe { EMMC_CARD.card_capacity }
+                unsafe { EMMC_CARD.card_capacity },
+                (unsafe { EMMC_CARD.card_capacity } as f32 / (1000.0 * 1000.0 * 1000.0)),
             );
         } else {
             info!(
-                "CSD 1.0: c_size = {:?}, c_size_mult={:?}, card capacity: {:?}\n
-                      vdd_r_curr_min = {:?} vdd_r_curr_max={:?} vdd_w_curr_min = {:?} 
-                      vdd_w_curr_max={:?}\n",
+                "CSD 1.0: c_size = {:?}, c_size_mult={:?}, card capacity: {:?}, \
+                vdd_r_curr_min = {:?}, vdd_r_curr_max={:?}, vdd_w_curr_min = {:?}, \
+                vdd_w_curr_max={:?}",
                 csd.csd1.read(CSIZE),
                 csd.csd2.read(C_SIZE_MULT),
                 unsafe { EMMC_CARD.card_capacity },
@@ -1807,9 +1805,9 @@ impl EMMCController {
         }
 
         info!(
-            "  wp_grp_size={:?} wp_grp_enable={:?} default_ecc={:?} r2w_factor={:?}
-		    write_bl_len={:?} write_bl_partial={:?} file_format_grp={:?} copy={:?}
-		    perm_write_protect={:?} tmp_write_protect={:?} file_format={:?} ecc={:?}\n",
+            "wp_grp_size=0x{:07b}b, wp_grp_enable={:0b}b, default_ecc={:02b}b, r2w_factor={:03b}b, write_bl_len=0x{:02X}, \
+            write_bl_partial={:0b}b, file_format_grp={:0b}, copy={:0b}b, perm_write_protect={:0b}b, tmp_write_protect={:0b}b, \
+            file_format={:0b}b ecc={:02b}b",
             csd.csd3.read(WP_GRP_SIZE),
             csd.csd3.read(WP_GRP_ENABLE),
             csd.csd3.read(DEFAULT_ECC),
@@ -1832,7 +1830,7 @@ impl EMMCController {
         }
 
         info!(
-            "EMMC: Sending command, CMD_NAME: {:?}, CMD_CODE: 0x{:08x}, CMD_ARG: 0x{:08x}\n",
+            "EMMC: Sending command, CMD_NAME: {:?}, CMD_CODE: 0x{:08x}, CMD_ARG: 0x{:08x}",
             cmd.cmd_name,
             cmd.cmd_code.get(),
             arg
@@ -1846,7 +1844,7 @@ impl EMMCController {
         self.registers
             .EMMC_INTERRUPT
             .set(self.registers.EMMC_INTERRUPT.get()); // Clear interrupts
-        warn!("from_emmc_send_command_p, interrupt: 0x{:08x}", self.registers.EMMC_INTERRUPT.get());
+
         // Set the argument and the command code, Some commands require a delay before reading the response
         self.registers.EMMC_ARG1.set(arg); // Set argument to SD card
         self.registers.EMMC_CMDTM.set(cmd.cmd_code.get()); // Send command to SD card
@@ -1854,7 +1852,6 @@ impl EMMCController {
             timer_wait_micro(cmd.delay.into());
         }; // Wait for required delay
 
-        warn!("from_emmc_send_command_p, before wait_for_interrupt\n");
         // Wait until we finish sending the command i.e. the CMD_DONE interrupt bit is set.
         let res = self.emmc_wait_for_interrupt(INT_CMD_DONE as u32);
         match res {
@@ -1871,7 +1868,11 @@ impl EMMCController {
                 EMMC_CARD.status = resp0;
                 // Store the card state.  Note that this is the state the card was in before the
                 // command was accepted, not the new state.
-                return SdResult::EMMC_CARD_STATE(resp0 & R1_ERRORS_MASK);
+                if resp0 & R1_ERRORS_MASK == 0 {
+                    return SdResult::EMMC_OK;
+                } else {
+                    return SdResult::EMMC_CARD_STATE(resp0 & R1_ERRORS_MASK);
+                }
             },
             // RESP0 contains card status, no other data from the RESP* registers.
             // Return value non-zero if any error flag in the status value.
@@ -1889,9 +1890,15 @@ impl EMMCController {
                         }
                         // Store the card state.  Note that this is the state the card was in before the
                         // command was accepted, not the new state.
-                        return unsafe {
-                            SdResult::EMMC_CARD_STATE(EMMC_CARD.status & R1_ERRORS_MASK)
-                        };
+                        unsafe {
+                            if EMMC_CARD.status & R1_ERRORS_MASK == 0 {
+                                return SdResult::EMMC_OK;
+                            } else {
+                                return SdResult::EMMC_CARD_STATE(
+                                    EMMC_CARD.status & R1_ERRORS_MASK,
+                                );
+                            }
+                        }
                     }
                     // SEND_IF_COND command
                     0x08 => {
@@ -1920,7 +1927,11 @@ impl EMMCController {
                         }
                         // Store the card state.  Note that this is the state the card was in before the
                         // command was accepted, not the new state.
-                        return SdResult::EMMC_CARD_STATE(resp0 & R1_ERRORS_MASK);
+                        if resp0 & R1_ERRORS_MASK == 0 {
+                            return SdResult::EMMC_OK;
+                        } else {
+                            return SdResult::EMMC_CARD_STATE(resp0 & R1_ERRORS_MASK);
+                        }
                     }
                 }
             }
@@ -1950,11 +1961,9 @@ impl EMMCController {
     pub fn emmc_send_app_command(&self) -> SdResult {
         // If no RCA, send the APP_CMD and don't look for a response.
         if unsafe { EMMC_CARD.rca == 0 } {
-            warn!("from_emmc_send_app_command1\n");
             self.emmc_sendcommand_p(SdCardCommands::APP_CMD.get_cmd(), 0x00000000);
         // If there is an RCA, include that in APP_CMD and check card accepted it.
         } else {
-            warn!("from_emmc_send_app_command2\n");
             let resp = self.emmc_sendcommand_p(SdCardCommands::APP_CMD_RCA.get_cmd(), unsafe {
                 EMMC_CARD.rca
             });
@@ -1963,7 +1972,7 @@ impl EMMCController {
                 _ => return self.emmc_debug_response(resp),
             }
             // Debug - check that status indicates APP_CMD accepted.
-            if !(unsafe { EMMC_CARD.status & ST_APP_CMD }) != 0 {
+            if (unsafe { EMMC_CARD.status & ST_APP_CMD }) == 0 {
                 return SdResult::EMMC_ERROR;
             };
         }
@@ -1975,8 +1984,11 @@ impl EMMCController {
     pub fn emmc_send_command(&self, cmd_type: SdCardCommands) -> SdResult {
         // Issue APP_CMD if needed.
         let mut resp = SdResult::NONE;
-        warn!("from_emmc_send_command1, {:?}", cmd_type >= SdCardCommands::APP_CMD_START);
-        if cmd_type >= SdCardCommands::APP_CMD_START && {resp = self.emmc_send_app_command(); resp != SdResult::EMMC_OK} {
+
+        if cmd_type >= SdCardCommands::APP_CMD_START && {
+            resp = self.emmc_send_app_command();
+            resp != SdResult::EMMC_OK
+        } {
             return self.emmc_debug_response(resp);
         }
 
@@ -1987,7 +1999,6 @@ impl EMMCController {
             unsafe { arg = EMMC_CARD.rca }
         }
 
-        warn!("from_emmc_send_command2");
         resp = self.emmc_sendcommand_p(cmd, arg);
         if resp != SdResult::EMMC_OK {
             return resp;
@@ -2009,7 +2020,10 @@ impl EMMCController {
     pub fn emmc_send_command_a(&self, cmd_type: SdCardCommands, arg: u32) -> SdResult {
         // Issue APP_CMD if needed.
         let mut resp = SdResult::NONE;
-        if cmd_type >= SdCardCommands::APP_CMD_START && {resp = self.emmc_send_app_command(); resp != SdResult::EMMC_OK} {
+        if cmd_type >= SdCardCommands::APP_CMD_START && {
+            resp = self.emmc_send_app_command();
+            resp != SdResult::EMMC_OK
+        } {
             return self.emmc_debug_response(resp);
         }
 
@@ -2107,98 +2121,39 @@ impl EMMCController {
         return SdResult::EMMC_OK;
     }
 
-    /// Get clock divider for the given requested frequency. This is calculated
-    /// relative to the SD base clock of 41.66667Mhz
-    ///
-    /// RETURN:
-    /// - 3 - 0x3FF are only possible answers for the divisor
-    pub fn emmc_get_clock_divider(&self, freq: u32) -> u32 {
-        let mut divisor = (41666667 + freq - 1) / freq; // Pi SD frequency is always 41.66667Mhz on baremetal
-        if (divisor > 0x3FF) {
-            divisor = 0x3FF;
-        } // Constrain divisor to max 0x3FF
-        if (self.registers.EMMC_SLOTISR_VER.read(SLOTISR_VER::SDVERSION) < 2) {
-            // Any version less than HOST SPECIFICATION 3 (Aka numeric 2)
-            let mut shiftcount = fls_u32(divisor); // Only 8 bits and set pwr2 div on Hosts specs 1 & 2
-            if (shiftcount > 0) {
-                shiftcount -= 1;
-            } // Note the offset of shift by 1 (look at the spec)
-            if (shiftcount > 7) {
-                shiftcount = 7;
-            } // It's only 8 bits maximum on HOST_SPEC_V2
-            divisor = (1u32 << shiftcount); // Version 1,2 take power 2
-        } else if divisor < 3 {
-            divisor = 4;
-        } // Set minimum divisor limit
-        info!(
-            "Divisor = {:?}, Freq Set = {:?}\n",
-            divisor,
-            (41666667 / divisor)
-        );
-        return divisor; // Return divisor that would be required
+    /// Get clock divider bit-pattern, given its integer value.
+    pub fn emmc_get_clock_divider2(&self, div: u32) -> u32 {
+        let mut v;
+        let clkfreq8shift = 8; /* SD clock base divider LSBs */
+        let clkfreq8mask = 0xFF00;
+        let clkfreqms2shift = 6; /* SD clock base divider MSBs */
+        let clkfreqms2mask = 0xC0;
+        assert!(div < 1 << 10);
+        v = (div << clkfreq8shift) & clkfreq8mask;
+        v |= ((div >> 8) << clkfreqms2shift) & clkfreqms2mask;
+        return v;
     }
 
-    /// Set the SD clock to the given frequency from the 41.66667Mhz base clock
+    /// Set the SD clock to the given frequency (derived from the base clock)
     ///
     /// RETURN:
     /// - EMMC_ERROR_CLOCK - A fatal error occurred setting the clock
-    /// - EMMC_OK - the clock was changed to given frequency    
-    pub fn emmc_set_clock(&self, freq: u32) -> SdResult {
-        let mut td = 0; // Zero time difference
-        let mut start_time = 0; // Zero start time
-        info!("EMMC: setting clock speed to {:?}.\n", freq);
-        while ((self.registers.EMMC_STATUS.matches_all(STATUS::CMD_INHIBIT.val(1))  // cmd inhibit signal
-            || self.registers.EMMC_STATUS.matches_all(STATUS::DAT_INHIBIT.val(1)))	// data inhibit signal
-            && (td < 100000))
-        // Timeout not reached
-        {
-            if (start_time == 0) {
-                start_time = timer_get_tick_count();
-            }
-            // If start time not set the set start time
-            else {
-                td = tick_difference(start_time, timer_get_tick_count());
-            } // Time difference between start time and now
+    /// - EMMC_OK - the clock was changed to given frequency
+    pub fn emmc_set_clock2(&self, freq: u32) -> SdResult {
+        let mut div = BASE_CLOCK as u32 / (freq << 1);
+        if (BASE_CLOCK as u32 / (div << 1)) > freq {
+            div += 1
         }
-        if (td >= 100000) {
-            // Timeout waiting for inhibit flags
-            #[cfg(feature = "log")]
-            info!(
-                "EMMC: Set clock: timeout waiting for inhibit flags. Status {:x}.\n",
-                self.registers.EMMC_STATUS.get()
-            );
-            return SdResult::EMMC_ERROR_CLOCK; // Return clock error
-        }
-
-        // Switch clock off
-        self.registers.EMMC_CONTROL1.modify(CONTROL1::CLK_EN.val(0)); // Disable clock
-        timer_wait_micro(10); // We must now wait 10 microseconds
-
-        // Request the divisor for new clock setting
-        let c_div = self.emmc_get_clock_divider(freq); // Fetch divisor for new frequency
-        let div_lo = (c_div & 0xff) << 8; // Create divisor low bits value
-        let div_hi = ((c_div & 0x300) >> 2); // Create divisor high bits value
-
-        /* Set new clock frequency by setting new divisor */
-        self.registers
-            .EMMC_CONTROL1
-            .set((self.registers.EMMC_CONTROL1.get() & 0xffff001f) | div_lo | div_hi);
-        timer_wait_micro(10); // We must now wait 10 microseconds
-
-        /* Enable the clock. */
-        self.registers.EMMC_CONTROL1.modify(CONTROL1::CLK_EN.val(1)); // Enable the clock
+        let control1 = self.emmc_get_clock_divider2(div)
+            | CONTROL1::CLK_GENSEL.val(0).value
+            | CONTROL1::CLK_EN.val(1).value
+            | CONTROL1::CLK_INTLEN.val(1).value;
+        self.registers.EMMC_CONTROL1.set(control1);
 
         /* Wait for clock to be stablized */
-        td = 0; // Zero time difference
-        start_time = 0; // Zero start time
-        warn!(
-            "EMMC_CONTROL1, from emmc_set_clock1: {:?} ",
-            self.registers.EMMC_CONTROL1.get()
-        );
-        warn!(
-            "EMMC_CONTROL1::CLK_STABLE, from emmc_set_clock: {:?} ",
-            self.registers.EMMC_CONTROL1.read(CONTROL1::CLK_STABLE)
-        );
+        let mut td = 0; // Zero time difference
+        let mut start_time = 0; // Zero start time
+
         while (self.registers.EMMC_CONTROL1.matches_all(CONTROL1::CLK_STABLE.val(0)) // Clock not stable yet
             && (td < 100000))
         // Timeout not reached
@@ -2211,28 +2166,20 @@ impl EMMCController {
                 td = tick_difference(start_time, timer_get_tick_count());
             } // Time difference between start time and now
         }
-        warn!(
-            "EMMC_CONTROL1, from emmc_set_clock2: {:?} ",
-            self.registers.EMMC_CONTROL1.get()
-        );
+
         if (td >= 100000) {
             // Timed out waiting for stability flag
             #[cfg(feature = "log")]
             info!("EMMC: ERROR: failed to get stable clock.\n");
             return SdResult::EMMC_ERROR_CLOCK; // Return clock error
         }
-        warn!("from emmc_set_clock, set_clock_success");
-        return SdResult::EMMC_OK; // Clock frequency set worked
-    }
+        info!(
+            "Divisor = {:?}, Freq Set = {:?}\n",
+            div,
+            (BASE_CLOCK as u32 / div) >> 1
+        );
 
-    /// Sets SD bus power VDD1 to 3.3V at initialization.
-    ///
-    /// The RPi 4's controller is more compliant with the standard.
-    /// This additional step was not needed on the RPi 1-3
-    pub fn emmc_power_on(&self) {
-        let mut control0 = self.registers.EMMC_CONTROL0.get();
-        control0 |= 0x0F << 8;
-        self.registers.EMMC_CONTROL0.set(control0);
+        return SdResult::EMMC_OK; // Clock frequency set worked
     }
 
     /// Reset the SD Card
@@ -2244,14 +2191,7 @@ impl EMMCController {
         let mut td = 0; // Zero time difference
         let mut start_time = 0; // Zero start time
 
-        /* reset host controller and wait for complete */
-        self.registers.EMMC_CONTROL0.set(0); // Zero control0 register
-        // self.emmc_power_on();
-        self.registers.EMMC_CONTROL1.set(0); // Zero control1 register
-        self.registers
-            .EMMC_CONTROL1
-            .modify(CONTROL1::SRST_HC.val(1)); // Reset the complete host circuit
-
+        self.registers.EMMC_CONTROL1.write(CONTROL1::SRST_HC.val(1)); // Reset the complete host circuit
         timer_wait_micro(10); // Wait 10 microseconds
 
         info!("EMMC: reset card.\n");
@@ -2273,40 +2213,39 @@ impl EMMCController {
             return SdResult::EMMC_ERROR_RESET; // Return reset SD Card error
         }
 
-        warn!(
-            "EMMC_CONTROL1, from emmc_reset2: {:?} ",
-            self.registers.EMMC_CONTROL1.get()
-        );
-
-        /* Enable internal clock and set data timeout */
         self.registers
             .EMMC_CONTROL1
-            .modify(CONTROL1::DATA_TOUNIT.val(0xE)); // Maximum timeout value
-        self.registers
-            .EMMC_CONTROL1
-            .modify(CONTROL1::CLK_INTLEN.val(1)); // Enable internal clock
+            .write(CONTROL1::SRST_DATA.val(1)); // reset data lines
         timer_wait_micro(10); // Wait 10 microseconds
 
+        self.registers.EMMC_CONTROL1.set(0);
+
+        // Set SD bus power VDD1 to 3.3V at initialization.
+        //
+        // The RPi 4's controller is more compliant with the standard.
+        // This additional step was not needed on the RPi 1-3
+        self.registers.EMMC_CONTROL0.set(0);
+        timer_wait_micro(1);
+        self.registers
+            .EMMC_CONTROL0
+            .write(CONTROL0::BUSVOLTAGE::V3_3 + CONTROL0::BUSPOWER.val(1));
+        self.registers.EMMC_CONTROL1.set(0);
+        timer_wait_micro(1);
+
         /* Set clock to setup frequency */
-        let mut resp = self.emmc_set_clock(FREQ_SETUP as u32);
+        let mut resp = self.emmc_set_clock2(FREQ_SETUP as u32);
         if resp != SdResult::EMMC_OK {
-            warn!(
-                "from emmc_reset, emmc_set_clock resp: {:?}",
-                self.emmc_debug_response(resp)
-            );
             return resp;
         } // Set low speed setup frequency (400Khz)
 
-        warn!("from_emmc_reset_card, interrupt: 0x{:08x}", self.registers.EMMC_INTERRUPT.get());
+        // Enable interrupts and interrupt mask
+        self.registers.EMMC_IRPT_EN.set(0x0);
+        let mask = !INTERRUPT::CARD_INT.val(1).value;
+        self.registers.EMMC_IRPT_MASK.set(mask);
+        self.registers.EMMC_INTERRUPT.set(!0);
+        let int_en = self.registers.EMMC_IRPT_EN.get() & !self.registers.EMMC_INTERRUPT.get();
+        self.registers.EMMC_IRPT_EN.set(int_en);
 
-        warn!("from_emmc_reset_card, interrupt_en: 0x{:08x}", self.registers.EMMC_IRPT_EN.get());
-        warn!("from_emmc_reset_card, interrupt_mask: 0x{:08x}", self.registers.EMMC_IRPT_MASK.get());
-        /* Enable interrupts for command completion values */
-        self.registers.EMMC_IRPT_EN.set(0xffffffff);
-        self.registers.EMMC_IRPT_MASK.set(0xffffffff);
-        warn!("from_emmc_reset_card, interrupt_en: 0x{:08x}", self.registers.EMMC_IRPT_EN.get());
-        warn!("from_emmc_reset_card, interrupt_mask: 0x{:08x}", self.registers.EMMC_IRPT_MASK.get());
-        warn!("from_emmc_reset_card, interrupt: 0x{:08x}", self.registers.EMMC_INTERRUPT.get());
         /* Reset our card structure entries */
         unsafe {
             EMMC_CARD.rca = 0; // Zero rca
@@ -2316,10 +2255,7 @@ impl EMMCController {
             EMMC_CARD.emmc_card_type = SdCardType::EMMC_TYPE_UNKNOWN;
         } // Set card type unknown
 
-        warn!("from emmc_reset, just before emmc_send_command:");
-        /* Send GO_IDLE_STATE to card */
-        resp = self.emmc_send_command(SdCardCommands::GO_IDLE_STATE); // Send GO idle state
-        warn!("from emmc_reset, emmc_send_command resp: {:?}", resp);
+        resp = self.emmc_send_command(SdCardCommands::GO_IDLE_STATE); // Send GO_IDLE_STATE to card
 
         return resp; // Return response
     }
@@ -2614,14 +2550,6 @@ impl EMMCController {
     /// - EMMC_OK indicates the current card successfully initialized.
     /// - !EMMC_OK if card initialize failed with code identifying error.
     pub fn emmc_init_card(&self) -> SdResult {
-        // unsafe {
-        //     let mmio_addr = MMIO_LEGACY_EMMC_CONF as *mut u32;
-        //     warn!("from_emmc_init_card, val: 0x{:08x}", *mmio_addr);
-        //     warn!("from_emmc_init_card, val: 0x{:08x}", *mmio_addr & 0xFFFFFFFD);
-        //     let val = *mmio_addr & 0xFFFFFFFD;
-        //     *mmio_addr = val;
-        //     warn!("from_emmc_init_card, val: 0x{:08x}, mmio_addr: {:p}\n", *mmio_addr, mmio_addr);
-        // }
         let mut resp = self.emmc_reset_card();
 
         // Reset the card.
@@ -2688,12 +2616,6 @@ impl EMMCController {
             return self.emmc_debug_response(resp);
         }
 
-        // From now on the card should be in standby state.
-        // Actually cards seem to respond in identify state at this point.
-        // Check this with a SEND_STATUS (CMD13)
-        //if( (resp = sdSendCommand(IX_SEND_STATUS)) ) return emmc_debug_response(resp);
-        //printf("Card current state: %08x %s\n",EMMC_CARD.status,STATUS_NAME[EMMC_CARD.cardState]);
-
         // Send SEND_CSD (CMD9) and parse the result.
         resp = self.emmc_send_command(SdCardCommands::SEND_CSD);
         if (resp != SdResult::EMMC_OK) {
@@ -2701,7 +2623,7 @@ impl EMMCController {
         }
 
         // At this point, set the clock to full speed
-        resp = self.emmc_set_clock(FREQ_NORMAL as u32);
+        resp = self.emmc_set_clock2(FREQ_NORMAL as u32);
         if (resp != SdResult::EMMC_OK) {
             return self.emmc_debug_response(resp);
         }
@@ -2751,17 +2673,17 @@ impl EMMCController {
             serial |= EMMC_CARD.cid.cid3.read(CID_RAW32_3::SerialNumLo);
 
             info!(
-                "EMMC: SD Card {} {}Mb mfr {} '{}{}:{}{}{}{}{}' r{}.{} {}/{}, #{:08x} RCA {:04x}\n",
+                "EMMC: SD Card {}, {}Mb, mfr_id: {}, '{}{}:{}{}{}{}{}', r{}.{}, mfr_date: {}/{}, serial: 0x{:08x}, RCA: 0x{:04x}\n",
                 EMMC_TYPE_NAME[EMMC_CARD.emmc_card_type as usize],
                 EMMC_CARD.card_capacity >> 20,
                 EMMC_CARD.cid.cid0.read(MID),
-                EMMC_CARD.cid.cid0.read(OID_HI),
-                EMMC_CARD.cid.cid0.read(OID_LO),
-                EMMC_CARD.cid.cid1.read(ProdName1),
-                EMMC_CARD.cid.cid1.read(ProdName2),
-                EMMC_CARD.cid.cid1.read(ProdName3),
-                EMMC_CARD.cid.cid1.read(ProdName4),
-                EMMC_CARD.cid.cid2.read(ProdName5),
+                EMMC_CARD.cid.cid0.read(OID_HI) as u8 as char,
+                EMMC_CARD.cid.cid0.read(OID_LO) as u8 as char,
+                EMMC_CARD.cid.cid1.read(ProdName1) as u8 as char,
+                EMMC_CARD.cid.cid1.read(ProdName2) as u8 as char,
+                EMMC_CARD.cid.cid1.read(ProdName3) as u8 as char,
+                EMMC_CARD.cid.cid1.read(ProdName4) as u8 as char,
+                EMMC_CARD.cid.cid2.read(ProdName5) as u8 as char,
                 EMMC_CARD.cid.cid2.read(ProdRevHi),
                 EMMC_CARD.cid.cid2.read(ProdRevLo),
                 EMMC_CARD.cid.cid3.read(ManufactureMonth),
@@ -2773,36 +2695,4 @@ impl EMMCController {
 
         return SdResult::EMMC_OK;
     }
-}
-
-/// Find the last set bit in a given `u32` i.e. find the bit index of 
-/// the MSB that is set in the value. 
-/// 
-/// RETURN: 
-/// - 0 - 32 are only possible answers as a u32 is 32 bits.
-#[rustfmt::skip]
-pub fn fls_u32(mut val: u32) -> u8 {
-    let mut r = 32u8;			     // Start at 32
-    if (!val != 0 ) {return 0;}			// If x is zero answer must be zero
-    if (!(val & 0xffff0000) != 0) {		// If none of the upper word bits are set
-        val <<= 16;						// We can roll it up 16 bits
-        r -= 16;						// Reduce r by 16
-    }
-    if (!(val & 0xff000000) != 0) {		// If none of uppermost byte bits are set
-        val <<= 8;						// We can roll it up by 8 bits
-        r -= 8;							// Reduce r by 8
-    }
-    if (!(val & 0xf0000000) != 0) {		// If none of the uppermost 4 bits are set
-        val <<= 4;						// We can roll it up by 4 bits
-        r -= 4;							// Reduce r by 4
-    }
-    if (!(val & 0xc0000000) != 0) {		// If none of the uppermost 2 bits are set
-        val <<= 2;						// We can roll it up by 2 bits
-        r -= 2;							// Reduce r by 2
-    }
-    if (!(val & 0x80000000) != 0) {		// If the uppermost bit is not set
-        val <<= 1;						// We can roll it up by 1 bit
-        r -= 1;							// Reduce r by 1
-    }
-    return r;							// Return the index of the uppermost set bit
 }

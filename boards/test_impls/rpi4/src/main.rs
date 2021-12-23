@@ -16,7 +16,7 @@ use bsp::drivers::common::interface::DriverManager;
 use bsp::drivers::driver_manager::driver_manager;
 use bsp::global;
 use bsp::global::EMMC_CONT;
-use console::{Read, Statistics, Write};
+use console::{Read, Statistics};
 use core::time::Duration;
 use log::console; 
 
@@ -74,8 +74,8 @@ fn kernel_main() -> ! {
         info!("waiting for 1 second");
         time_manager().wait_for(Duration::from_secs(1));
 
-        let mut buff = [0u8; 512 *20];
-        let _ = &EMMC_CONT.emmc_transfer_blocks(0, 20, &mut buff, false);
-        info!("read 20 blocks: {:?}", buff);
+        // let mut buff = [0u8; 512 *20];
+        // let _ = &EMMC_CONT.emmc_transfer_blocks(0, 20, &mut buff, false);
+        // info!("read 20 blocks: {:?}", buff);
     }
 }

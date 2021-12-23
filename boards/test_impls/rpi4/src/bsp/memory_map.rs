@@ -14,7 +14,7 @@ pub mod map {
 
     pub const GPIO_OFFSET:   usize = 0x0020_0000;
     pub const UART_OFFSET:   usize = 0x0020_1000;
-    pub const EMMC_OFFSET:   usize = 0x0030_0000;
+    pub const EMMC_OFFSET:   usize = 0x0034_0000;
 
     pub mod mmio {
         use super::*;
