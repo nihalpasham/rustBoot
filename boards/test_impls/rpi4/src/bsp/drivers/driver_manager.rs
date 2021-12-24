@@ -49,8 +49,8 @@ impl DriverManager for BSPDriverManager {
         // Note: emmc HW is to be initialized only after we fully initialize the uart instance
         // as we'll need the ability to `print` debug and error info prior to emmc initialization.
         match &EMMC_CONT.emmc_init_card() {
-            &super::sdhost::SdResult::EMMC_OK => {},
-            _ => {info!("failed to initialize EMMC2")}
+            &super::sdhost::SdResult::EMMC_OK => {info!("EMMC2 driver initialized\n")},
+            _ => {info!("failed to initialize EMMC2\n")}
         }
     }
 }

@@ -67,15 +67,15 @@ fn kernel_main() -> ! {
     // Test a failing timer case.
     time_manager().wait_for(Duration::from_nanos(1));
 
+    let mut buff = [0u8; 512*2 + 512];
+    let _ = &EMMC_CONT.emmc_transfer_blocks(0, 2, &mut buff, false);
+    info!("read 2 blocks: {:?}", buff);
+
     loop {
         // let c = console::console().read_char();
         // console::console().write_char(c);
 
         info!("waiting for 1 second");
         time_manager().wait_for(Duration::from_secs(1));
-
-        // let mut buff = [0u8; 512 *20];
-        // let _ = &EMMC_CONT.emmc_transfer_blocks(0, 20, &mut buff, false);
-        // info!("read 20 blocks: {:?}", buff);
     }
 }

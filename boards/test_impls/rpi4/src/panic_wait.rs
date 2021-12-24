@@ -26,8 +26,16 @@ macro_rules! panic_println {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    if let Some(args) = info.message() {
-        panic_println!("\nKernel panic: {}", args);
+    if let (Some(args), Some(location)) = (
+        info.message(),
+        info.location(),
+    ) {
+        panic_println!(
+            "\nKernel panic: occurred in file '{}' at line {}, msg: {}",
+            location.file(),
+            location.line(),
+            args,
+        );
     } else {
         panic_println!("\nKernel panic!");
     }
