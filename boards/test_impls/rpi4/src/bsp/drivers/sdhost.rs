@@ -750,7 +750,7 @@ use {
 
 register_structs! {
    #[allow(non_snake_case)]
-   pub EMMC_CARDRegisters {
+   pub EmmcCardregisters {
         (0x00 => OCR: ReadWrite<u32, OCR::Register>),
         (0x04 => SCR: ReadWrite<u64, SCR::Register>),
         (0x0c => CID_RAW32_0: ReadWrite<u32, CID_RAW32_0::Register>),
@@ -766,7 +766,7 @@ register_structs! {
 }
 
 /// Abstraction for the associated MMIO registers.
-type SDRegisters = MMIODerefWrapper<EMMC_CARDRegisters>;
+type SDRegisters = MMIODerefWrapper<EmmcCardregisters>;
 
 #[rustfmt::skip]
 mod rpi4_constants {
@@ -1545,7 +1545,7 @@ impl EMMCController {
         // Data timeout occurred
         {
             info!(
-                "EMMC: Wait for interrupt MASK: 0x{:08x}, STATUS: 0x{:08x}, iVAL: 0x{:08x}, RESP0: 0x{:08x}, time_diff: {}\n",
+                "EMMC: Wait for interrupt, MASK: 0x{:08x}, STATUS: 0x{:08x}, iVAL: 0x{:08x}, RESP0: 0x{:08x}, time_diff: {}\n",
                 mask,
                 self.registers.EMMC_STATUS.get(),
                 ival,
@@ -1830,7 +1830,6 @@ impl EMMCController {
         if self.emmc_wait_for_command() != SdResult::EMMC_OK {
             return SdResult::EMMC_BUSY;
         }
-
         #[cfg(feature = "log")]
         info!(
             "EMMC: Sending command, CMD_NAME: {:?}, CMD_CODE: 0x{:08x}, CMD_ARG: 0x{:08x}",
@@ -1964,7 +1963,9 @@ impl EMMCController {
     pub fn emmc_send_app_command(&self) -> SdResult {
         // If no RCA, send the APP_CMD and don't look for a response.
         if unsafe { EMMC_CARD.rca == 0 } {
-            self.emmc_sendcommand_p(SdCardCommands::APP_CMD.get_cmd(), 0x00000000);
+            let _resp =  self.emmc_sendcommand_p(SdCardCommands::APP_CMD.get_cmd(), 0x00000000);
+            timer_wait_micro(100); // add a 100 us delay for cmds that automatically send APP_CMDs
+            // info!(" no-rca APP_CMD result: {:?} ", resp);
         // If there is an RCA, include that in APP_CMD and check card accepted it.
         } else {
             let resp = self.emmc_sendcommand_p(SdCardCommands::APP_CMD_RCA.get_cmd(), unsafe {
@@ -2029,7 +2030,6 @@ impl EMMCController {
         } {
             return self.emmc_debug_response(resp);
         }
-
         // Get the command and pass the argument through.
         resp = self.emmc_sendcommand_p(cmd_type.get_cmd(), arg);
         if resp != SdResult::EMMC_OK {
@@ -2118,6 +2118,7 @@ impl EMMCController {
                 );
                 info!("EMMC: Reading SCR, only read : {:?} words\n", num_read);
             }
+
             return SdResult::EMMC_TIMEOUT;
         }
 
@@ -2175,6 +2176,7 @@ impl EMMCController {
             // Timed out waiting for stability flag
             #[cfg(feature = "log")]
             info!("EMMC: ERROR: failed to get stable clock.\n");
+
             return SdResult::EMMC_ERROR_CLOCK; // Return clock error
         }
         info!(
@@ -2214,6 +2216,7 @@ impl EMMCController {
         if (td >= 100000) {
             #[cfg(feature = "log")] // Timeout waiting for reset flag
             info!("EMMC: ERROR: failed to reset.\n");
+
             return SdResult::EMMC_ERROR_RESET; // Return reset SD Card error
         }
 
@@ -2268,23 +2271,33 @@ impl EMMCController {
     /// This is used for both SC and HC cards based on the parameter.
     pub fn emmc_app_send_op_cond(&self, arg: u32) -> SdResult {
         // Send APP_SEND_OP_COND with the given argument (for SC or HC cards).
-        // Note: The host shall set ACMD41 timeout more than 1 second to abort repeat of issuing ACMD41
+        // Note: The host shall set ACMD41 timeout more than 1 second to avoid re-issuing ACMD41.
+        // This command takes a while and is time-sensitive.
+        
+        // A tip: adding debug/print statements after issuing this cmd may seem like the cmd executes successfully. 
+        // However, removing them (i.e. `debug prints`) later can give us errors. Its probably because we waited a bit longer 
+        // while printing. Note: the above does NOT apply if you use the impl as-is.
+
+        // In other words- issuing `APP_SEND_OP_COND`, will trigger an APP_CMD prior to sending out APP_SEND_OP_COND.
+        // We must ensure a 100us delay between the 2 commands.
         let mut resp = self.emmc_send_command_a(SdCardCommands::APP_SEND_OP_COND, arg);
         if resp != SdResult::EMMC_OK && resp != SdResult::EMMC_TIMEOUT {
             #[cfg(feature = "log")]
             info!("EMMC: ACMD41 returned non-timeout error {:?}\n", resp);
+
             return resp;
         }
         let mut count = 6u8;
-        count -= 1;
         while unsafe { EMMC_CARD.ocr.read(OCR::card_power_up_busy) == 0 } && count != 0 {
             timer_wait_micro(400000);
-            resp = self.emmc_send_command(SdCardCommands::APP_SEND_OP_COND);
+            resp = self.emmc_send_command_a(SdCardCommands::APP_SEND_OP_COND, arg);
             if (resp != SdResult::EMMC_OK) && resp != SdResult::EMMC_TIMEOUT {
                 #[cfg(feature = "log")]
                 info!("EMMC: ACMD41 returned non-timeout error {:?}\n", resp);
+
                 return resp;
             }
+            count -= 1;
         }
 
         // Return timeout error if still not busy.
@@ -2390,6 +2403,7 @@ impl EMMCController {
             if resp != SdResult::EMMC_OK {
                 #[cfg(feature = "log")]
                 info!("EMMC: Timeout waiting for ready to read\n");
+
                 return self.emmc_debug_response(resp);
             }
 
@@ -2410,6 +2424,7 @@ impl EMMCController {
                         buffer[i + 1] = bytes[2];
                         buffer[i + 2] = bytes[1];
                         buffer[i + 3] = bytes[0];
+                        
                     }
                 }
             }
@@ -2429,8 +2444,8 @@ impl EMMCController {
 
             blocks_done += 1;
             if blocks_done == num_blocks {
-                // blocks_done is an idx count that starts at 0
-                break; // break here or we'll run into an out of bounds error.
+                // we're done transferring all blocks
+                break; // break here or we'll run into an `out of bounds` error.
             } else {
                 buffer = &mut buffer[(blocks_done * 512) as usize..];
             }
@@ -2468,6 +2483,7 @@ impl EMMCController {
         } {
             #[cfg(feature = "log")]
             info!("EMMC: Timeout waiting for data done\n");
+
             return self.emmc_debug_response(resp);
         }
 
@@ -2520,7 +2536,7 @@ impl EMMCController {
         };
 
         info!(
-            "EMMC: erasing blocks from {:?} to %{:?}\n",
+            "EMMC: erasing blocks from {:?} to {:?}\n",
             start_address, end_address
         );
         let mut resp = self.emmc_send_command_a(SdCardCommands::ERASE_WR_ST, start_address);
@@ -2546,10 +2562,11 @@ impl EMMCController {
             if (count == 0) {
                 #[cfg(feature = "log")]
                 info!(
-                    "EMMC: Timeout waiting for erase: {:x} {:x}\n",
+                    "EMMC: Timeout waiting for erase, status: 0x{:08x}, interrupt: 0x{:08x}\n",
                     self.registers.EMMC_STATUS.get(),
                     self.registers.EMMC_INTERRUPT.get()
                 );
+
                 return SdResult::EMMC_TIMEOUT;
             }
 
@@ -2557,7 +2574,11 @@ impl EMMCController {
             count -= 1;
         }
 
-        //scPrintf("EMMC: completed erase command int %08x\n",*EMMC_INTERRUPT);
+        #[cfg(feature = "log")]
+        info!(
+            "EMMC: completed erase command, interrupt_reg: 0x{:08x}\n",
+            self.registers.EMMC_INTERRUPT.get()
+        );
 
         return SdResult::EMMC_OK;
     }
@@ -2687,7 +2708,7 @@ impl EMMCController {
             self.registers
                 .EMMC_CONTROL0
                 .modify(CONTROL0::HCTL_DWIDTH.val(1));
-            info!("EMMC: Bus width set to 4\n");
+            info!("EMMC: Bus width set to 4");
         };
 
         // Send SET_BLOCKLEN (CMD16)

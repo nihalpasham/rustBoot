@@ -11,6 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 tock-registers = { version = "0.7.x", default-features = false, features = ["register_types"] }
+byteorder = { version = "1.4.3", default-features = false }
 
 # Platform specific dependencies
 [target.'cfg(target_arch = "aarch64")'.dependencies]

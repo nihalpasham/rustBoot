@@ -2,11 +2,12 @@
 #![feature(panic_info_message)]
 #![feature(format_args_nl)]
 #![feature(global_asm)]
+#![cfg_attr(not(test), no_std)]
 #![no_main]
-#![no_std]
 
 pub mod arch;
 pub mod bsp;
+pub mod fs;
 pub mod log;
 mod panic_wait;
 mod sync;
@@ -18,7 +19,10 @@ use bsp::global;
 use bsp::global::EMMC_CONT;
 use console::{Read, Statistics};
 use core::time::Duration;
-use log::console; 
+use log::console;
+
+use crate::fs::emmcfat::{Controller, TestClock, VolumeIdx};
+use crate::fs::filesystem::Mode;
 
 /// Early init code.
 ///
@@ -34,7 +38,6 @@ unsafe fn kernel_init() -> ! {
     }
     driver_manager().post_device_driver_init();
     // println! is usable from here on.
-
 
     // Transition from unsafe to safe.
     kernel_main()
@@ -67,9 +70,35 @@ fn kernel_main() -> ! {
     // Test a failing timer case.
     time_manager().wait_for(Duration::from_nanos(1));
 
-    let mut buff = [0u8; 512*2 + 512];
-    let _ = &EMMC_CONT.emmc_transfer_blocks(0, 2, &mut buff, false);
-    info!("read 2 blocks: {:?}", buff);
+    // let mut buff = [0u8; 512 * 2];
+    // let _ = &EMMC_CONT.emmc_transfer_blocks(0x2000, 2, &mut buff, false);
+    // info!("read 2 blocks: {:?}", buff);
+
+    let mut ctrlr = Controller::new(&EMMC_CONT, TestClock);
+    let volume = ctrlr.get_volume(VolumeIdx(0));
+    if let Ok(mut volume) = volume {
+        let root_dir = ctrlr.open_root_dir(&volume).unwrap();
+        info!("\tListing root directory:\n");
+        ctrlr
+            .iterate_dir(&volume, &root_dir, |x| {
+                info!("\t\tFound: {:?}", x);
+            })
+            .unwrap();
+        info!("\tRetrieve handle to `config.txt` file present in root_dir...");
+        let mut file = ctrlr
+            .open_file_in_dir(&mut volume, &root_dir, "CONFIG.TXT", Mode::ReadOnly)
+            .unwrap();
+        info!("\tRead `config.txt` from sd-card, output to terminal...");
+        info!("FILE STARTS:");
+        while !file.eof() {
+            let mut buffer = [0u8; 4*512];
+            let num_read = ctrlr.read(&volume, &mut file, &mut buffer).unwrap();
+            let file_contents = core::str::from_utf8(&buffer).unwrap();
+            info!("\n{}", file_contents);
+        }
+        info!("EOF");
+        ctrlr.close_file(&volume, file).unwrap();
+    }
 
     loop {
         // let c = console::console().read_char();

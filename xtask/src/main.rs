@@ -43,7 +43,7 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
     let _p = xshell::pushd(root_dir().join("boards/test_impls").join(target))?;
     match target {
         &"rpi4" => {
-            cmd!("cargo build --release --features log").run()?; // for logging add `--features log`
+            cmd!("cargo build --release").run()?; // for logging add `--features log`
             if Path::new("kernel8.img").exists() {
                 cmd!("powershell -command \"del kernel8.img\"").run()?;
             }
