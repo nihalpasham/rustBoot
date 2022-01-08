@@ -23,5 +23,7 @@ pub mod map {
         pub const GPIO_START:       usize = START + GPIO_OFFSET;
         pub const PL011_UART_START: usize = START + UART_OFFSET;
         pub const EMMC_START:       usize = START + EMMC_OFFSET;
+        pub const GICD_START:       usize = 0xFF84_1000;
+        pub const GICC_START:       usize = 0xFF84_2000;
     }
 }

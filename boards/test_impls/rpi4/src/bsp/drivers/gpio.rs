@@ -5,7 +5,7 @@
 //! GPIO Driver.
 
 use super::common::MMIODerefWrapper;
-use crate::sync::{interface::Mutex, NullLock};
+use crate::sync::{interface::Mutex, IRQSafeNullLock};
 use tock_registers::{
     interfaces::{ReadWriteable, Writeable},
     register_bitfields, register_structs,
@@ -119,7 +119,7 @@ pub use GPIOInner as PanicGPIO;
 
 /// Representation of the GPIO HW.
 pub struct GPIO {
-    inner: NullLock<GPIOInner>,
+    inner: IRQSafeNullLock<GPIOInner>,
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -168,7 +168,7 @@ impl GPIO {
     /// - The user must ensure to provide a correct MMIO start address.
     pub const unsafe fn new(mmio_start_addr: usize) -> Self {
         Self {
-            inner: NullLock::new(GPIOInner::new(mmio_start_addr)),
+            inner: IRQSafeNullLock::new(GPIOInner::new(mmio_start_addr)),
         }
     }
 

@@ -18,6 +18,7 @@
 	add	\register, \register, #:lo12:\symbol
 .endm
 
+.equ _EL2, 0x8
 .equ _core_id_mask, 0b11
 
 //--------------------------------------------------------------------------------------------------
@@ -29,6 +30,14 @@
 // fn _start()
 //------------------------------------------------------------------------------
 _start:
+	// By default, the Raspberry will always start executing in EL2. 
+	// Since we are booting a traditional Kernel (i.e. Linux), we have to transition 
+	// into the more appropriate EL1. Only proceed if the core executes in EL2. 
+	// Park it otherwise.
+	mrs	x0, CurrentEL
+	cmp	x0, _EL2
+	b.ne	.L_parking_loop
+
 	// Only proceed on the boot core. Park it otherwise.
 	mrs	x1, MPIDR_EL1
 	and	x1, x1, _core_id_mask

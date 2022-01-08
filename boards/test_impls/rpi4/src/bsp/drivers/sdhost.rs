@@ -1,3 +1,7 @@
+//! Driver - BCM2711 EMMC2 controller 
+//! 
+//! adapted from SDCard.c by Leon de Boer(LdB)
+
 #![allow(warnings)]
 
 use core::{convert::TryInto, fmt::Debug};

@@ -14,7 +14,7 @@ tock-registers = { version = "0.7.x", default-features = false, features = ["reg
 byteorder = { version = "1.4.3", default-features = false }
 
 # Platform specific dependencies
-[target.'cfg(target_arch = "aarch64")'.dependencies]
+# [target.'cfg(target_arch = "aarch64")'.dependencies]
 cortex-a = { version = "6.x.x" }
 
 [features]

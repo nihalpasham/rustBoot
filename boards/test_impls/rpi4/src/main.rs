@@ -2,15 +2,22 @@
 #![feature(panic_info_message)]
 #![feature(format_args_nl)]
 #![feature(global_asm)]
+#![feature(asm_const)]
+#![feature(asm)]
 #![cfg_attr(not(test), no_std)]
 #![no_main]
+#![allow(warnings)]
 
 pub mod arch;
 pub mod bsp;
+mod exception;
 pub mod fs;
 pub mod log;
 mod panic_wait;
+mod state;
 mod sync;
+
+mod boot;
 
 use arch::time::*;
 use bsp::drivers::common::interface::DriverManager;
@@ -19,10 +26,14 @@ use bsp::global;
 use bsp::global::EMMC_CONT;
 use console::{Read, Statistics};
 use core::time::Duration;
+use core::sync::atomic::Ordering;
 use log::console;
 
 use crate::fs::emmcfat::{Controller, TestClock, VolumeIdx};
 use crate::fs::filesystem::Mode;
+
+use crate::boot::{boot_to_kernel, boot_into_kernel};
+
 
 /// Early init code.
 ///
@@ -52,6 +63,12 @@ fn kernel_main() -> ! {
     );
     info!("Booting on: {}", global::board_name());
 
+    let (_, privilege_level) = exception::exception::current_privilege_level();
+    info!("Current privilege level: {}", privilege_level);
+
+    info!("Exception handling state:");
+    exception::asynchronous::print_state();
+
     info!(
         "Architectural timer resolution: {} ns",
         time_manager().resolution().as_nanos()
@@ -76,6 +93,10 @@ fn kernel_main() -> ! {
 
     let mut ctrlr = Controller::new(&EMMC_CONT, TestClock);
     let volume = ctrlr.get_volume(VolumeIdx(0));
+
+    let mut dtb = [0u8; 100 * 512];
+    let mut kernel = [0u8; 15200 * 4 * 512]; // kernel is about 28.5mb in size
+
     if let Ok(mut volume) = volume {
         let root_dir = ctrlr.open_root_dir(&volume).unwrap();
         info!("\tListing root directory:\n");
@@ -84,27 +105,56 @@ fn kernel_main() -> ! {
                 info!("\t\tFound: {:?}", x);
             })
             .unwrap();
-        info!("\tRetrieve handle to `config.txt` file present in root_dir...");
-        let mut file = ctrlr
-            .open_file_in_dir(&mut volume, &root_dir, "CONFIG.TXT", Mode::ReadOnly)
+        // info!("\tRetrieve handle to `config.txt` file present in root_dir...");
+        // let mut file = ctrlr
+        //     .open_file_in_dir(&mut volume, &root_dir, "CONFIG.TXT", Mode::ReadOnly)
+        //     .unwrap();
+        // info!("\tRead `config.txt` from sd-card, output to terminal...");
+        // info!("FILE STARTS:");
+        // while !file.eof() {
+        //     let mut buffer = [0u8; 4*512];
+        //     let num_read = ctrlr.read(&volume, &mut file, &mut buffer).unwrap();
+        //     let file_contents = core::str::from_utf8(&buffer).unwrap();
+        //     info!("\n{}", file_contents);
+        // }
+        // info!("EOF");
+        // ctrlr.close_file(&volume, file).unwrap();
+
+        // Load dtb
+        info!("\tGet handle to `dtb` file in root_dir...");
+        let mut dtb_file = ctrlr
+            .open_file_in_dir(&mut volume, &root_dir, "BCM271~1.DTB", Mode::ReadOnly)
             .unwrap();
-        info!("\tRead `config.txt` from sd-card, output to terminal...");
-        info!("FILE STARTS:");
-        while !file.eof() {
-            let mut buffer = [0u8; 4*512];
-            let num_read = ctrlr.read(&volume, &mut file, &mut buffer).unwrap();
-            let file_contents = core::str::from_utf8(&buffer).unwrap();
-            info!("\n{}", file_contents);
+        info!("\tload `dtb` into RAM...");
+        while !dtb_file.eof() {
+            let num_read = ctrlr.read(&volume, &mut dtb_file, &mut dtb).unwrap();
+            info!("\t\tloaded dtb: {:?} bytes, starting at addr: {:p}", num_read, &dtb);
         }
         info!("EOF");
-        ctrlr.close_file(&volume, file).unwrap();
+        ctrlr.close_file(&volume, dtb_file).unwrap();
+
+        // Load kernel
+        info!("\tGet handle to `kernel` file in root_dir...");
+        let mut kernel_file = ctrlr
+            .open_file_in_dir(&mut volume, &root_dir, "VMLINUZ", Mode::ReadOnly)
+            .unwrap();
+        info!("\tload `kernel` into RAM...");
+        while !kernel_file.eof() {
+            let num_read = ctrlr.read(&volume, &mut kernel_file, &mut kernel).unwrap();
+            info!("\t\tloaded kernel: {:?} bytes, starting at addr: {:p}", num_read, &kernel);
+        }
+        info!("first 40 kernel bytes: {:?}", &kernel[..40]);
+        info!("EOF");
+        ctrlr.close_file(&volume, kernel_file).unwrap();
     }
 
-    loop {
-        // let c = console::console().read_char();
-        // console::console().write_char(c);
+     {boot_to_kernel(kernel.as_ptr() as usize, dtb.as_ptr() as usize)}
 
-        info!("waiting for 1 second");
-        time_manager().wait_for(Duration::from_secs(1));
-    }
+    // loop {
+    //     // let c = console::console().read_char();
+    //     // console::console().write_char(c);
+
+    //     info!("waiting for 1 second");
+    //     time_manager().wait_for(Duration::from_secs(1));
+    // }
 }

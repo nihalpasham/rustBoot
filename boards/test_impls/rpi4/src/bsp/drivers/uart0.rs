@@ -12,7 +12,7 @@
 use super::common::MMIODerefWrapper;
 use crate::arch::cpu_core;
 use crate::log::console;
-use crate::sync::{interface::Mutex, NullLock};
+use crate::sync::{interface::Mutex, IRQSafeNullLock};
 use crate::{print, println};
 use core::fmt;
 use tock_registers::{
@@ -189,7 +189,7 @@ pub use PL011UartInner as PanicUart;
 
 /// Representation of the UART.
 pub struct PL011Uart {
-    inner: NullLock<PL011UartInner>,
+    inner: IRQSafeNullLock<PL011UartInner>,
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -210,23 +210,14 @@ impl PL011UartInner {
         }
     }
 
-    /// Set up baud rate and characteristics.
+    /// Set up baud rate and characteristics. For PL011's baud rate calculations, look at
+    /// https://developer.arm.com/documentation/ddi0183/g/programmers-model/register-descriptions/fractional-baud-rate-register--uartfbrd
     ///
-    /// This results in 8N1 and 921_600 baud.
-    ///
-    /// The calculation for the BRD is (we set the clock to 48 MHz in config.txt):
-    /// `(48_000_000 / 16) / 921_600 = 3.2552083`.
-    ///
-    /// This means the integer part is `3` and goes into the `IBRD`.
-    /// The fractional part is `0.2552083`.
-    ///
-    /// `FBRD` calculation according to the PL011 Technical Reference Manual:
-    /// `INTEGER((0.2552083 * 64) + 0.5) = 16`.
-    ///
-    /// Therefore, the generated baud rate divider is: `3 + 16/64 = 3.25`. Which results in a
-    /// genrated baud rate of `48_000_000 / (16 * 3.25) = 923_077`.
-    ///
-    /// Error = `((923_077 - 921_600) / 921_600) * 100 = 0.16%`.
+    /// For a bitrate of 115200 bps, the corresponding integer and fractional 
+    /// divisor values (when UARTCLK is 4MHz) are
+    /// 
+    /// - **integer divisor:** 2
+    /// - **fractional divisor:** 0xB
     pub fn init(&mut self) {
         // Execution can arrive here while there are still characters queued in the TX FIFO and
         // actively being sent out by the UART hardware. If the UART is turned off in this case,
@@ -251,8 +242,8 @@ impl PL011UartInner {
         // contents of IBRD or FBRD, a LCR_H write must always be performed at the end.
         //
         // Set the baud rate, 8N1 and FIFO enabled.
-        self.registers.IBRD.write(IBRD::BAUD_DIVINT.val(3));
-        self.registers.FBRD.write(FBRD::BAUD_DIVFRAC.val(16));
+        self.registers.IBRD.write(IBRD::BAUD_DIVINT.val(2));
+        self.registers.FBRD.write(FBRD::BAUD_DIVFRAC.val(0xB));
         self.registers
             .LCR_H
             .write(LCR_H::WLEN::EightBit + LCR_H::FEN::FifosEnabled);
@@ -344,7 +335,7 @@ impl PL011Uart {
     /// - The user must ensure to provide a correct MMIO start address.
     pub const unsafe fn new(mmio_start_addr: usize) -> Self {
         Self {
-            inner: NullLock::new(PL011UartInner::new(mmio_start_addr)),
+            inner: IRQSafeNullLock::new(PL011UartInner::new(mmio_start_addr)),
         }
     }
 }
