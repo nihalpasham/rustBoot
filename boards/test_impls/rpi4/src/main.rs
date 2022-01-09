@@ -25,15 +25,14 @@ use bsp::drivers::driver_manager::driver_manager;
 use bsp::global;
 use bsp::global::EMMC_CONT;
 use console::{Read, Statistics};
-use core::time::Duration;
 use core::sync::atomic::Ordering;
+use core::time::Duration;
 use log::console;
 
 use crate::fs::emmcfat::{Controller, TestClock, VolumeIdx};
 use crate::fs::filesystem::Mode;
 
-use crate::boot::{boot_to_kernel, boot_into_kernel};
-
+use crate::boot::{boot_to_kernel, DTB_LOAD_ADDR, KERNEL_LOAD_ADDR};
 
 /// Early init code.
 ///
@@ -94,9 +93,6 @@ fn kernel_main() -> ! {
     let mut ctrlr = Controller::new(&EMMC_CONT, TestClock);
     let volume = ctrlr.get_volume(VolumeIdx(0));
 
-    let mut dtb = [0u8; 100 * 512];
-    let mut kernel = [0u8; 15200 * 4 * 512]; // kernel is about 28.5mb in size
-
     if let Ok(mut volume) = volume {
         let root_dir = ctrlr.open_root_dir(&volume).unwrap();
         info!("\tListing root directory:\n");
@@ -121,34 +117,53 @@ fn kernel_main() -> ! {
         // ctrlr.close_file(&volume, file).unwrap();
 
         // Load dtb
-        info!("\tGet handle to `dtb` file in root_dir...");
+        info!("Get handle to `dtb` file in root_dir...");
         let mut dtb_file = ctrlr
             .open_file_in_dir(&mut volume, &root_dir, "BCM271~1.DTB", Mode::ReadOnly)
             .unwrap();
-        info!("\tload `dtb` into RAM...");
+        info!("\t\tload `dtb` into RAM...");
         while !dtb_file.eof() {
-            let num_read = ctrlr.read(&volume, &mut dtb_file, &mut dtb).unwrap();
-            info!("\t\tloaded dtb: {:?} bytes, starting at addr: {:p}", num_read, &dtb);
+            let num_read = ctrlr
+                .read(&volume, &mut dtb_file, unsafe { &mut DTB_LOAD_ADDR.0 })
+                .unwrap();
+            info!(
+                "\t\tloaded dtb: {:?} bytes, starting at addr: {:p}",
+                num_read,
+                unsafe { &mut DTB_LOAD_ADDR.0 }
+            );
         }
-        info!("EOF");
         ctrlr.close_file(&volume, dtb_file).unwrap();
 
         // Load kernel
-        info!("\tGet handle to `kernel` file in root_dir...");
+        info!("Get handle to `kernel` file in root_dir...");
         let mut kernel_file = ctrlr
             .open_file_in_dir(&mut volume, &root_dir, "VMLINUZ", Mode::ReadOnly)
             .unwrap();
-        info!("\tload `kernel` into RAM...");
+        info!("\t\tload `kernel` into RAM...");
         while !kernel_file.eof() {
-            let num_read = ctrlr.read(&volume, &mut kernel_file, &mut kernel).unwrap();
-            info!("\t\tloaded kernel: {:?} bytes, starting at addr: {:p}", num_read, &kernel);
+            let num_read = ctrlr
+                .read(&volume, &mut kernel_file, unsafe {
+                    &mut KERNEL_LOAD_ADDR.0
+                })
+                .unwrap();
+            info!(
+                "\t\tloaded kernel: {:?} bytes, starting at addr: {:p}",
+                num_read,
+                unsafe { &mut KERNEL_LOAD_ADDR.0 }
+            );
         }
-        info!("first 40 kernel bytes: {:?}", &kernel[..40]);
-        info!("EOF");
+        info!(
+            "***************************************** \
+            Starting kernel \
+            ********************************************\n\n"
+        );
         ctrlr.close_file(&volume, kernel_file).unwrap();
     }
 
-     {boot_to_kernel(kernel.as_ptr() as usize, dtb.as_ptr() as usize)}
+    boot_to_kernel(
+        unsafe { &mut KERNEL_LOAD_ADDR.0 }.as_ptr() as usize,
+        unsafe { &mut DTB_LOAD_ADDR.0 }.as_ptr() as usize,
+    )
 
     // loop {
     //     // let c = console::console().read_char();

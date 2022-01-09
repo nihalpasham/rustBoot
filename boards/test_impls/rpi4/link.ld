@@ -3,14 +3,16 @@
  * Copyright (c) 2018-2021 Andre Richter <andre.o.richter@gmail.com>
  */
 
-PAGE_SIZE = 64K;
+PAGE_SIZE = 4K;
 PAGE_MASK = PAGE_SIZE - 1;
 
 __rpi_phys_dram_start_addr = 0;
-__boot_core_stack_end_exclusive = 93847552; /* we need a much bigger stack as we're loading the full kernel into RAM*/
+/*__boot_core_stack_end_exclusive = 93847552; /* we need a much bigger stack as we're loading the full kernel into RAM*/
 
 /* The physical address at which the the kernel binary will be loaded by the Raspberry's firmware */
 __rpi_phys_binary_load_addr = 0x80000;
+__kernel_load_addr = 0x3C00000;
+__dtb_load_addr = 0x3A00000;
 
 ENTRY(__rpi_phys_binary_load_addr)
 
@@ -27,6 +29,8 @@ PHDRS
     segment_boot_core_stack PT_LOAD FLAGS(6);
     segment_code            PT_LOAD FLAGS(5);
     segment_data            PT_LOAD FLAGS(6);
+    segment_dtb_load        PT_LOAD FLAGS(6);
+    segment_kernel_load     PT_LOAD FLAGS(6);
 }
 
 SECTIONS
@@ -42,7 +46,7 @@ SECTIONS
                                              /*   | stack       */
         . += __rpi_phys_binary_load_addr;    /*   | growth      */
                                              /*   | direction   */
-        /*__boot_core_stack_end_exclusive = .; /*   |             */
+        __boot_core_stack_end_exclusive = .; /*   |             */
     } :segment_boot_core_stack
 
     ASSERT((. & PAGE_MASK) == 0, "End of boot core stack is not page aligned")
@@ -79,4 +83,22 @@ SECTIONS
         . = ALIGN(16);
         __bss_end_exclusive = .;
     } :segment_data /* not a section that's loaded into memroy, we just need to allocate as many zeroed bytes.*/
+
+    /***********************************************************************************************
+    * A section to store the dtb
+    ***********************************************************************************************/
+    . = __dtb_load_addr;
+    .dtb_load_addr : 
+    {
+        *(.dtb_load_addr._dtb_start)
+    } :segment_dtb_load
+
+    /***********************************************************************************************
+    * A section to store the Kernel
+    ***********************************************************************************************/
+    . = __kernel_load_addr;
+    .kernel_load_addr : 
+    {
+        *(.kernel_load_addr._kernel_start)
+    } :segment_kernel_load
 }

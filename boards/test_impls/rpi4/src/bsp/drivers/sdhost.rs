@@ -2184,7 +2184,7 @@ impl EMMCController {
             return SdResult::EMMC_ERROR_CLOCK; // Return clock error
         }
         info!(
-            "Divisor = {:?}, Freq Set = {:?}\n",
+            "Divisor = {:?}, Freq Set = {:?}",
             div,
             (BASE_CLOCK as u32 / div) >> 1
         );
@@ -2204,7 +2204,7 @@ impl EMMCController {
         self.registers.EMMC_CONTROL1.write(CONTROL1::SRST_HC.val(1)); // Reset the complete host circuit
         timer_wait_micro(10); // Wait 10 microseconds
 
-        info!("EMMC: reset card.\n");
+        info!("EMMC: reset card.");
         while (self.registers.EMMC_CONTROL1.matches_all(CONTROL1::SRST_HC.val(1))) // Host circuit reset not clear yet
                 && (td < 100000)
         // Timeout not reached
@@ -2728,7 +2728,7 @@ impl EMMCController {
             serial |= EMMC_CARD.cid.cid3.read(CID_RAW32_3::SerialNumLo);
 
             info!(
-                "EMMC: SD Card {}, {}Mb, mfr_id: {}, '{}{}:{}{}{}{}{}', r{}.{}, mfr_date: {}/{}, serial: 0x{:08x}, RCA: 0x{:04x}\n",
+                "EMMC: SD Card {}, {}Mb, mfr_id: {}, '{}{}:{}{}{}{}{}', r{}.{}, mfr_date: {}/{}, serial: 0x{:08x}, RCA: 0x{:04x}",
                 EMMC_TYPE_NAME[EMMC_CARD.emmc_card_type as usize],
                 EMMC_CARD.card_capacity >> 20,
                 EMMC_CARD.cid.cid0.read(MID),

@@ -1,7 +1,38 @@
-// use crate::info;
 
-// use crate::bsp::global::IRQ_CNTLR;
-// use crate::bsp::drivers::common::interface::DeviceDriver;
+
+const MAX_KERNEL_SIZE: usize = 15200 * 4 * 512;
+const MAX_DTB_SIZE: usize = 100 * 512;
+
+pub struct KernelEntry(pub [u8; MAX_KERNEL_SIZE]);
+pub struct DtbEntry(pub [u8; MAX_DTB_SIZE]);
+
+impl KernelEntry {
+    /// Get the kernel's entry point. We assume all Aarch64 kernels use a 2MB aligned base.
+    /// i.e. this impl wont work for kernels that aren't 2MB aligned.  
+    /// 
+    /// The flags field (introduced in v3.17) is a little-endian 64-bit field. 
+    /// Bit 3 of the flags field specifies `Kernel physical placement`
+    /// - 0 - 2MB aligned base should be as close as possible to the base of DRAM, since memory 
+    /// below it is not accessible via the linear mapping
+    /// - 1 - 2MB aligned base may be anywhere in physical memory
+    pub const fn new() -> Self {
+        Self([0u8; MAX_KERNEL_SIZE])
+    }
+}
+
+impl DtbEntry {
+    /// Get a 2MB aligned entry point to the DTB.
+    pub const fn new() -> Self {
+        Self([0u8; MAX_DTB_SIZE])
+    }
+}
+
+#[link_section = ".kernel_load_addr._kernel_start"]
+pub static mut KERNEL_LOAD_ADDR: KernelEntry = KernelEntry::new();
+
+#[link_section = ".dtb_load_addr._dtb_start"]
+pub static mut DTB_LOAD_ADDR: DtbEntry = DtbEntry::new();
+
 
 #[no_mangle]
 #[inline(never)]
