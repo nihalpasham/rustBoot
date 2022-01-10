@@ -25,7 +25,6 @@ use bsp::drivers::driver_manager::driver_manager;
 use bsp::global;
 use bsp::global::EMMC_CONT;
 use console::{Read, Statistics};
-use core::sync::atomic::Ordering;
 use core::time::Duration;
 use log::console;
 
@@ -153,9 +152,9 @@ fn kernel_main() -> ! {
             );
         }
         info!(
-            "***************************************** \
+            "\n***************************************** \
             Starting kernel \
-            ********************************************\n\n"
+            ********************************************\n"
         );
         ctrlr.close_file(&volume, kernel_file).unwrap();
     }

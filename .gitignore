@@ -1,8 +1,4 @@
-/boards/test_impls/rpi4/src/bsp/drivers/sdhost_test.rs
-/boards/test_impls/rpi4/src/linksyms_test.rs
-/boards/test_impls/rpi4/bcm2711-rpi-4-b.dtb
-/boards/test_impls/rpi4/src/bsp/drivers/gicv2
-/boards/test_impls/rpi4/src/arch/smp.rs
+boards/test_impls/rpi4/src/testing_stuff
 /target
 Cargo.lock
 

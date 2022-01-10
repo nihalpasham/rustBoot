@@ -33,35 +33,6 @@ pub static mut KERNEL_LOAD_ADDR: KernelEntry = KernelEntry::new();
 #[link_section = ".dtb_load_addr._dtb_start"]
 pub static mut DTB_LOAD_ADDR: DtbEntry = DtbEntry::new();
 
-
-#[no_mangle]
-#[inline(never)]
-/// Unconditionally jump to the kernel. This method uses `inline assembly`. I'd much rather avoid this.
-pub unsafe extern "C" fn boot_into_kernel(img: usize, dtb: usize) -> ! {
-    asm!(
-        "mov x4, {img}",     // move linux kernel pointer into register x4
-        "mov x5, {dtb}",     // move dtb pointer into register x5
-        img = in(reg) img,
-        dtb = in(reg) dtb,
-        options(nomem, nostack, preserves_flags)
-    );
-
-    // initialize GICv2 for kernel.
-    // let _ = IRQ_CNTLR.init();
-
-    asm!(
-        "mov x3, xzr", // zero-out registers x1, x2, x3
-        "mov x2, xzr",
-        "mov x1, xzr",
-        "mov x0, x5", // move the dtb pointer to x0 (as first argument)
-        "br x4",      // unconditionally jump to kernel entry at x4
-        options(nomem, nostack, preserves_flags)
-    );
-
-    // we dont intend to return, i.e. `boot_into_kernel` diverges.
-    halt()
-}
-
 type EntryPoint = unsafe extern "C" fn(dtb: usize, rsv0: usize, rsv1: usize, rsv2: usize);
 
 #[no_mangle]
@@ -80,3 +51,30 @@ pub fn halt() -> ! {
         unsafe { asm!("wfe") }
     }
 }
+
+// #[no_mangle]
+// #[inline(never)]
+// /// Unconditionally jump to the kernel. This method uses `inline assembly`. I'd much rather avoid this.
+// pub unsafe extern "C" fn boot_into_kernel(img: usize, dtb: usize) -> ! {
+//     asm!(
+//         "mov x4, {img}",     // move linux kernel pointer into register x4
+//         "mov x5, {dtb}",     // move dtb pointer into register x5
+//         img = in(reg) img,
+//         dtb = in(reg) dtb,
+//         options(nomem, nostack, preserves_flags)
+//     );
+
+//     asm!(
+//         "mov x3, xzr", // zero-out registers x1, x2, x3
+//         "mov x2, xzr",
+//         "mov x1, xzr",
+//         "mov x0, x5", // move the dtb pointer to x0 (as first argument)
+//         "br x4",      // unconditionally jump to kernel entry at x4
+//         options(nomem, nostack, preserves_flags)
+//     );
+
+//     // we dont intend to return, i.e. `boot_into_kernel` diverges.
+//     halt()
+// }
+
+
