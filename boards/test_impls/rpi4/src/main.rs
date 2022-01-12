@@ -5,6 +5,7 @@
 #![feature(asm_const)]
 #![feature(asm)]
 #![cfg_attr(not(test), no_std)]
+#![feature(slice_as_chunks)]
 #![no_main]
 #![allow(warnings)]
 
@@ -85,10 +86,6 @@ fn kernel_main() -> ! {
     // Test a failing timer case.
     time_manager().wait_for(Duration::from_nanos(1));
 
-    // let mut buff = [0u8; 512 * 2];
-    // let _ = &EMMC_CONT.emmc_transfer_blocks(0x2000, 2, &mut buff, false);
-    // info!("read 2 blocks: {:?}", buff);
-
     let mut ctrlr = Controller::new(&EMMC_CONT, TestClock);
     let volume = ctrlr.get_volume(VolumeIdx(0));
 
@@ -100,20 +97,6 @@ fn kernel_main() -> ! {
                 info!("\t\tFound: {:?}", x);
             })
             .unwrap();
-        // info!("\tRetrieve handle to `config.txt` file present in root_dir...");
-        // let mut file = ctrlr
-        //     .open_file_in_dir(&mut volume, &root_dir, "CONFIG.TXT", Mode::ReadOnly)
-        //     .unwrap();
-        // info!("\tRead `config.txt` from sd-card, output to terminal...");
-        // info!("FILE STARTS:");
-        // while !file.eof() {
-        //     let mut buffer = [0u8; 4*512];
-        //     let num_read = ctrlr.read(&volume, &mut file, &mut buffer).unwrap();
-        //     let file_contents = core::str::from_utf8(&buffer).unwrap();
-        //     info!("\n{}", file_contents);
-        // }
-        // info!("EOF");
-        // ctrlr.close_file(&volume, file).unwrap();
 
         // Load dtb
         info!("Get handle to `dtb` file in root_dir...");
@@ -123,7 +106,7 @@ fn kernel_main() -> ! {
         info!("\t\tload `dtb` into RAM...");
         while !dtb_file.eof() {
             let num_read = ctrlr
-                .read(&volume, &mut dtb_file, unsafe { &mut DTB_LOAD_ADDR.0 })
+                .read_multi(&volume, &mut dtb_file, unsafe { &mut DTB_LOAD_ADDR.0 })
                 .unwrap();
             info!(
                 "\t\tloaded dtb: {:?} bytes, starting at addr: {:p}",
@@ -141,18 +124,18 @@ fn kernel_main() -> ! {
         info!("\t\tload `kernel` into RAM...");
         while !kernel_file.eof() {
             let num_read = ctrlr
-                .read(&volume, &mut kernel_file, unsafe {
+                .read_multi(&volume, &mut kernel_file, unsafe {
                     &mut KERNEL_LOAD_ADDR.0
                 })
                 .unwrap();
             info!(
-                "\t\tloaded kernel: {:?} bytes, starting at addr: {:p}",
+                "\t\tloaded kernel: {:?} bytes, starting at addr: {:p}\n",
                 num_read,
                 unsafe { &mut KERNEL_LOAD_ADDR.0 }
             );
         }
         info!(
-            "\n***************************************** \
+            "***************************************** \
             Starting kernel \
             ********************************************\n"
         );
@@ -164,11 +147,4 @@ fn kernel_main() -> ! {
         unsafe { &mut DTB_LOAD_ADDR.0 }.as_ptr() as usize,
     )
 
-    // loop {
-    //     // let c = console::console().read_char();
-    //     // console::console().write_char(c);
-
-    //     info!("waiting for 1 second");
-    //     time_manager().wait_for(Duration::from_secs(1));
-    // }
 }

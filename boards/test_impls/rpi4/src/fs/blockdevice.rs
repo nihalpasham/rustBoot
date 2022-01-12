@@ -2,6 +2,8 @@
 //!
 //! Generic code for handling block devices.
 
+use crate::info;
+
 /// Represents a standard 512 byte block (also known as a sector). IBM PC
 /// formatted 5.25" and 3.5" floppy disks, SD/MMC cards up to 1 GiB in size
 /// and IDE/SATA Hard Drives up to about 2 TiB all have 512 byte blocks.
@@ -63,6 +65,19 @@ impl Block {
         Block {
             contents: [0u8; Self::LEN],
         }
+    }
+
+    /// Converts a [[u8; 512]] slice into a slice of `Block`s,
+    /// assuming that there's no remainder.
+    ///
+    /// # Safety
+    ///
+    /// This may only be called when
+    /// - The slice splits exactly into `N`-element chunks (aka `self.len() % N == 0`).
+    /// - `N != 0`.
+    pub fn from_array_slice(blocks: &mut [[u8; Self::LEN]]) -> &mut [Block] {
+        let len = blocks.len();
+        unsafe { core::slice::from_raw_parts_mut(blocks.as_mut_ptr().cast::<Block>(), len) }
     }
 }
 

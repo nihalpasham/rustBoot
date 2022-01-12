@@ -15,7 +15,7 @@
 //
 // ****************************************************************************
 
-use crate::bsp::drivers::sdhost::{EMMCController, SdResult};
+use crate::bsp::drivers::emmc::{EMMCController, SdResult};
 use crate::bsp::global::EMMC_CONT;
 use crate::info;
 use byteorder::{ByteOrder, LittleEndian};
@@ -116,6 +116,7 @@ impl BlockDevice for &EMMCController {
             }
         }
         let num_blocks = blocks.len();
+        // info!("\temmc controller, num_blocks, {:?}", num_blocks);
         let len = num_blocks * Block::LEN;
         let ptr = (&mut blocks[0].contents).as_mut_ptr();
         let mut buff;
@@ -132,6 +133,7 @@ impl BlockDevice for &EMMCController {
             // - This is still safe as it satifies all (of from_raw_parts_mut) usage conditions.
             buff = core::slice::from_raw_parts_mut(ptr, len);
         }
+        // info!("\temmc controller, buffer length, {:?}", buff.len());
         let res =
             &EMMC_CONT.emmc_transfer_blocks(start_block_idx.0, num_blocks as u32, &mut buff, false);
         match res {
@@ -631,6 +633,91 @@ where
         match &volume.volume_type {
             VolumeType::Fat(fat) => return fat.delete_directory_entry(self, dir, name),
         };
+    }
+
+    fn check_contiguous_cluster_count(
+        &self,
+        volume: &Volume,
+        mut cluster: Cluster,
+    ) -> Result<u32, Error<D::Error>> {
+        let mut contiguous_cluster_count = 1u32;
+        let mut next_cluster = match &volume.volume_type {
+            VolumeType::Fat(fat) => match fat.next_cluster(self, cluster) {
+                Ok(cluster) => cluster,
+                Err(e) => match e {
+                    // If this is the last cluster for the file, simply return the same cluster.
+                    Error::EndOfFile => cluster,
+                    _ => panic!(
+                        "Error: traversing the FAT table, accessed free space or a bad cluster"
+                    ),
+                },
+            },
+        };
+        while (next_cluster.0 - cluster.0) == 1 {
+            cluster = next_cluster;
+            next_cluster = match &volume.volume_type {
+                VolumeType::Fat(fat) => match fat.next_cluster(self, cluster) {
+                    Ok(cluster) => cluster,
+                    Err(e) => match e {
+                        Error::EndOfFile => break,
+                        _ => panic!(
+                            "Error: traversing the FAT table, accessed free space or a bad cluster"
+                        ),
+                    },
+                },
+            };
+            contiguous_cluster_count += 1;
+        }
+        Ok(contiguous_cluster_count)
+    }
+
+    /// Read from an open file.
+    pub fn read_multi(
+        &mut self,
+        volume: &Volume,
+        file: &mut File,
+        buffer: &mut [u8],
+    ) -> Result<usize, Error<D::Error>> {
+        let blocks_per_cluster = match &volume.volume_type {
+            VolumeType::Fat(fat) => fat.blocks_per_cluster,
+        };
+        let mut bytes_read = 0;
+        let mut block_read_counter = 0;
+        let mut starting_cluster = file.starting_cluster;
+        let mut file_blocks = 0;
+        if (file.length % Block::LEN as u32) == 0 {
+            file_blocks = (file.length / Block::LEN as u32);
+        } else {
+            file_blocks = (file.length / Block::LEN as u32) + 1;
+        }
+
+        while file_blocks != 0 {
+            // Walk the FAT to see if we have contiguos clusters
+            let contiguous_cluster_count =
+                self.check_contiguous_cluster_count(volume, starting_cluster)?;
+            
+            let blocks_to_read = (contiguous_cluster_count * blocks_per_cluster as u32);
+            let bytes_to_read = Block::LEN * blocks_to_read as usize;
+            let (blocks, _) = buffer[block_read_counter..block_read_counter + bytes_to_read]
+                .as_chunks_mut::<{ Block::LEN }>();
+            // `cluster_to_block` gives us the absolute block_idx i.e. gives us the block offset from the 0th Block
+            let block_idx = match &volume.volume_type {
+                VolumeType::Fat(fat) => fat.cluster_to_block(starting_cluster),
+            };
+            
+            self.block_device
+                .read(Block::from_array_slice(blocks), block_idx, "read")
+                .map_err(Error::DeviceError)?;
+
+            file_blocks -= blocks_to_read;
+            starting_cluster = starting_cluster + contiguous_cluster_count;
+
+            let bytes = bytes_to_read.min(file.left() as usize);
+            bytes_read += bytes;
+            file.seek_from_current(bytes as i32).unwrap();
+            block_read_counter += (Block::LEN * blocks_to_read as usize);
+        }
+        Ok(bytes_read)
     }
 
     /// Read from an open file.
