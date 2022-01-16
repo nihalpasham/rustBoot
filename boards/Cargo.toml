@@ -2,11 +2,11 @@
 
 members = ["rustBoot-update",
            "rustBoot-hal", 
-           "test_firmware/*/*", 
-           "test_impls/*"
+           "firmware/*/*", 
+           "bootloaders/*"
            ]
 
-exclude = ["test_firmware/rpi4"]
+exclude = ["firmware/rpi4"]
 
 [profile.dev]
 incremental = false

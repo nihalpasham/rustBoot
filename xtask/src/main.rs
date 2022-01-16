@@ -40,7 +40,7 @@ fn test_rustBoot() -> Result<(), anyhow::Error> {
 }
 
 fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
-    let _p = xshell::pushd(root_dir().join("boards/test_impls").join(target))?;
+    let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
     match target {
         &"rpi4" => {
             cmd!("cargo build --release").run()?; // for logging add `--features log`
@@ -63,14 +63,14 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
 fn build_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
     let _p = xshell::pushd(
         root_dir()
-            .join("boards/test_firmware")
+            .join("boards/firmware")
             .join(target)
             .join("boot_fw_blinky_green"),
     )?;
     cmd!("cargo build --release").run()?;
     let _p = xshell::pushd(
         root_dir()
-            .join("boards/test_firmware")
+            .join("boards/firmware")
             .join(target)
             .join("updt_fw_blinky_red"),
     )?;
@@ -110,7 +110,7 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
 fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
-            let _p = xshell::pushd(root_dir().join("boards/test_impls").join(target))?;
+            let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
             cmd!("cargo flash --chip nRF52840_xxAA --release").run()?;
             Ok(())
         }
