@@ -43,21 +43,23 @@ This project's folder structure is divided into 2 workspaces.
 - **core-bootloader:** 
      - resides in its own folder called `rustBoot`
 - **hardware abstraction layer**
-    - the *boards* folder contains all hardware-specific code. It houses other neccessary folders
-        - **rustBoot-hal:** contains flash-hal (read/write/erase) impls for a specific board.
-        - **rust-update:** this crate/folder contains all of the board-agnostic A/B update logic.
-        - **test_firmware:** contains test firmware (i.e. blinky-led firmware) for the boot and update partitions for a specific board.
-        - **test_impls:** contains a test implementation of the bootoloader for a specific board.
+    - the *boards* folder contains hardware-specific code. It contains the following folders
+        - **rustBoot-hal:** contains the flash hardware abstraction layer (read/write/erase operations) for a specific board.
+        - **rust-update:** this crate/folder contains board-agnostic A/B update logic.
+        - **firmware:** contains board-specific firmware (i.e. boot and update).
+        - **bootloaders:** contains bootloader implementations for different boards.
 
 Additionally, the project includes a folder called `xtask` to simplify the `build-sign-flash` process.
 
-For detailed instructions on usage, you can take a look at the `readme` page for each board under - `boards/test_impls/{board-name}`
+For detailed instructions on usage, you can take a look at the `readme` page for each board under - `boards/bootloaders/{board-name}`
 
 In short, you'll need 3 things:
 - **flash-api:** implement the `FlashInterface` trait for your board (abstracts out the necessary HW-specific flash operations such as writing/readin/erasing). 
     - *Note: I'm still contemplating switching to something like embedded-storage. Please feel free to chime-in if you have suggestions here.*
-- **memory-layout:** choose a suitable memory layout based on your board's micro-architecture and make. 
-- **firmware-api:** use the methods from the `UpdateInterface` trait in your firmware to trigger and confirm firmware updates. (note - downloading and installing the update is to be handled by whatever firmware/OS you're running).
+- **memory-layout:** choose a suitable memory layout based on the board's micro-architecture and model. 
+- **firmware-api:** use the `UpdateInterface` api to trigger and confirm firmware updates (in your firmware). 
+
+Note - downloading and installing the update is to be handled by whatever firmware/OS you're running.
 
 ## rustBoot's high-level design
 

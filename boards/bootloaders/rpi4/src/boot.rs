@@ -30,7 +30,7 @@ impl DtbEntry {
 }
 
 impl InitRamfs {
-    /// Get a 1GB aligned entry point to the `initramfs`.
+    /// Get an entry point to the `initramfs`. 
     pub const fn new() -> Self {
         Self([0u8; MAX_INITRAMFS_SIZE])
     }
