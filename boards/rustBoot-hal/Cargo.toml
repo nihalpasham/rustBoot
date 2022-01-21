@@ -24,7 +24,7 @@ doctest = false
 test = false
 
 [dependencies]
-defmt = "0.2.3"
+defmt = "0.3.0"
 nrf52840-hal = "0.13.0"
 cortex-m = "0.7.3"
 

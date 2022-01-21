@@ -24,7 +24,7 @@ doctest = false
 test = false
 
 [dependencies]
-defmt = "0.2.3"
+defmt = "0.3.0"
 rustBoot = {path = "../../rustBoot"}
 rustBoot-hal = {path = "../rustBoot-hal", default-features = false}
 

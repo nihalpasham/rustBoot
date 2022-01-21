@@ -6,6 +6,7 @@ use crate::{Result, RustbootError};
 
 use crate::flashapi::FlashApi;
 
+use defmt::Format;
 use core::ops::Add;
 #[cfg(feature = "secp256k1")]
 use k256::{
@@ -404,8 +405,6 @@ impl PartDescriptor<Update> {
         self.set_trailer_at(updater, (2 + pos), flag)
     }
 }
-
-use defmt::Format;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Format)]
 pub enum SectFlags {

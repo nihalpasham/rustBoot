@@ -16,7 +16,7 @@ test = false
 [dependencies]
 # defmt = "0.2.3"
 # defmt-rtt = "0.2.0"
-cortex-m-rt = "0.6.14"
+cortex-m-rt = "0.6.15"
 nrf52840-hal = "0.13.0"
 panic-probe = { version = "0.2.0" }
 rustBoot-hal = {path = "../../../rustBoot-hal", default-features = false, features = ["nrf52840"]}

@@ -116,7 +116,6 @@ impl BlockDevice for &EMMCController {
             }
         }
         let num_blocks = blocks.len();
-        // info!("\temmc controller, num_blocks, {:?}", num_blocks);
         let len = num_blocks * Block::LEN;
         let ptr = (&mut blocks[0].contents).as_mut_ptr();
         let mut buff;
@@ -133,7 +132,6 @@ impl BlockDevice for &EMMCController {
             // - This is still safe as it satifies all (of from_raw_parts_mut) usage conditions.
             buff = core::slice::from_raw_parts_mut(ptr, len);
         }
-        // info!("\temmc controller, buffer length, {:?}", buff.len());
         let res =
             &EMMC_CONT.emmc_transfer_blocks(start_block_idx.0, num_blocks as u32, &mut buff, false);
         match res {
@@ -635,7 +633,7 @@ where
         };
     }
 
-    /// Return the number of contiguous clusters. If the next cluster in the sequence isn't contiguous
+    /// Returns the number of contiguous clusters. If the next cluster in the sequence isn't contiguous
     /// (i.e. is fragmented), it returns 1
     fn check_contiguous_cluster_count(
         &self,
@@ -674,10 +672,10 @@ where
     }
 
     /// Read from an open file. It has the same effect as the [`Self::read`] method but reduces `read time`
-    /// by more than 50%, especially in the case of large files (i.e. > 1Mb)
+    /// by more than 50%, especially for large files (i.e. > 1Mb)
     /// 
     /// `read_multi` reads multiple contiguous blocks of a file in a single read operation,
-    /// without the extra overhead of additional `data-copying`.
+    /// without extra overhead or additional `data-copying`.
     /// 
     /// NOTE: The buffer argument must be a multiple of 512 bytes. This impl assumes the underlying
     /// emmc driver (and consequently the EMMC device) has support for multi-block reads.

@@ -9,11 +9,11 @@ pub mod image;
 pub mod parser;
 
 use core::fmt;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// The RustbootError type.
 pub enum RustbootError {
-    /// An operation is not permitted in the current state.
-    /// i.e. an invalid state was reached.
+    /// An operation is not permitted in the current state or an invalid state was reached.
     InvalidState,
     /// Firmware authentication failed
     FwAuthFailed,
