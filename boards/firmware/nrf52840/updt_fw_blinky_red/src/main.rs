@@ -1,6 +1,5 @@
 #![no_main]
 #![no_std]
-#![allow(warnings)]
 #![allow(non_snake_case)]
 
 // use defmt_rtt as _;
@@ -12,7 +11,6 @@ use hal::gpio::{p0, p1, Disconnected, Level};
 use hal::pac::Peripherals;
 use hal::prelude::*;
 use hal::timer::Timer;
-use hal::twim::{self, Twim};
 
 use rustBoot_hal::nrf::nrf52840::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
@@ -30,9 +28,9 @@ fn main() -> ! {
     // Alternately flash red leds
     while count < 5 {
         timer.delay(250_000); // 250ms
-        red_led.set_high();
+        red_led.set_high().expect("cant fail");
         timer.delay(250_000); // 250ms
-        red_led.set_low();
+        red_led.set_low().expect("cant fail");
         timer.delay(250_000); // 250ms
         count += 1;
     }
@@ -46,9 +44,9 @@ fn main() -> ! {
 
     loop {
         timer.delay(500_000); // 500ms
-        red_led.set_high();
+        red_led.set_high().expect("cant fail");
         timer.delay(500_000); // 500ms
-        red_led.set_low();
+        red_led.set_low().expect("cant fail");
         timer.delay(500_000); // 500ms
     }
 }

@@ -1,8 +1,8 @@
-use core::convert::TryInto;
+
 use core::usize;
 
 use crate::constants::*;
-use crate::image::image::{PartId, RustbootImage, Swappable, TypeState, ValidPart};
+use crate::image::image::{RustbootImage, Swappable, TypeState, ValidPart};
 use crate::{Result, RustbootError};
 
 /// A function to parse the image-header contained in a `boot or update` partition, for a given `TLV`. It
@@ -170,7 +170,7 @@ use nom::{
 
 fn check_for_eof(input: &[u8]) -> IResult<&[u8], &[u8]> {
     match tag::<_, _, Error<&[u8]>>(Tags::EndOfHeader.get_id())(input) {
-        Ok((remainder, eof)) => Err(Err::Error(Error::new(input, ErrorKind::Eof))),
+        Ok((_remainder, _eof)) => Err(Err::Error(Error::new(input, ErrorKind::Eof))),
         Err(_e) => Ok((input, &[])),
     }
 }
@@ -330,7 +330,7 @@ mod tests {
     #[test]
     fn padding_test() {
         let val = match check_for_padding(PAD1) {
-            Ok((remainder, val)) => {
+            Ok((remainder, _val)) => {
                 // libc_println!("incorrect padding: {:?}", remainder);
                 remainder
             }
@@ -339,7 +339,7 @@ mod tests {
         assert_eq!(val, &[0x20, 0x01, 0xff, 0x02, 0x03]);
 
         let val = match check_for_padding(PAD2) {
-            Ok((remainder, val)) => {
+            Ok((_remainder, val)) => {
                 // libc_println!("padding: {:?}", val);
                 val
             }
@@ -351,7 +351,7 @@ mod tests {
     #[test]
     fn parse_version() {
         let val = match extract_version(DATA) {
-            Ok((remainder, version)) => {
+            Ok((_remainder, version)) => {
                 // libc_println!("version: {:?}", version);
                 version
             }
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn parse_timestamp() {
         let val = match extract_timestamp(DATA) {
-            Ok((remainder, timestamp)) => {
+            Ok((_remainder, timestamp)) => {
                 // libc_println!("timestamp: {:?}", timestamp);
                 timestamp
             }
@@ -375,7 +375,7 @@ mod tests {
     #[test]
     fn parse_img_type() {
         let val = match extract_img_type(DATA) {
-            Ok((remainder, img_type)) => {
+            Ok((_remainder, img_type)) => {
                 // libc_println!("img_type: {:?}", img_type);
                 img_type
             }
@@ -387,7 +387,7 @@ mod tests {
     #[test]
     fn parse_digest() {
         let val = match extract_digest(DATA) {
-            Ok((remainder, digest)) => {
+            Ok((_remainder, digest)) => {
                 // libc_println!("digest: {:?}", digest);
                 digest
             }
@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn parse_pubkey_digest() {
         let val = match extract_pubkey_digest(DATA) {
-            Ok((remainder, digest)) => {
+            Ok((_remainder, digest)) => {
                 // libc_println!("pubkey digest: {:?}", digest);
                 digest
             }
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn parse_signature() {
         let val = match extract_signature(DATA) {
-            Ok((remainder, signature)) => {
+            Ok((_remainder, signature)) => {
                 // libc_println!("signature: {:?}", signature);
                 signature
             }
@@ -446,7 +446,7 @@ mod tests {
     #[test]
     fn get_tlv_digest256() {
         let remaining = match extract_digest(DATA) {
-            Ok((remainder, digest)) => remainder,
+            Ok((remainder, _digest)) => remainder,
             Err(_e) => &[],
         };
         let offset = DATA.len() - remaining.len() - (4 + SHA256_DIGEST_SIZE);
@@ -456,7 +456,7 @@ mod tests {
     #[test]
     fn get_tlv_pubkey_digest() {
         let remaining = match extract_pubkey_digest(DATA) {
-            Ok((remainder, digest)) => remainder,
+            Ok((remainder, _digest)) => remainder,
             Err(_e) => &[],
         };
         let offset = DATA.len() - remaining.len() - (4 + PUBKEY_DIGEST_SIZE);

@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 // **** TARGET PLATFORM - FLASH PARTIONINING ****
 
 pub const SECTOR_SIZE: usize = 0x1000;

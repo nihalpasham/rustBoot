@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![allow(warnings)]
 #![allow(non_snake_case)]
 
 // use defmt_rtt as _;
@@ -11,32 +10,32 @@ use hal::gpio::{p0, p1, Disconnected, Level};
 use hal::pac::Peripherals;
 use hal::prelude::*;
 use hal::timer::Timer;
-use hal::twim::{self, Twim};
+
 use nrf52840_hal as hal;
 
 use rustBoot_hal::nrf::nrf52840::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
 
 // SCB Application Interrupt and Reset Control Register Definitions
-const SCB_AIRCR_VECTKEY_Pos: u32 = 16; // SCB AIRCR: VECTKEY Position
-const SCB_AIRCR_PRIGROUP_Pos: u32 = 8; // SCB AIRCR: PRIGROUP Position
-const SCB_AIRCR_PRIGROUP_Msk: u32 = (7u32 << SCB_AIRCR_PRIGROUP_Pos); // SCB AIRCR: PRIGROUP Mask
-const SCB_AIRCR_SYSRESETREQ_Pos: u32 = 2; // SCB AIRCR: SYSRESETREQ Position
-const SCB_AIRCR_SYSRESETREQ_Msk: u32 = (1u32 << SCB_AIRCR_SYSRESETREQ_Pos); // SCB AIRCR: SYSRESETREQ Mask
+const SCB_AIRCR_VECTKEY_POS: u32 = 16; // SCB AIRCR: VECTKEY Position
+const SCB_AIRCR_PRIGROUP_POS: u32 = 8; // SCB AIRCR: PRIGROUP Position
+const SCB_AIRCR_PRIGROUP_MSK: u32 = 7u32 << SCB_AIRCR_PRIGROUP_POS; // SCB AIRCR: PRIGROUP Mask
+const SCB_AIRCR_SYSRESETREQ_POS: u32 = 2; // SCB AIRCR: SYSRESETREQ Position
+const SCB_AIRCR_SYSRESETREQ_MSK: u32 = 1u32 << SCB_AIRCR_SYSRESETREQ_POS; // SCB AIRCR: SYSRESETREQ Mask
 
 /// System Reset
 ///
 /// Initiates a system reset request to reset the MCU.
 #[inline]
 pub fn nvic_systemreset() -> ! {
-    let mut core_peripherals = hal::pac::CorePeripherals::take().unwrap();
-    let mut scb = core_peripherals.SCB;
+    let core_peripherals = hal::pac::CorePeripherals::take().unwrap();
+    let scb = core_peripherals.SCB;
     cortex_m::asm::dsb();
     unsafe {
         scb.aircr.write(
-            (0x5FA << SCB_AIRCR_VECTKEY_Pos)
-                | (scb.aircr.read() & SCB_AIRCR_PRIGROUP_Msk)
-                | SCB_AIRCR_SYSRESETREQ_Msk,
+            (0x5FA << SCB_AIRCR_VECTKEY_POS)
+                | (scb.aircr.read() & SCB_AIRCR_PRIGROUP_MSK)
+                | SCB_AIRCR_SYSRESETREQ_MSK,
         );
     }
     cortex_m::asm::dsb();
@@ -56,9 +55,9 @@ fn main() -> ! {
     // flash green leds
     while count < 5 {
         timer.delay(250_000); // 250ms
-        green_led.set_high();
+        green_led.set_high().expect("cant fail"); // TODO: update to ! when never_type is stabilized
         timer.delay(250_000); // 250ms
-        green_led.set_low();
+        green_led.set_low().expect("cant fail");
         timer.delay(250_000); // 250ms
         count += 1;
     }

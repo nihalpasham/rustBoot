@@ -20,11 +20,11 @@ use p256::{
     elliptic_curve::{consts::U32, generic_array::GenericArray, FieldSize},
     EncodedPoint, NistP256,
 };
-
-use sha2::{Digest, Sha256, Sha384};
+use sha2::{Digest, Sha256};
+#[cfg(feature = "sha384")]
+use sha2::Sha384;
 
 use core::convert::TryInto;
-use core::fmt::Display;
 use core::lazy::OnceCell;
 
 /// Singleton to ensure we only ever have one instance of the `BOOT` partition
@@ -179,7 +179,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
     pub fn open_partition(part: Part, updater: impl FlashApi) -> Result<ImageType<'static>> {
         match part.part_id() {
             PartId::PartBoot => {
-                let mut size = 0x0;
+                let size;
                 unsafe {
                     let magic = *(BOOT_PARTITION_ADDRESS as *const usize);
                     size = *((BOOT_PARTITION_ADDRESS + 4) as *const usize);
@@ -202,21 +202,21 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 match part_desc.get_part_status(updater)? {
                     States::New(state) => Ok(ImageType::BootInNewState(RustbootImage {
                         part_desc: unsafe {
-                            BOOT.set(part_desc);
+                            BOOT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
                             &mut BOOT
                         },
                         state: Some(state),
                     })),
                     States::Testing(state) => Ok(ImageType::BootInTestingState(RustbootImage {
                         part_desc: unsafe {
-                            BOOT.set(part_desc);
+                            BOOT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
                             &mut BOOT
                         },
                         state: Some(state),
                     })),
                     States::Success(state) => Ok(ImageType::BootInSuccessState(RustbootImage {
                         part_desc: unsafe {
-                            BOOT.set(part_desc);
+                            BOOT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
                             &mut BOOT
                         },
                         state: Some(state),
@@ -225,7 +225,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 }
             }
             PartId::PartUpdate => {
-                let mut size = 0x0;
+                let size;
                 unsafe {
                     let magic = *(UPDATE_PARTITION_ADDRESS as *const usize);
                     size = *((UPDATE_PARTITION_ADDRESS + 4) as *const usize);
@@ -247,7 +247,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 match part_desc.get_part_status(updater)? {
                     States::New(state) => Ok(ImageType::UpdateInNewState(RustbootImage {
                         part_desc: unsafe {
-                            UPDT.set(part_desc);
+                            UPDT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
                             &mut UPDT
                         },
                         state: Some(state),
@@ -255,7 +255,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                     States::Updating(state) => {
                         Ok(ImageType::UpdateInUpdatingState(RustbootImage {
                             part_desc: unsafe {
-                                UPDT.set(part_desc);
+                                UPDT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
                                 &mut UPDT
                             },
                             state: Some(state),
@@ -265,8 +265,8 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 }
             }
             PartId::PartSwap => {
-                /// Open and initialize a new partition of type `SWAP`.
-                /// This is an exclusive constructor for the `swap` partition.
+                // Open and initialize a new partition of type `SWAP`.
+                // This is an exclusive constructor for the `swap` partition.
                 let part_desc = PartDescriptor {
                     hdr: Some(SWAP_PARTITION_ADDRESS as *const u8),
                     fw_base: SWAP_BASE as *const u8,
@@ -280,7 +280,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 };
                 Ok(ImageType::NoStateSwap(RustbootImage {
                     part_desc: unsafe {
-                        SWAP.set(part_desc);
+                        SWAP.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
                         &mut SWAP
                     },
                     state: None,
@@ -293,8 +293,8 @@ impl<Part: ValidPart> PartDescriptor<Part> {
 impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
     pub fn get_part_status(&self, updater: impl FlashApi) -> Result<States> {
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
-        if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
-            self.set_partition_trailer_magic(updater);
+        if magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32 {
+            self.set_partition_trailer_magic(updater).expect("failed to set partition status");
         }
         let state = unsafe { *self.get_partition_state()? };
         let state = match state {
@@ -313,13 +313,13 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
         state: &State,
     ) -> Result<bool> {
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
-        if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
-            self.set_partition_trailer_magic(updater);
+        if magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32 {
+            self.set_partition_trailer_magic(updater).expect("failed to set partition status");
         }
         let current_state = unsafe { *self.get_partition_state()? };
         let new_state = state.from().unwrap();
         if current_state != new_state {
-            self.set_partition_state(updater, new_state);
+            self.set_partition_state(updater, new_state).expect("failed to set partition status");
         }
         Ok(true)
     }
@@ -359,12 +359,12 @@ impl PartDescriptor<Update> {
     pub fn get_flags(&self, sector: usize) -> Result<SectFlags> {
         let sector_position = sector >> 1;
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
-        if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
+        if magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32 {
             return Err(RustbootError::InvalidImage);
         }
-        let mut flags = 0u8;
+        let flags;
         let res = unsafe { *self.get_update_sector_flags(sector_position)? };
-        if (sector == (sector_position << 1)) {
+        if sector == (sector_position << 1) {
             flags = res & 0x0F;
         } else {
             flags = (res & 0xF0) >> 4;
@@ -385,12 +385,12 @@ impl PartDescriptor<Update> {
         let newflag = flag.from().ok_or(RustbootError::InvalidSectFlag)?;
         let sector_position = sector >> 1;
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
-        if (magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32) {
+        if magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32 {
             return Err(RustbootError::InvalidImage);
         }
-        let mut flags = 0u8;
+        let flags;
         let res = unsafe { *self.get_update_sector_flags(sector_position)? };
-        if (sector == (sector_position << 1)) {
+        if sector == (sector_position << 1) {
             flags = (res & 0xF0) | (newflag & 0x0F);
         } else {
             flags = ((newflag & 0x0F) << 4) | (res & 0x0F);
@@ -402,7 +402,7 @@ impl PartDescriptor<Update> {
     }
 
     fn set_update_sector_flags(&self, updater: impl FlashApi, pos: usize, flag: u8) -> Result<()> {
-        self.set_trailer_at(updater, (2 + pos), flag)
+        self.set_trailer_at(updater, 2 + pos, flag)
     }
 }
 
@@ -432,19 +432,19 @@ impl SectFlags {
         self == &SectFlags::UpdatedFlag
     }
 
-    pub fn set_swapping_flag(mut self) -> Self {
-        self = SectFlags::SwappingFlag;
-        self
+    pub fn set_swapping_flag(&mut self) -> Self {
+        *self = SectFlags::SwappingFlag;
+        *self
     }
 
-    pub fn set_backup_flag(mut self) -> Self {
-        self = SectFlags::BackupFlag;
-        self
+    pub fn set_backup_flag(&mut self) -> Self {
+        *self = SectFlags::BackupFlag;
+        *self
     }
 
-    pub fn set_updated_flag(mut self) -> Self {
-        self = SectFlags::UpdatedFlag;
-        self
+    pub fn set_updated_flag(&mut self) -> Self {
+        *self = SectFlags::UpdatedFlag;
+        *self
     }
 
     pub fn from(&self) -> Option<u8> {
@@ -525,7 +525,7 @@ impl<'a> RustbootImage<'a, Update, StateNew> {
 
 impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, State> {
     pub fn get_firmware_version(&self) -> Result<u32> {
-        let (val) = parse_tlv(self, Tags::Version)?;
+        let val = parse_tlv(self, Tags::Version)?;
         let fw_version =
             u32::from_be_bytes(val.try_into().map_err(|_| RustbootError::InvalidValue)?);
         Ok(fw_version)
@@ -538,7 +538,7 @@ impl<'a, Part: ValidPart + Swappable, State: Updateable> RustbootImage<'a, Part,
         state
     }
     pub fn get_image_type(&self) -> Result<u16> {
-        let (val) = parse_tlv(self, Tags::ImgType)?;
+        let val = parse_tlv(self, Tags::ImgType)?;
         let image_type =
             u16::from_le_bytes(val.try_into().map_err(|_| RustbootError::InvalidValue)?);
         Ok(image_type)
@@ -552,8 +552,8 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
         match N {
             #[cfg(feature = "sha256")]
             SHA256_DIGEST_SIZE => {
-                let mut integrity_check = false;
-                let hash_type = HDR_SHA256;
+                let integrity_check;
+                let _hash_type = HDR_SHA256;
                 let fw_size = self
                     .part_desc
                     .get()
@@ -564,7 +564,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                     Ok(stored_hash) => {
                         let hasher = compute_img_hash::<Part, State, Sha256, N>(self, fw_size)?;
                         let computed_hash = hasher.finalize();
-                        if (computed_hash.as_slice() != stored_hash) {
+                        if computed_hash.as_slice() != stored_hash {
                             panic!("..integrity check failed");
                         }
                         integrity_check = true;
@@ -601,8 +601,8 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
         match N {
             #[cfg(feature = "nistp256")]
             HDR_IMG_TYPE_AUTH => {
-                let mut auth_check = false;
-                let signature_type = HDR_SIGNATURE;
+                let auth_check;
+                let _signature_type = HDR_SIGNATURE;
                 let fw_size = self
                     .part_desc
                     .get()
@@ -611,9 +611,9 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                 let res = parse_tlv(self, Tags::Signature);
                 let computed_hash = match res {
                     Ok(stored_signature) => {
-                        let (img_type_val) = parse_tlv(self, Tags::ImgType)?;
+                        let img_type_val = parse_tlv(self, Tags::ImgType)?;
                         let val = img_type_val[0] as u16 + ((img_type_val[1] as u16) << 8);
-                        if ((val & 0xFF00) != N) {
+                        if (val & 0xFF00) != N {
                             return Err(RustbootError::InvalidValue);
                         }
                         // verify signature
@@ -720,7 +720,7 @@ fn verify_ecc256_signature<D: Digest<OutputSize = U32>, const N: u16>(
 ) -> Result<bool> {
     match N {
         #[cfg(feature = "nistp256")]
-        IMG_TYPE_AUTH_ECC256 => {
+        HDR_IMG_TYPE_AUTH => {
             if let VerifyingKeyTypes::VKeyNistP256(vk) = import_pubkey(PubkeyTypes::NistP256)? {
                 let ecc256_verifier = NistP256Signature { verify_key: vk };
                 let res = ecc256_verifier.verify(digest, signature)?;
@@ -733,7 +733,7 @@ fn verify_ecc256_signature<D: Digest<OutputSize = U32>, const N: u16>(
             }
         }
         #[cfg(feature = "secp256k1")]
-        IMG_TYPE_AUTH_ECC256 => {
+        HDR_IMG_TYPE_AUTH => {
             let ecc256_verifier = Secp256k1Signature {
                 verify_key: import_pubkey(PubkeyTypes::Secp256k1)?,
             };
@@ -744,15 +744,18 @@ fn verify_ecc256_signature<D: Digest<OutputSize = U32>, const N: u16>(
             }
         }
         #[cfg(feature = "ed25519")]
-        IMG_TYPE_AUTH_ED25519 => todo!(),
+        HDR_IMG_TYPE_AUTH => todo!(),
         _ => todo!(),
     }
 }
 
 enum PubkeyTypes {
+    #[allow(dead_code)]
     Secp256k1,
+    #[allow(dead_code)]
     Ed25519,
     NistP256,
+    #[allow(dead_code)]
     NistP384,
 }
 
@@ -761,7 +764,9 @@ enum VerifyingKeyTypes {
     VKey256k1(VerifyingKey),
     #[cfg(feature = "nistp256")]
     VKeyNistP256(VerifyingKey),
+    #[allow(dead_code)]
     VKeyEd25519,
+    #[allow(dead_code)]
     VKeyNistP384,
 }
 

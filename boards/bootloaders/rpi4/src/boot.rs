@@ -60,7 +60,7 @@ pub fn boot_to_kernel(kernel_entry: usize, dtb_addr: usize) -> ! {
 
 pub fn halt() -> ! {
     loop {
-        unsafe { asm!("wfe") }
+        unsafe { core::arch::asm!("wfe") }
     }
 }
 

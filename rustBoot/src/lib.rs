@@ -1,5 +1,5 @@
 #![no_std]
-#![allow(warnings)]
+#![allow(non_snake_case)]
 #![feature(once_cell)]
 
 pub mod constants;
