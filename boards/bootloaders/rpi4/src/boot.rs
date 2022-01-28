@@ -4,8 +4,11 @@ const MAX_INITRAMFS_SIZE: usize = 16066 * 4 * 512;
 const MAX_KERNEL_SIZE: usize = 14624 * 4 * 512;
 const MAX_DTB_SIZE: usize = 100 * 512;
 
-pub struct InitRamfs(pub [u8; MAX_INITRAMFS_SIZE]);
+// #[repr(align(2097152))]
+pub struct InitRamfsEntry(pub [u8; MAX_INITRAMFS_SIZE]);
+#[repr(align(2097152))]
 pub struct KernelEntry(pub [u8; MAX_KERNEL_SIZE]);
+#[repr(align(2097152))]
 pub struct DtbEntry(pub [u8; MAX_DTB_SIZE]);
 
 impl KernelEntry {
@@ -29,7 +32,7 @@ impl DtbEntry {
     }
 }
 
-impl InitRamfs {
+impl InitRamfsEntry {
     /// Get an entry point to the `initramfs`. 
     pub const fn new() -> Self {
         Self([0u8; MAX_INITRAMFS_SIZE])
@@ -37,12 +40,12 @@ impl InitRamfs {
 }
 
 #[link_section = ".initramfs_load_addr._initramfs_start"]
-pub static mut INITRAMFS_LOAD_ADDR: InitRamfs = InitRamfs::new();
+pub static mut INITRAMFS_LOAD_ADDR: InitRamfsEntry = InitRamfsEntry::new();
 
-#[link_section = ".kernel_load_addr._kernel_start"]
+// #[link_section = ".kernel_load_addr._kernel_start"]
 pub static mut KERNEL_LOAD_ADDR: KernelEntry = KernelEntry::new();
 
-#[link_section = ".dtb_load_addr._dtb_start"]
+// #[link_section = ".dtb_load_addr._dtb_start"]
 pub static mut DTB_LOAD_ADDR: DtbEntry = DtbEntry::new();
 
 type EntryPoint = unsafe extern "C" fn(dtb: usize, rsv0: usize, rsv1: usize, rsv2: usize);

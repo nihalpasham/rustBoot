@@ -85,32 +85,32 @@ SECTIONS
         *(.bss*);
         . = ALIGN(16);
         __bss_end_exclusive = .;
-    } :segment_data /* not a section that's loaded into memroy, we just need to allocate as many zeroed bytes.*/
+    } :segment_data /* not a section that's loaded into memory, we just need to allocate as many zeroed bytes.*/
 
     /***********************************************************************************************
     * A section to store the dtb
     ***********************************************************************************************/
     . = __dtb_load_addr;
-    .dtb_load_addr : 
+    .dtb_load_addr (NOLOAD): 
     {
         *(.dtb_load_addr._dtb_start)
-    } :segment_dtb_load
+    } :segment_dtb_load /* not a section that's loaded into memory, we just need to allocate as many zeroed bytes.*/
 
     /***********************************************************************************************
     * A section to store the Kernel
     ***********************************************************************************************/
     . = __kernel_load_addr;
-    .kernel_load_addr : 
+    .kernel_load_addr (NOLOAD): 
     {
         *(.kernel_load_addr._kernel_start)
-    } :segment_kernel_load
+    } :segment_kernel_load /* not a section that's loaded into memory, we just need to allocate as many zeroed bytes.*/
 
     /***********************************************************************************************
     * A section to store the Initramfs
     ***********************************************************************************************/
     . = __initramfs_load_addr;
-    .initramfs_load_addr : 
+    .initramfs_load_addr (NOLOAD): 
     {
         *(.initramfs_load_addr._initramfs_start)
-    } :segment_initramfs_load
+    } :segment_initramfs_load /* not a section that's loaded into memory, we just need to allocate as many zeroed bytes.*/
 }

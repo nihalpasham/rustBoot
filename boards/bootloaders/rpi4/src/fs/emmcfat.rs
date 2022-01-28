@@ -688,21 +688,22 @@ where
         let blocks_per_cluster = match &volume.volume_type {
             VolumeType::Fat(fat) => fat.blocks_per_cluster,
         };
+
         let mut bytes_read = 0;
         let mut block_read_counter = 0;
         let mut starting_cluster = file.starting_cluster;
-        let mut file_blocks = 0;
+        let mut file_blocks = 0u32;
         if (file.length % Block::LEN as u32) == 0 {
             file_blocks = (file.length / Block::LEN as u32);
         } else {
             file_blocks = (file.length / Block::LEN as u32) + 1;
         }
 
-        while file_blocks != 0 {
+        while file_blocks > 0 {
             // Walk the FAT to see if we have contiguos clusters
             let contiguous_cluster_count =
                 self.check_contiguous_cluster_count(volume, starting_cluster)?;
-            
+
             let blocks_to_read = (contiguous_cluster_count * blocks_per_cluster as u32);
             let bytes_to_read = Block::LEN * blocks_to_read as usize;
             let (blocks, _) = buffer[block_read_counter..block_read_counter + bytes_to_read]
@@ -716,7 +717,10 @@ where
                 .read(Block::from_array_slice(blocks), block_idx, "read")
                 .map_err(Error::DeviceError)?;
 
-            file_blocks -= blocks_to_read;
+            file_blocks = match file_blocks.checked_sub(blocks_to_read) { // checked integer subtraction
+                Some(val) => val,
+                None => 0,
+            };
             starting_cluster = starting_cluster + contiguous_cluster_count;
 
             let bytes = bytes_to_read.min(file.left() as usize);

@@ -345,7 +345,7 @@ mod tests {
             }
             Err(_e) => &[],
         };
-        assert_eq!(val, &[0xff, 0xff, 0xff])
+        assert_eq!(val, &[0xff, 0xff, 0xff]);
     }
 
     #[test]

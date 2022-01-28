@@ -17,7 +17,7 @@
 	};
 
 	chosen {				  
-		bootargs = "root=UUID=f3f9f167-f409-d801-d058-f167f409d801 rootwait ro plymouth.ignore-serial-consoles fsck.mode=auto fsck.repair=yes cma=128M";
+		bootargs = "root=UUID=f2fa8d24-c392-4176-ab1c-367d60b66C6a rootwait ro plymouth.ignore-serial-consoles fsck.mode=auto fsck.repair=yes cma=128M";
 		linux,initrd-start = <0x5890000>;
 		linux,initrd-end = <0x77F084A>;
 		stdout-path = "serial1:115200n8";
