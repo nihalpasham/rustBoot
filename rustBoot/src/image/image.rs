@@ -6,8 +6,8 @@ use crate::{Result, RustbootError};
 
 use crate::flashapi::FlashApi;
 
-use defmt::Format;
 use core::ops::Add;
+use defmt::Format;
 #[cfg(feature = "secp256k1")]
 use k256::{
     ecdsa::VerifyingKey,
@@ -20,9 +20,9 @@ use p256::{
     elliptic_curve::{consts::U32, generic_array::GenericArray, FieldSize},
     EncodedPoint, NistP256,
 };
-use sha2::{Digest, Sha256};
 #[cfg(feature = "sha384")]
 use sha2::Sha384;
+use sha2::{Digest, Sha256};
 
 use core::convert::TryInto;
 use core::lazy::OnceCell;
@@ -202,21 +202,24 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 match part_desc.get_part_status(updater)? {
                     States::New(state) => Ok(ImageType::BootInNewState(RustbootImage {
                         part_desc: unsafe {
-                            BOOT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                            BOOT.set(part_desc)
+                                .map_err(|_| RustbootError::StaticReinit)?;
                             &mut BOOT
                         },
                         state: Some(state),
                     })),
                     States::Testing(state) => Ok(ImageType::BootInTestingState(RustbootImage {
                         part_desc: unsafe {
-                            BOOT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                            BOOT.set(part_desc)
+                                .map_err(|_| RustbootError::StaticReinit)?;
                             &mut BOOT
                         },
                         state: Some(state),
                     })),
                     States::Success(state) => Ok(ImageType::BootInSuccessState(RustbootImage {
                         part_desc: unsafe {
-                            BOOT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                            BOOT.set(part_desc)
+                                .map_err(|_| RustbootError::StaticReinit)?;
                             &mut BOOT
                         },
                         state: Some(state),
@@ -247,7 +250,8 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 match part_desc.get_part_status(updater)? {
                     States::New(state) => Ok(ImageType::UpdateInNewState(RustbootImage {
                         part_desc: unsafe {
-                            UPDT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                            UPDT.set(part_desc)
+                                .map_err(|_| RustbootError::StaticReinit)?;
                             &mut UPDT
                         },
                         state: Some(state),
@@ -255,7 +259,8 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                     States::Updating(state) => {
                         Ok(ImageType::UpdateInUpdatingState(RustbootImage {
                             part_desc: unsafe {
-                                UPDT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                                UPDT.set(part_desc)
+                                    .map_err(|_| RustbootError::StaticReinit)?;
                                 &mut UPDT
                             },
                             state: Some(state),
@@ -280,11 +285,91 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 };
                 Ok(ImageType::NoStateSwap(RustbootImage {
                     part_desc: unsafe {
-                        SWAP.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                        SWAP.set(part_desc)
+                            .map_err(|_| RustbootError::StaticReinit)?;
                         &mut SWAP
                     },
                     state: None,
                 }))
+            }
+        }
+    }
+
+    /// Returns the partition image i.e. the [ImageType] present in `boot` or `update` partition. 
+    /// 
+    /// Note: [get_partition] assumes `partition images` are already initalized. In other words, you
+    /// cannot call `get_partition` prior to opening the partition with a call to [open_partition].
+    pub fn get_partition(part: Part) -> Result<ImageType<'static>> {
+        match part.part_id() {
+            PartId::PartBoot => {
+                let state;
+                let _ = match unsafe { BOOT.get_mut() } {
+                    Some(part) => {
+                        let status_byte = unsafe { *part.get_partition_state()? };
+                        state = match status_byte {
+                            0xFF => States::New(StateNew),
+                            0x10 => States::Testing(StateTesting),
+                            0x00 => States::Success(StateSuccess),
+                            _ => States::NoState(NoState),
+                        };
+                    }
+                    // cannot return a `None` as BOOT has to be initialized prior to calling this method
+                    None => {
+                        panic!("un-initialized BOOT partition");
+                    }
+                };
+                match state {
+                    States::New(state_new) => Ok(ImageType::BootInNewState(RustbootImage {
+                        part_desc: unsafe { &mut BOOT },
+                        state: Some(state_new),
+                    })),
+                    States::Testing(state_testing) => {
+                        Ok(ImageType::BootInTestingState(RustbootImage {
+                            part_desc: unsafe { &mut BOOT },
+                            state: Some(state_testing),
+                        }))
+                    }
+                    States::Success(state_success) => {
+                        Ok(ImageType::BootInSuccessState(RustbootImage {
+                            part_desc: unsafe { &mut BOOT },
+                            state: Some(state_success),
+                        }))
+                    }
+                    _ => todo!(),
+                }
+            }
+            PartId::PartUpdate => {
+                let state;
+                let _ = match unsafe { UPDT.get_mut() } {
+                    Some(part) => {
+                        let status_byte = unsafe { *part.get_partition_state()? };
+                        state = match status_byte {
+                            0xFF => States::New(StateNew),
+                            0x70 => States::Updating(StateUpdating),
+                            _ => States::NoState(NoState),
+                        };
+                    }
+                    // cannot return a `None` as UPDT has to be initialized prior to calling this method
+                    None => {
+                        panic!("un-initialized UPDT partition");
+                    }
+                };
+                match state {
+                    States::New(state_new) => Ok(ImageType::UpdateInNewState(RustbootImage {
+                        part_desc: unsafe { &mut UPDT },
+                        state: Some(state_new),
+                    })),
+                    States::Updating(state_updating) => {
+                        Ok(ImageType::UpdateInUpdatingState(RustbootImage {
+                            part_desc: unsafe { &mut UPDT },
+                            state: Some(state_updating),
+                        }))
+                    }
+                    _ => todo!(),
+                }
+            }
+            _ => {
+                todo!()
             }
         }
     }
@@ -294,7 +379,8 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
     pub fn get_part_status(&self, updater: impl FlashApi) -> Result<States> {
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32 {
-            self.set_partition_trailer_magic(updater).expect("failed to set partition status");
+            self.set_partition_trailer_magic(updater)
+                .expect("failed to set partition status");
         }
         let state = unsafe { *self.get_partition_state()? };
         let state = match state {
@@ -314,12 +400,14 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
     ) -> Result<bool> {
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32 {
-            self.set_partition_trailer_magic(updater).expect("failed to set partition status");
+            self.set_partition_trailer_magic(updater)
+                .expect("failed to set partition status");
         }
         let current_state = unsafe { *self.get_partition_state()? };
         let new_state = state.from().unwrap();
         if current_state != new_state {
-            self.set_partition_state(updater, new_state).expect("failed to set partition status");
+            self.set_partition_state(updater, new_state)
+                .expect("failed to set partition status");
         }
         Ok(true)
     }

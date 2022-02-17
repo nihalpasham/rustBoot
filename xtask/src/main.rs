@@ -83,7 +83,7 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
             let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
-            cmd!("python3 convert2bin.py").run()?;
+            cmd!("py convert2bin.py").run()?;
             // python script has a linux dependency - `wolfcrypt`
             cmd!("wsl python3 signer.py").run()?;
             Ok(())
