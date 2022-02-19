@@ -105,8 +105,8 @@ where
     }
 
     fn rustboot_update<'a>(&self, rollback: bool) -> Result<RustbootImage<'a, Boot, StateTesting>> {
-        let boot = PartDescriptor::get_partition(Boot)?;
-        let updt = PartDescriptor::get_partition(Update)?;
+        let boot = PartDescriptor::open_partition(Boot, self)?;
+        let updt = PartDescriptor::open_partition(Update, self)?;
         let swap = PartDescriptor::open_partition(Swap, self)?;
 
         let mut new_boot_img = None;
@@ -239,9 +239,11 @@ where
                     }
                     self.flash_erase(swap_part, 0, SECTOR_SIZE);
                 }
-                // Retrieve the `update` partition after swap.
-                // Note: A successful swap moves your update partition to the boot partition.
-                let boot = PartDescriptor::get_partition(Update).unwrap();
+                // Re-open the `Boot` partition after swap.
+                // Note: A successful swap moves the image in the update partition to the boot partition.
+                // TODO: As we're using singletons (i.e. BOOT, UPDT), swap the following `rustBoot header` fields - 
+                //       size, sha_hash, signature_ok, sha_ok, hdr_ok.
+                let boot = PartDescriptor::open_partition(Boot, self).unwrap();
                 // the only valid state for the boot partition after a swap is `newState` as all state
                 // info is erased post the swap.
                 let new_img = match boot {
@@ -269,7 +271,6 @@ where
     Interface: FlashInterface,
 {
     fn rustboot_start(self) -> ! {
-        let mut is_regular_boot = false;
         let mut boot = PartDescriptor::open_partition(Boot, self).unwrap();
         let updt = PartDescriptor::open_partition(Update, self).unwrap();
 
@@ -277,9 +278,7 @@ where
         if let ImageType::BootInTestingState(_v) = boot {
             self.update_trigger();
             match self.rustboot_update(true) {
-                Ok(_v) => {
-                    is_regular_boot = false;
-                }
+                Ok(_v) => {}
                 Err(_e) => {
                     panic!("rollback failed.")
                 }
@@ -287,9 +286,7 @@ where
         // Check the UPDATE partition for state - if it is marked as UPDATING, trigger update.
         } else if let ImageType::UpdateInUpdatingState(_v) = updt {
             match self.rustboot_update(false) {
-                Ok(_v) => {
-                    is_regular_boot = false;
-                }
+                Ok(_v) => {}
                 Err(_e) => {
                     panic!("update-swap failed.")
                 }
@@ -313,11 +310,9 @@ where
                                     panic!("something went wrong after the emergency update")
                                     // something went wrong after the emergency update
                                 }
-                                is_regular_boot = false;
                             }
                         }
                     }
-                    is_regular_boot = true;
                 }
                 ImageType::BootInSuccessState(ref mut img) => {
                     if (img.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
@@ -336,21 +331,19 @@ where
                                     panic!("something went wrong after the emergency update")
                                     // something went wrong after the emergency update
                                 }
-                                is_regular_boot = false;
                             }
                         }
                     }
-                    is_regular_boot = true;
                 }
                 _ => unreachable!(),
             }
         }
-        let boot = match is_regular_boot {
-            true => PartDescriptor::get_partition(Boot).unwrap(),
-            // After an update or rollback get the update partition.
-            // Swapping moves your update partition to the boot partition.
-            false => PartDescriptor::get_partition(Update).unwrap(),
-        };
+        
+        // After an update or rollback re-open the `boot` partition.
+        // Note: Swapping moves the image in the update partition to the boot partition.
+        // TODO: As we're using singletons (i.e. BOOT, UPDT), swap the following `rustBoot header` fields - 
+        //       size, sha_hash, signature_ok, sha_ok, hdr_ok.
+        let boot = PartDescriptor::open_partition(Boot, self).unwrap();
         match boot {
             ImageType::BootInNewState(img) => {
                 let boot_part = img.part_desc.get().unwrap();
