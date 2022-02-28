@@ -2,9 +2,9 @@ name: rustBoot
 
 on:
   push:
-    branches: [ main ]
+    branches: [ Dev-rustBoot ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 env:
   CARGO_TERM_COLOR: always
