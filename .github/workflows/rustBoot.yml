@@ -24,6 +24,6 @@ jobs:
         rustup component add llvm-tools-preview
         cargo install flip-link
     - name: Build rustBoot-only
-      run: cargo xtask build rustBoot-only
+      run: cargo xtask build rustBoot-only stm32f411
     - name: Build pkgs-for stm32f411 
       run: cargo xtask build pkgs-for stm32f411
