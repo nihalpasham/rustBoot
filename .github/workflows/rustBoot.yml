@@ -1,0 +1,28 @@
+name: rustBoot
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install rust + target Dependencies 
+      run: |
+        rustup target add thumbv7em-none-eabihf
+        cargo install cargo-binutils
+        rustup component add llvm-tools-preview
+        cargo install flip-link
+    - name: Build rustBoot-only
+      run: cargo xtask build rustBoot-only
+    - name: Build pkgs-for stm32f411
+      run: cargo xtask build pkgs-for stm32f411
