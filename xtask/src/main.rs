@@ -52,6 +52,9 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
         &"nrf52840" => {
             cmd!("cargo build --release").run()?;
         }
+        &"stm32f411" => {
+            cmd!("cargo build --release").run()?;
+        }
         _ => {
             println!("board not supported");
         }
@@ -68,6 +71,7 @@ fn build_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
             .join("boot_fw_blinky_green"),
     )?;
     cmd!("cargo build --release").run()?;
+
     let _p = xshell::pushd(
         root_dir()
             .join("boards/firmware")
@@ -83,7 +87,15 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
             let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
-            cmd!("py convert2bin.py").run()?;
+            cmd!("python3 convert2bin.py").run()?;
+            // python script has a linux dependency - `wolfcrypt`
+            cmd!("wsl python3 signer.py").run()?;
+            Ok(())
+        }
+        "stm32f411" => {
+            let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
+            //  cmd!("python3 --version").run()?;
+            cmd!("python3 convert2bin.py").run()?;
             // python script has a linux dependency - `wolfcrypt`
             cmd!("wsl python3 signer.py").run()?;
             Ok(())
@@ -103,6 +115,16 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("pyocd flash -t nrf52840 --base-address {updt_part_addr} nrf52840_updtfw_v1235_signed.bin").run()?;
             Ok(())
         }
+        "stm32f411" => {
+            let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
+            let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
+            cmd!("pyocd flash --base-address {boot_part_addr} stm32f411_bootfw_v1235_signed.bin")
+                .run()?;
+
+            let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
+            cmd!("pyocd flash -t stm32f411 --base-address {updt_part_addr} stm32f411_updtfw_v1235_signed.bin").run()?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }
@@ -112,6 +134,11 @@ fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
         "nrf52840" => {
             let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
             cmd!("cargo flash --chip nRF52840_xxAA --release").run()?;
+            Ok(())
+        }
+        "stm32f411" => {
+            let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
+            cmd!("cargo flash --chip stm32f411vetx --release").run()?;
             Ok(())
         }
         _ => todo!(),
@@ -152,6 +179,23 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
                 .run()?;
             Ok(())
         }
+        "stm32f411" => {
+            let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
+            // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
+            cmd!("pyocd erase -t stm32f411 -s 0x0").run()?;
+            let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t stm32f411 -s {boot_trailer_magic}").run()?;
+            cmd!("pyocd flash -t stm32f411 --base-address {boot_trailer_magic} trailer_magic.bin")
+                .run()?;
+
+            let updt_trailer_magic =
+                format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t stm32f411 -s {updt_trailer_magic}").run()?;
+            cmd!("pyocd flash -t stm32f411 --base-address {updt_trailer_magic} trailer_magic.bin")
+                .run()?;
+            Ok(())
+        }
+
         _ => todo!(),
     }
 }

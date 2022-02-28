@@ -25,11 +25,15 @@ test = false
 
 [dependencies]
 defmt = "0.3.0"
-nrf52840-hal = "0.13.0"
 cortex-m = "0.7.3"
+nrf52840-hal = {version = "0.13.0", optional = true}
+
+[dependencies.stm32f4xx-hal]
+version = "0.10.1"
+features = ["rt", "stm32f411"]
 
 [features]
-default = ["nrf", "nrf52840", "defmt-default"]
+default = ["stm", "stm32f411", "defmt-default"]
 # these features are required by defmt
 defmt-default = []
 defmt-trace = []
@@ -41,3 +45,5 @@ defmt-error = []
 nrf = []
 nrf52840 = ["nrf"]
 
+stm =[]
+stm32f411 = ["stm"]

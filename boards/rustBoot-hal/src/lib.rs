@@ -1,8 +1,14 @@
+//! FLASH module driver for stm32f411
+//! This file provides firmware functions to manage the internal FLASH memory, written in pure Rust.
+
 #![no_std]
 #![allow(warnings)]
 
 #[cfg(feature = "nrf")]
 pub mod nrf;
+
+#[cfg(feature = "stm")]
+pub mod stm;
 
 pub mod rpi;
 
@@ -13,8 +19,8 @@ pub mod rpi;
 /// to be erased and number of btyes to erase.
 pub trait FlashInterface {
     fn hal_init();
-    fn hal_flash_unlock();
-    fn hal_flash_lock();
+    fn hal_flash_unlock(&self);
+    fn hal_flash_lock(&self);
     fn hal_flash_write(&self, addr: usize, data: *const u8, len: usize);
 
     fn hal_flash_erase(&self, addr: usize, len: usize);
@@ -24,5 +30,8 @@ pub trait FlashInterface {
 pub fn preboot() {}
 pub fn boot_from(fw_base_address: usize) -> ! {
     #[cfg(feature = "nrf52840")]
-    crate::nrf::nrf52840::boot_from(fw_base_address)
+    crate::nrf::nrf52840::boot_from(fw_base_address);
+
+    #[cfg(feature = "stm32f411")]
+    crate::stm::stm32f411::boot_from(fw_base_address)
 }

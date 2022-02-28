@@ -39,7 +39,7 @@ sha384 = []
 nistp256 = ["p256/ecdsa","sha256"]
 secp256k1 = ["k256/ecdsa","sha256"]
 ed25519 = ["sha256"]
-default = ["sha256", "nistp256", "defmt-default"]
+default = ["stm32f411","sha256", "nistp256", "defmt-default"]
 
 # these features are required by defmt
 defmt-default = []
@@ -48,4 +48,5 @@ defmt-debug = []
 defmt-info = []
 defmt-warn = []
 defmt-error = []
-
+stm32f411 = []
+nrf52840 = []

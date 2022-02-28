@@ -9,5 +9,8 @@
         "*.x": "linkerscript"
     },
     "cortex-debug.registerUseNaturalFormat": false,
-    "cortex-debug.variableUseNaturalFormat": false
+    "cortex-debug.variableUseNaturalFormat": false,
+    "cSpell.enableFiletypes": [
+        "arm"
+    ]
 }
