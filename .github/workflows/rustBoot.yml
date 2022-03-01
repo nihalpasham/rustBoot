@@ -26,7 +26,7 @@ jobs:
     - name: Run tests
       run: cargo xtask test rustBoot
     - name: Build rustBoot-only
-      run: cargo xtask build rustBoot-only
+      run: cargo xtask build rustBoot-only stm32f411
   build_on_windows:
 
     runs-on: windows-latest
@@ -43,7 +43,7 @@ jobs:
     - name: Run tests
       run: cargo xtask test rustBoot
     - name: Build rustBoot-only
-      run: cargo xtask build rustBoot-only
+      run: cargo xtask build rustBoot-only stm32f411
   build_on_mac:
 
     runs-on: macos-latest
@@ -60,4 +60,4 @@ jobs:
     - name: Run tests
       run: cargo xtask test rustBoot
     - name: Build rustBoot-only
-      run: cargo xtask build rustBoot-only
+      run: cargo xtask build rustBoot-only stm32f411
