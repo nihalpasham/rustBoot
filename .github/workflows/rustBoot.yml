@@ -10,12 +10,12 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build_on_ubuntu:
 
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@master
     - name: Install rust + target Dependencies 
       run: |
         rustup default nightly
@@ -23,7 +23,41 @@ jobs:
         cargo install cargo-binutils
         rustup component add llvm-tools-preview
         cargo install flip-link
+    - name: Run tests
+      run: cargo xtask test rustBoot
     - name: Build rustBoot-only
       run: cargo xtask build rustBoot-only
-    - name: Build pkgs-for stm32f411
-      run: cargo xtask build pkgs-for stm32f411
+  build_on_windows:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@master
+    - name: Install rust + target Dependencies 
+      run: |
+        rustup default nightly
+        rustup target add thumbv7em-none-eabihf
+        cargo install cargo-binutils
+        rustup component add llvm-tools-preview
+        cargo install flip-link
+    - name: Run tests
+      run: cargo xtask test rustBoot
+    - name: Build rustBoot-only
+      run: cargo xtask build rustBoot-only
+  build_on_mac:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@master
+    - name: Install rust + target Dependencies 
+      run: |
+        rustup default nightly
+        rustup target add thumbv7em-none-eabihf
+        cargo install cargo-binutils
+        rustup component add llvm-tools-preview
+        cargo install flip-link
+    - name: Run tests
+      run: cargo xtask test rustBoot
+    - name: Build rustBoot-only
+      run: cargo xtask build rustBoot-only

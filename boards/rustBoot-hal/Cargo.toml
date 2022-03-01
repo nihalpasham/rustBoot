@@ -31,6 +31,7 @@ nrf52840-hal = {version = "0.13.0", optional = true}
 [dependencies.stm32f4xx-hal]
 version = "0.10.1"
 features = ["rt", "stm32f411"]
+optional = false
 
 [features]
 default = ["stm", "stm32f411", "defmt-default"]
