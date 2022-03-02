@@ -35,7 +35,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: nrf52840 nightly build
       run: |
-        # rustup install nightly
+        rustup install nightly
         rustup target add thumbv7em-none-eabihf
         cargo install flip-link
         cargo +nightly --verbose xtask build rustBoot-only nrf52840
