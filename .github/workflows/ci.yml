@@ -30,7 +30,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [uwindows-latest]
+        os: [windows-latest]
     steps:
     - uses: actions/checkout@v1
     - name: nrf52840 nightly build
