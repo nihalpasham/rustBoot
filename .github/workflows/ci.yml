@@ -22,7 +22,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Parser Tests
-      run: cargo test --package rustBoot --lib -- parser::tests --nocapture 
+      run: cargo +nightly test --package rustBoot --lib -- parser::tests --nocapture 
 
   builds:
     runs-on: ${{ matrix.os }}
