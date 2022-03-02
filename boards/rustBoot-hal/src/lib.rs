@@ -24,5 +24,6 @@ pub trait FlashInterface {
 pub fn preboot() {}
 pub fn boot_from(fw_base_address: usize) -> ! {
     #[cfg(feature = "nrf52840")]
-    crate::nrf::nrf52840::boot_from(fw_base_address)
+    crate::nrf::nrf52840::boot_from(fw_base_address);
+    panic!(": unrecognized board")
 }

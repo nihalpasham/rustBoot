@@ -1,3 +1,5 @@
+//! NVMC (i.e. flash) driver for the nrf52840 board, written in pure-rust. 
+
 use core::{
     ops::{Add, Sub},
     usize,

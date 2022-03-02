@@ -1,0 +1,39 @@
+name: ci
+
+on: 
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Check formatting
+      run: cargo fmt -- --check
+  
+  tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+    - uses: actions/checkout@v1
+    - name: Parser Tests
+      run: cargo test --package rustBoot --lib -- parser::tests --nocapture 
+
+  builds:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+    - uses: actions/checkout@v1
+    - name: nrf52840 nightly build
+      run: |
+        rustup target add thumbv7em-none-eabihf
+        cargo install flip-link
+        cargo +nightly --verbose xtask build rustBoot-only nrf52840
+

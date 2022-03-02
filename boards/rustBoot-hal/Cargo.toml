@@ -1,19 +1,19 @@
 [package]
-name = "rustBoot-hal"
-version = "0.1.0"
-edition = "2018"
 authors = ["Twitter: @npashi <nihal.pasham@gmail.com>"]
 categories = ["embedded", "no_std", "authentication"]
 description = """
-A hardware asbtraction layer for rustBoot. It contains the necessary HW-specific impls 
-for flash programming for a specific board, written in pure-Rust .
+A hardware asbtraction layer for rustBoot. It contains HW-specific impls 
+for board-specific flash programming, written in pure-Rust .
 """
 documentation = ""
+edition = "2018"
 homepage = ""
 keywords = ["security", "bootloader", "firmware", "authentication", "update"]
 license = "MIT"
+name = "rustBoot-hal"
 readme = "README.md"
 repository = "https://github.com/nihalpasham/rustBoot"
+version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -24,20 +24,20 @@ doctest = false
 test = false
 
 [dependencies]
-defmt = "0.3.0"
-nrf52840-hal = "0.13.0"
 cortex-m = "0.7.3"
+defmt = "0.3.0"
+
+nrf52840-hal = {version = "0.13.0", optional = true}
 
 [features]
-default = ["nrf", "nrf52840", "defmt-default"]
+default = ["defmt-default"]
 # these features are required by defmt
-defmt-default = []
-defmt-trace = []
 defmt-debug = []
-defmt-info = []
-defmt-warn = []
+defmt-default = []
 defmt-error = []
+defmt-info = []
+defmt-trace = []
+defmt-warn = []
 
 nrf = []
-nrf52840 = ["nrf"]
-
+nrf52840 = ["nrf52840-hal"]
