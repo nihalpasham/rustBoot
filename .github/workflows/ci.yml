@@ -47,6 +47,7 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: Build nrf52840
+        run: cargo install flip-link
         uses: actions-rs/cargo@v1
         with:
           use-cross: false
