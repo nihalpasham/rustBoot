@@ -30,13 +30,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [uwindows-latest]
     steps:
     - uses: actions/checkout@v1
     - name: nrf52840 nightly build
       run: |
         rustup install nightly
-        rustup target add thumbv7em-none-eabihf
         cargo install flip-link
+        rustup target add thumbv7em-none-eabihf
         cargo +nightly --verbose xtask build rustBoot-only nrf52840
 
