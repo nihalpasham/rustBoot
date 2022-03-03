@@ -45,16 +45,14 @@ jobs:
           profile: minimal
           override: true
           target: ${{ matrix.target }}
-      # - name: Install flip-link
-      #   if: ${{ matrix.target }} == thumbv7em-none-eabihf
-      #   uses: actions-rs/cargo@v1
-      #   with:
-      #     use-cross: false
-      #     command: install
-      #     args: flip-link
+      - name: Install flip-link
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: install
+          args: flip-link
       - name: nrf52840
         if: ${{ matrix.target }} == thumbv7em-none-eabihf
-        run: cargo install flip-link
         uses: actions-rs/cargo@v1
         with:
           use-cross: false
