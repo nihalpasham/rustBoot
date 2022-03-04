@@ -1,0 +1,9 @@
+error[E0463]: can't find crate for `std`
+  |
+  = note: the `thumbv7em-none-eabihf` target may not support the standard library
+  = note: `std` is required by `probe0` because it does not declare `#![no_std]`
+  = help: consider building the standard library from source with `cargo build -Zbuild-std`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0463`.

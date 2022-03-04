@@ -198,25 +198,24 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                     sha_ok: false,
                     part: Boot,
                 };
-
                 match part_desc.get_part_status(updater)? {
                     States::New(state) => Ok(ImageType::BootInNewState(RustbootImage {
                         part_desc: unsafe {
-                            BOOT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                            BOOT.get_or_init(|| part_desc);
                             &mut BOOT
                         },
                         state: Some(state),
                     })),
                     States::Testing(state) => Ok(ImageType::BootInTestingState(RustbootImage {
                         part_desc: unsafe {
-                            BOOT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                            BOOT.get_or_init(|| part_desc);
                             &mut BOOT
                         },
                         state: Some(state),
                     })),
                     States::Success(state) => Ok(ImageType::BootInSuccessState(RustbootImage {
                         part_desc: unsafe {
-                            BOOT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                            BOOT.get_or_init(|| part_desc);
                             &mut BOOT
                         },
                         state: Some(state),
@@ -247,7 +246,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 match part_desc.get_part_status(updater)? {
                     States::New(state) => Ok(ImageType::UpdateInNewState(RustbootImage {
                         part_desc: unsafe {
-                            UPDT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                            UPDT.get_or_init(|| part_desc);
                             &mut UPDT
                         },
                         state: Some(state),
@@ -255,7 +254,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                     States::Updating(state) => {
                         Ok(ImageType::UpdateInUpdatingState(RustbootImage {
                             part_desc: unsafe {
-                                UPDT.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                                UPDT.get_or_init(|| part_desc);
                                 &mut UPDT
                             },
                             state: Some(state),
@@ -280,7 +279,7 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                 };
                 Ok(ImageType::NoStateSwap(RustbootImage {
                     part_desc: unsafe {
-                        SWAP.set(part_desc).map_err(|_| RustbootError::StaticReinit)?;
+                        SWAP.get_or_init(|| part_desc);
                         &mut SWAP
                     },
                     state: None,
@@ -294,7 +293,8 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
     pub fn get_part_status(&self, updater: impl FlashApi) -> Result<States> {
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32 {
-            self.set_partition_trailer_magic(updater).expect("failed to set partition status");
+            self.set_partition_trailer_magic(updater)
+                .expect("failed to set partition status");
         }
         let state = unsafe { *self.get_partition_state()? };
         let state = match state {
@@ -314,12 +314,14 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
     ) -> Result<bool> {
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32 {
-            self.set_partition_trailer_magic(updater).expect("failed to set partition status");
+            self.set_partition_trailer_magic(updater)
+                .expect("failed to set partition status");
         }
         let current_state = unsafe { *self.get_partition_state()? };
         let new_state = state.from().unwrap();
         if current_state != new_state {
-            self.set_partition_state(updater, new_state).expect("failed to set partition status");
+            self.set_partition_state(updater, new_state)
+                .expect("failed to set partition status");
         }
         Ok(true)
     }

@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=c:\Users\HP\Downloads\rustBoot\rustBoot\boards\bootloaders\stm32f411\target\rls\thumbv7em-none-eabihf\debug\build\typenum-337513884784f3b0\out\consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=c:\Users\HP\Downloads\rustBoot\rustBoot\boards\bootloaders\stm32f411\target\rls\thumbv7em-none-eabihf\debug\build\typenum-337513884784f3b0\out\op.rs

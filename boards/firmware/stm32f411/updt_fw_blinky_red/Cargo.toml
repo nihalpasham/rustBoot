@@ -1,0 +1,18 @@
+[package]
+name = "update_fw_blinky_red"
+version = "0.1.0"
+edition = "2021"
+
+
+
+[dependencies]
+embedded-hal = "0.2"
+cortex-m = "0.7.1"
+cortex-m-rt = "0.6.15"
+rustBoot-hal ={path = "../../../rustBoot-hal",default-features = false,features = ["stm32f411"]}
+panic-probe = { version = "0.2.0" }
+rustBoot-update = {path = "../../../rustBoot-update"}
+
+[dependencies.stm32f4xx-hal]
+version = "0.10.1"
+features = ["rt", "stm32f411"]
