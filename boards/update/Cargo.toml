@@ -26,7 +26,7 @@ test = false
 [dependencies]
 defmt = "0.3.0"
 rustBoot = {path = "../../rustBoot", default-features = true}
-rustBoot-hal = {path = "../rustBoot-hal", default-features = true}
+rustBoot-hal = {path = "../hal", default-features = true}
 
 [features]
 default = ["defmt-default"]
