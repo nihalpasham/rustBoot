@@ -239,12 +239,16 @@ where
                     }
                     self.flash_erase(swap_part, 0, SECTOR_SIZE);
                 }
-                // re-open the boot partition after swap as all state info is erased post the swap.
+                // Re-open the `Boot` partition after swap.
+                // Note: A successful swap moves the image in the update partition to the boot partition.
+                // TODO: As we're using singletons (i.e. BOOT, UPDT), swap the following `rustBoot header` fields - 
+                //       size, sha_hash, signature_ok, sha_ok, hdr_ok.
                 let boot = PartDescriptor::open_partition(Boot, self).unwrap();
-                // the only valid state for the boot partition after a swap is `newState`
+                // the only valid state for the boot partition after a swap is `newState` as all state
+                // info is erased post the swap.
                 let new_img = match boot {
                     // Transition from current boot state to `StateTesting`. This step consumes the old
-                    // bootImage (i.e. struct) and returns a new bootImage with the new state.
+                    // bootImage (i.e. struct) and returns the new bootImage with the new state.
                     ImageType::BootInNewState(img) => img.into_testing_state(),
                     _ => return Err(RustbootError::InvalidState),
                 };
@@ -334,7 +338,11 @@ where
                 _ => unreachable!(),
             }
         }
-        // After an update or rollback re-open the boot partition
+        
+        // After an update or rollback re-open the `boot` partition.
+        // Note: Swapping moves the image in the update partition to the boot partition.
+        // TODO: As we're using singletons (i.e. BOOT, UPDT), swap the following `rustBoot header` fields - 
+        //       size, sha_hash, signature_ok, sha_ok, hdr_ok.
         let boot = PartDescriptor::open_partition(Boot, self).unwrap();
         match boot {
             ImageType::BootInNewState(img) => {

@@ -1,19 +1,19 @@
 [package]
-name = "rustBoot-update"
-version = "0.1.0"
-edition = "2018"
 authors = ["Twitter: @npashi <nihal.pasham@gmail.com>"]
 categories = ["embedded", "no_std", "authentication"]
 description = """
-This is a rustBoot dependency. It allows for multi-slot partitioning of a flash device 
-and can be used to perform power-interruptible A/B updates.  
+A hardware asbtraction layer for rustBoot. It contains HW-specific impls 
+for board-specific flash programming, written in pure-Rust .
 """
 documentation = ""
+edition = "2018"
 homepage = ""
 keywords = ["security", "bootloader", "firmware", "authentication", "update"]
 license = "MIT"
+name = "rustBoot-hal"
 readme = "README.md"
 repository = "https://github.com/nihalpasham/rustBoot"
+version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -25,15 +25,30 @@ test = false
 
 [dependencies]
 defmt = "0.3.0"
-rustBoot = {path = "../../rustBoot", default-features = true}
-rustBoot-hal = {path = "../rustBoot-hal", default-features = true}
+cortex-m = "0.7.3"
+nrf52840-hal = {version = "0.13.0",optional = true}
+stm32f4xx-hal={version = "0.10.1",features = ["rt", "stm32f411"],optional = true}
+
+
+
+
 
 [features]
 default = ["defmt-default"]
 # these features are required by defmt
-defmt-default = []
-defmt-trace = []
 defmt-debug = []
-defmt-info = []
-defmt-warn = []
+defmt-default = []
 defmt-error = []
+defmt-info = []
+defmt-trace = []
+defmt-warn = []
+
+nrf = []
+
+nrf52840 = ["nrf","nrf52840-hal"]
+
+stm =[]
+stm32f411 = ["stm","stm32f4xx-hal"]
+
+# nrf-board = ["nrf52840-hal"]
+

@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+  tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v1
+      - name: Parser Tests
+        run: |
+          rustup install nightly
+          cargo +nightly test --package rustBoot --lib -- parser::tests --nocapture
+
+  builds:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        target: [thumbv7em-none-eabihf]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          override: true
+          target: ${{ matrix.target }}
+      - name: Install flip-link
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: install
+          args: flip-link
+      - name: nrf52840
+        if: ${{ matrix.target }} == thumbv7em-none-eabihf
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: run
+          args: -p xtask -- build rustBoot-only nrf52840

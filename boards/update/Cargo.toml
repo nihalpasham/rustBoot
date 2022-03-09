@@ -1,12 +1,12 @@
 [package]
-name = "rustBoot-hal"
+name = "rustBoot-update"
 version = "0.1.0"
 edition = "2018"
 authors = ["Twitter: @npashi <nihal.pasham@gmail.com>"]
 categories = ["embedded", "no_std", "authentication"]
 description = """
-A hardware asbtraction layer for rustBoot. It contains the necessary HW-specific impls 
-for flash programming for a specific board, written in pure-Rust .
+This is a rustBoot dependency. It allows for multi-slot partitioning of a flash device 
+and can be used to perform power-interruptible A/B updates.  
 """
 documentation = ""
 homepage = ""
@@ -25,12 +25,8 @@ test = false
 
 [dependencies]
 defmt = "0.3.0"
-cortex-m = "0.7.3"
-nrf52840-hal = {version = "0.13.0",optional = true}
-stm32f4xx-hal={version = "0.10.1",features = ["rt", "stm32f411"],optional = true}
-
-
-
+rustBoot = {path = "../../rustBoot", default-features = true}
+rustBoot-hal = {path = "../hal", default-features = true}
 
 [features]
 default = ["defmt-default"]
@@ -41,12 +37,3 @@ defmt-debug = []
 defmt-info = []
 defmt-warn = []
 defmt-error = []
-
-nrf = []
-nrf52840 = ["nrf","nrf52840-hal"]
-
-stm =[]
-stm32f411 = ["stm","stm32f4xx-hal"]
-
-# nrf-board = ["nrf52840-hal"]
-

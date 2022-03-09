@@ -19,8 +19,8 @@ test = false
 cortex-m-rt = "0.6.15"
 nrf52840-hal = "0.13.0"
 panic-probe = { version = "0.2.0" }
-rustBoot-hal = {path = "../../../rustBoot-hal", default-features = false, features = ["nrf52840"]}
-rustBoot-update = {path = "../../../rustBoot-update"}
+rustBoot-hal = {path = "../../../hal", default-features = false, features = ["nrf52840", "nrf"]}
+rustBoot-update = {path = "../../../update"}
 
 # [features]
 # default = ['defmt-default']

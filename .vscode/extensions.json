@@ -1,5 +1,6 @@
 {
     "recommendations": [
-        "dan-c-underwood.arm"
+        "dan-c-underwood.arm",
+        "eamodio.gitlens"
     ]
 }

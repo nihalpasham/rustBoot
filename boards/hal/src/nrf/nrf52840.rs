@@ -1,3 +1,5 @@
+//! NVMC (i.e. flash) driver for the nrf52840 board, written in pure-rust. 
+
 use core::{
     ops::{Add, Sub},
     usize,
@@ -108,8 +110,8 @@ impl FlashInterface for FlashWriterEraser {
     }
 
     fn hal_init() {}
-    fn hal_flash_lock() {}
-    fn hal_flash_unlock() {}
+    fn hal_flash_lock(&self) {}
+    fn hal_flash_unlock(&self) {}
 }
 
 pub fn preboot() {}

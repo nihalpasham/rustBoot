@@ -9,9 +9,9 @@ edition = "2021"
 embedded-hal = "0.2"
 cortex-m = "0.7.1"
 cortex-m-rt = "0.6.15"
-rustBoot-hal ={path = "../../../rustBoot-hal",default-features = false,features = ["stm32f411"]}
+rustBoot-hal ={path = "../../../hal",default-features = false,features = ["stm32f411"]}
 panic-probe = { version = "0.2.0" }
-rustBoot-update = {path = "../../../rustBoot-update"}
+rustBoot-update = {path = "../../../update"}
 
 [dependencies.stm32f4xx-hal]
 version = "0.10.1"

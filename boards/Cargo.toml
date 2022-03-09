@@ -1,8 +1,8 @@
 [workspace]
 
 resolver = "2"
-members = ["rustBoot-update",
-           "rustBoot-hal", 
+members = ["update",
+           "hal", 
            "firmware/*/*", 
            "bootloaders/*"
            ]

@@ -6,7 +6,7 @@
 target = "thumbv7em-none-eabihf"
 
 # [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = "probe-run --chip nRF52840_xxAA" # runner specific to nrf52840. Replace this with probe-run option for your board.
+# runner = "probe-run --chip nRF52840_xxAA" # runner specific to nrf52840. Replace this with probe-run option for your board.
 rustflags = [
   "-C", "linker=flip-link",
   "-C", "link-arg=-Tlink.x",

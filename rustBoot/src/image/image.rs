@@ -6,8 +6,8 @@ use crate::{Result, RustbootError};
 
 use crate::flashapi::FlashApi;
 
-use defmt::Format;
 use core::ops::Add;
+use defmt::Format;
 #[cfg(feature = "secp256k1")]
 use k256::{
     ecdsa::VerifyingKey,
@@ -20,9 +20,9 @@ use p256::{
     elliptic_curve::{consts::U32, generic_array::GenericArray, FieldSize},
     EncodedPoint, NistP256,
 };
-use sha2::{Digest, Sha256};
 #[cfg(feature = "sha384")]
 use sha2::Sha384;
+use sha2::{Digest, Sha256};
 
 use core::convert::TryInto;
 use core::lazy::OnceCell;
