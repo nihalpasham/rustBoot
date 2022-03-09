@@ -1,4 +1,4 @@
-![GitHub](https://img.shields.io/github/license/nihalpasham/rustBoot) [![ci](https://github.com/nihalpasham/rustBoot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/nihalpasham/rustBoot/actions/workflows/ci.yml) [![chat](https://img.shields.io/badge/chat-rustBoot%3Amatrix.org-brightgreen)](https://matrix.to/#/#rustBoot:matrix.org)
+![GitHub](https://img.shields.io/github/license/nihalpasham/rustBoot) ![GitHub Workflow Status (event)](https://img.shields.io/github/workflow/status/nihalpasham/rustBoot/ci) [![chat](https://img.shields.io/badge/chat-rustBoot%3Amatrix.org-brightgreen)](https://matrix.to/#/#rustBoot:matrix.org)
 # rustBoot 
 rustBoot is a standalone bootloader, written entirely in `Rust`, designed to run on anything from a microcontroller to a system on chip. It can be used to boot into bare-metal firmware or Linux.
 
@@ -14,7 +14,7 @@ rustBoot aims to offer an OS and micro-architecture agnostic (i.e. highly portab
 
 This project's folder structure is divided into 2 workspaces.
 - **core-bootloader:** 
-     - resides in its own folder called `rustBoot`
+    - resides in its own folder called `rustBoot`
 - **hardware abstraction layer**
     - the *boards* folder contains hardware-specific code. It contains the following folders
         - **rustBoot-hal:** contains the flash hardware abstraction layer (read/write/erase operations) for a specific board.
