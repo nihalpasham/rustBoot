@@ -1,3 +1,0 @@
-cargo:rustc-link-search=c:\Users\HP\Downloads\rustBoot\rustBoot\boards\firmware\stm32f411\updt_fw_blinky_red\target\rls\thumbv7em-none-eabihf\debug\build\update_fw_blinky_red-1bad018fcbb1d8d4\out
-cargo:rerun-if-changed=build.rs
-cargo:rerun-if-changed=memory.x

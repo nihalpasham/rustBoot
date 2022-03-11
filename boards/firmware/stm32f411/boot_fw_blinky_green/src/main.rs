@@ -23,8 +23,6 @@ struct Leds {
     green: PD12<gpio::Output<gpio::PushPull>>,
 }
 
-
-
 #[entry]
 fn main() -> ! {
     if let (Some(peri), Some(cortex_peri)) = (stm32::Peripherals::take(), Peripherals::take()) {
@@ -38,26 +36,22 @@ fn main() -> ! {
             green: gpiod.pd12.into_push_pull_output(),
         };
         let flash1 = peri.FLASH;
-        let mut count = 0 ;
-    
-        while count < 6{
+        let mut count = 0;
+
+        while count < 6 {
             leds.green.toggle();
             delay.delay_ms(1000_u16);
-            count = count+1;
-            
-        };
+            count = count + 1;
+        }
         //defmt::println!("before calling update trigger");
-         let flash_writer = FlashWriterEraser { nvm: flash1};
-         let updater = FlashUpdater::new(flash_writer);
+        let flash_writer = FlashWriterEraser { nvm: flash1 };
+        let updater = FlashUpdater::new(flash_writer);
         // //defmt::println!("before calling update trigger");
-          match updater.update_trigger() {
-              Ok(_v) => {}
-              Err(e) => panic!("couldnt trigger update: {}", e),
-          }
- 
-        
+        match updater.update_trigger() {
+            Ok(_v) => {}
+            Err(e) => panic!("couldnt trigger update: {}", e),
+        }
     }
     //nvic_systemreset();
     mcu::pac::SCB::sys_reset()
-    
 }

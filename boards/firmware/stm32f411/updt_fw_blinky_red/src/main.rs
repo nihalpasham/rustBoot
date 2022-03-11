@@ -50,7 +50,7 @@ fn main() -> ! {
             Ok(_v) => {}
             Err(e) => panic!("couldnt trigger update: {}", e),
         }
-        
+
         loop {
             leds.red.toggle();
             delay.delay_ms(1000_u16);
