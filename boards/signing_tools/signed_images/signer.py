@@ -3,7 +3,7 @@ import os
 import shutil
 
 key_file = "ecc256.der"
-firmware = ["nrf52840_bootfw.bin", "nrf52840_updtfw.bin"]
+firmware = ["nrf52840_bootfw.bin", "nrf52840_updtfw.bin","stm32f411_bootfw.bin","stm32f411_updtfw.bin"]
 target_path = "."
 
 
@@ -21,8 +21,14 @@ def sign_image(path):
             # sign `bin` file
             os.system("python3 sign.py --ecc256 --sha256" + " " +
                       filename + " ecc256.der 1235")
-
-
+        elif filename == "stm32f411_bootfw.bin":
+            # sign `bin` file
+            os.system("python3 sign.py --ecc256 --sha256" + " " +
+                      filename + " ecc256.der 1234")
+        elif filename == "stm32f411_updtfw.bin":
+            # sign `bin` file
+            os.system("python3 sign.py --ecc256 --sha256" + " " +
+                      filename + " ecc256.der 1235")
 
 def clean_up():
     os.remove(os.getcwd() + "/ecc256.der")

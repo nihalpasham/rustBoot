@@ -110,8 +110,8 @@ impl FlashInterface for FlashWriterEraser {
     }
 
     fn hal_init() {}
-    fn hal_flash_lock() {}
-    fn hal_flash_unlock() {}
+    fn hal_flash_lock(&self) {}
+    fn hal_flash_unlock(&self) {}
 }
 
 pub fn preboot() {}
