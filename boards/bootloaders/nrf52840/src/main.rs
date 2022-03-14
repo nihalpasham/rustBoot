@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+#[cfg(feature = "defmt")]
 use defmt_rtt as _; // global logger
 use panic_probe as _;
 use rustBoot_hal::nrf::nrf52840::FlashWriterEraser;

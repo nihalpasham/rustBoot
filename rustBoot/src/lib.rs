@@ -4,6 +4,7 @@
 
 pub mod constants;
 mod crypto;
+pub mod dt;
 pub mod flashapi;
 pub mod image;
 pub mod parser;
