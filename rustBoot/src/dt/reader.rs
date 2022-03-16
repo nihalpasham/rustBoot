@@ -508,8 +508,12 @@ mod tests {
     }
 
     fn read_dtb_vec(buf: &mut Vec<u8>, name: &str) {
-        let path = Path::new(file!()).parent().unwrap().strip_prefix("rustBoot/")
-        .unwrap().join("test_dtb");
+        let path = Path::new(file!())
+            .parent()
+            .unwrap()
+            .strip_prefix("rustBoot/")
+            .unwrap()
+            .join("test_dtb");
         let filename = path.join(String::from(name) + ".dtb");
         let mut file = File::open(filename).unwrap();
         buf.resize(0, 0);
