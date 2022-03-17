@@ -143,7 +143,7 @@ impl<'a> StructItems<'a> {
     }
 
     pub fn check_chosen_for_properties(&self) -> usize {
-        let mut items = [StructItem::None; 4];
+        let mut items = [StructItem::None; 5];
         let mut counter = 0;
         for (idx, item) in self.enumerate() {
             counter = idx;
@@ -163,7 +163,14 @@ impl<'a> StructItems<'a> {
                 match name {
                     "bootargs" => {
                         property_len_total =
-                            property_len_total + (TOKEN_SIZE * 3) + item.value().unwrap().len()
+                            property_len_total + (TOKEN_SIZE * 3) + item.value().unwrap().len();
+                        // the dtb parser gives us the item's non-padded length. So, we'll have to account for it.
+                        match property_len_total % 4 {
+                            3 => property_len_total += 1,
+                            2 => property_len_total += 2,
+                            1 => property_len_total += 3,
+                            _ => {}
+                        }
                     }
                     "linux,initrd-start" => {
                         property_len_total =

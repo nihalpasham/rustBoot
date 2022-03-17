@@ -75,7 +75,7 @@ fn main() {
     let chosen_node_padded_len = chosen_node_len + (chosen_node_len % 4);
     let chosen_node_start =
         (node_iter.get_offset() + struct_offset as usize) - chosen_node_padded_len;
-    let chosen_node_end = chosen_node_start + chosen_node_padded_len;
+    let chosen_node_end = chosen_node_start + chosen_node_padded_len + chosen_node_check_len;
     println!(
         "chosen_node_start: {}, chosen_node_end: {:?}",
         chosen_node_start, chosen_node_end
@@ -95,6 +95,9 @@ fn main() {
         - (chosen_node_padded_len + chosen_node_check_len) as u32;
     let strings_offset = header.strings_offset as usize;
     let hdr_total_size = header.total_size as usize;
+
+    println!("struct_offset: {:?}", header.struct_offset);
+    println!("struct_size: {:?}", header.struct_size);
 
     println!("strings_offset_after: {:?}", strings_offset);
     println!("total_size: {:?}", header.total_size);
