@@ -299,6 +299,7 @@ where
                     {
                         match self.rustboot_update(true) {
                             Err(_v) => {
+                                #[cfg(feature = "defmt")]
                                 defmt::info!("all boot options exhausted");
                                 panic!("all boot options exhausted")
                             } // all boot options exhausted
@@ -320,6 +321,7 @@ where
                     {
                         match self.rustboot_update(true) {
                             Err(_v) => {
+                                #[cfg(feature = "defmt")]
                                 defmt::info!("all boot options exhausted");
                                 panic!("all boot options exhausted")
                             } // all boot options exhausted

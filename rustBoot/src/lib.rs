@@ -1,9 +1,10 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 #![allow(non_snake_case)]
 #![feature(once_cell)]
 
 pub mod constants;
 mod crypto;
+pub mod dt;
 pub mod flashapi;
 pub mod image;
 pub mod parser;

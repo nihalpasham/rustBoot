@@ -7,7 +7,6 @@ use crate::{Result, RustbootError};
 use crate::flashapi::FlashApi;
 
 use core::ops::Add;
-use defmt::Format;
 #[cfg(feature = "secp256k1")]
 use k256::{
     ecdsa::VerifyingKey,
@@ -34,7 +33,7 @@ static mut UPDT: OnceCell<PartDescriptor<Update>> = OnceCell::new();
 /// Singleton to ensure we only ever have one instance of the `SWAP` partition
 static mut SWAP: OnceCell<PartDescriptor<Swap>> = OnceCell::new();
 
-#[derive(Format)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub enum States {
     New(StateNew),
     Updating(StateUpdating),
@@ -65,7 +64,8 @@ pub trait Updateable: Sealed + TypeState {}
 /// a state when an image has not been staged for boot, or triggered for an update.
 ///
 /// - If an image is present, no flags are active.
-#[derive(Debug, Format)]
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub struct StateNew;
 impl TypeState for StateNew {
     fn from(&self) -> Option<u8> {
@@ -75,7 +75,8 @@ impl TypeState for StateNew {
 /// Represents the state of a partition/image. This state is ONLY
 /// valid in the `UPDATE` partition. The image is marked for update and should replace
 /// the current image in `BOOT`.
-#[derive(Debug, Format)]
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub struct StateUpdating;
 impl TypeState for StateUpdating {
     fn from(&self) -> Option<u8> {
@@ -87,7 +88,8 @@ impl Updateable for StateUpdating {}
 /// valid in the `BOOT` partition. The image has just been swapped, and is pending
 /// reboot. If present after reboot, it means that the updated image failed to boot,
 /// despite being correctly verified. This particular situation triggers a rollback.
-#[derive(Debug, Format)]
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub struct StateTesting;
 impl TypeState for StateTesting {
     fn from(&self) -> Option<u8> {
@@ -98,7 +100,8 @@ impl Updateable for StateTesting {}
 /// Represents the state of a given partition/image. This state is ONLY
 /// valid in the `BOOT` partition. `Success` here indicates that image currently stored
 /// in BOOT has been successfully staged at least once, and the update is now complete.
-#[derive(Debug, Format)]
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub struct StateSuccess;
 impl TypeState for StateSuccess {
     fn from(&self) -> Option<u8> {
@@ -110,7 +113,8 @@ impl Updateable for StateSuccess {}
 /// We use the [`NoState`] type to represent `non-existent state`.
 ///
 /// **Example:** the `swap partition` has no state field and does not need one.
-#[derive(Debug, Format)]
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub struct NoState;
 impl TypeState for NoState {
     fn from(&self) -> Option<u8> {
@@ -408,7 +412,8 @@ impl PartDescriptor<Update> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Format)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub enum SectFlags {
     NewFlag,
     SwappingFlag,

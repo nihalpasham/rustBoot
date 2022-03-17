@@ -9,11 +9,13 @@ pub mod stm;
 
 pub mod rpi;
 
-/// This is the trait that abstracts out the necessary HW-specific flash operations
+/// This is the trait that abstracts out the necessary hardware-specific flash operations
 /// such as
+/// 
 /// - `writing to flash` - write an arbitrary blob of data to an arbitrary location in flash
 /// - `erasing a flash page` - erase a page of flash, given the address (i.e. first word) of the page
 /// to be erased and number of btyes to erase.
+/// 
 pub trait FlashInterface {
     fn hal_init();
     fn hal_flash_unlock(&self);

@@ -1,5 +1,6 @@
+/rustBoot/src/dt/writer_test.rs
 boards/bootloaders/rpi4/src/testing_stuff
 boards/bootloaders/rpi4/kernel8.img
 /target
 Cargo.lock
-
+test.md

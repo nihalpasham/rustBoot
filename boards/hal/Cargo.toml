@@ -24,31 +24,16 @@ doctest = false
 test = false
 
 [dependencies]
-defmt = "0.3.0"
 cortex-m = "0.7.3"
-nrf52840-hal = {version = "0.13.0",optional = true}
-stm32f4xx-hal={version = "0.10.1",features = ["rt", "stm32f411"],optional = true}
-
-
-
-
+defmt = {version = "0.3.1", optional = true}
+nrf52840-hal = {version = "0.13.0", optional = true}
+stm32f4xx-hal = {version = "0.10.1", features = ["rt", "stm32f411"], optional = true}
 
 [features]
-default = ["defmt-default"]
-# these features are required by defmt
-defmt-debug = []
-defmt-default = []
-defmt-error = []
-defmt-info = []
-defmt-trace = []
-defmt-warn = []
+default = []
 
+# board-specific features
 nrf = []
-
-nrf52840 = ["nrf","nrf52840-hal"]
-
-stm =[]
-stm32f411 = ["stm","stm32f4xx-hal"]
-
-# nrf-board = ["nrf52840-hal"]
-
+nrf52840 = ["nrf", "nrf52840-hal"]
+stm = []
+stm32f411 = ["stm", "stm32f4xx-hal"]
