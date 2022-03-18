@@ -40,7 +40,8 @@ fn main() {
         .for_each(|offset| *offset = *offset + strings_block_len);
     println!("offset_list: {:?}", offset_list);
 
-    // *** Construct a device-tree node with supplied node_name and property-values ***
+    // *** Construct a device-tree node with node_name `chosen` along with property-values 
+    // corresponding to the above property-names. ***
 
     let mut buf = [0u8; 200];
     let node_name = "chosen";

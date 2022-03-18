@@ -144,6 +144,7 @@ impl<'a> StructItems<'a> {
 
     pub fn check_chosen_for_properties(&self) -> usize {
         let mut items = [StructItem::None; 5];
+        let mut seq = [ChosenPropertySequencer::Other; 5];
         let mut counter = 0;
         for (idx, item) in self.enumerate() {
             counter = idx;
@@ -153,38 +154,57 @@ impl<'a> StructItems<'a> {
                 StructItem::None => {
                     panic!("invalid item")
                 }
-                _ => continue,
-            }
-        }
-        let mut property_len_total = 0;
-        for item in items[..counter].iter() {
-            if item.is_property() {
-                let name = item.name().unwrap();
-                match name {
-                    "bootargs" => {
-                        property_len_total =
-                            property_len_total + (TOKEN_SIZE * 3) + item.value().unwrap().len();
-                        // the dtb parser gives us the item's non-padded length. So, we'll have to account for it.
-                        match property_len_total % 4 {
-                            3 => property_len_total += 1,
-                            2 => property_len_total += 2,
-                            1 => property_len_total += 3,
+                _ => {
+                    if item.is_property() {
+                        match item.name() {
+                            Ok("bootargs") => seq[idx] = ChosenPropertySequencer::Bootargs,
+                            Ok("linux,initrd-start") => {
+                                seq[idx] = ChosenPropertySequencer::InitrdStart
+                            }
+                            Ok("linux,initrd-end") => seq[idx] = ChosenPropertySequencer::InitrdEnd,
                             _ => {}
                         }
                     }
-                    "linux,initrd-start" => {
-                        property_len_total =
-                            property_len_total + (TOKEN_SIZE * 3) + item.value().unwrap().len()
-                    }
-                    "linux,initrd-end" => {
-                        property_len_total =
-                            property_len_total + (TOKEN_SIZE * 3) + item.value().unwrap().len()
-                    }
-                    _ => {}
                 }
             }
         }
-        property_len_total
+        match seq.is_sorted() {
+            true => {
+                let mut property_len_total = 0;
+                for item in items[..counter].iter() {
+                    if item.is_property() {
+                        let name = item.name().unwrap();
+                        match name {
+                            "bootargs" => {
+                                property_len_total = property_len_total
+                                    + (TOKEN_SIZE * 3)
+                                    + item.value().unwrap().len();
+                                // the dtb parser gives us the item's non-padded length. So, we'll have to account for it.
+                                match property_len_total % 4 {
+                                    3 => property_len_total += 1,
+                                    2 => property_len_total += 2,
+                                    1 => property_len_total += 3,
+                                    _ => {}
+                                }
+                            }
+                            "linux,initrd-start" => {
+                                property_len_total = property_len_total
+                                    + (TOKEN_SIZE * 3)
+                                    + item.value().unwrap().len()
+                            }
+                            "linux,initrd-end" => {
+                                property_len_total = property_len_total
+                                    + (TOKEN_SIZE * 3)
+                                    + item.value().unwrap().len()
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                property_len_total
+            }
+            false => unimplemented!(),
+        }
     }
 
     /// Returns a structure path iterator for a given path.
@@ -196,6 +216,15 @@ impl<'a> StructItems<'a> {
             level: 0,
         }
     }
+}
+
+/// Represents the expected sequence of `chosen-node` properties.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum ChosenPropertySequencer {
+    Bootargs,
+    InitrdStart,
+    InitrdEnd,
+    Other,
 }
 
 impl<'a> Iterator for StructItems<'a> {

@@ -1,6 +1,6 @@
 #![cfg_attr(not(test), no_std)]
 #![allow(non_snake_case)]
-#![feature(once_cell)]
+#![feature(once_cell, is_sorted)]
 
 pub mod constants;
 mod crypto;
