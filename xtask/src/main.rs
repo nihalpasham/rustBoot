@@ -85,14 +85,14 @@ fn build_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
 fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
-            let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             cmd!("py convert2bin.py").run()?;
             // python script has a linux dependency - `wolfcrypt`
             cmd!("wsl python3 signer.py").run()?;
             Ok(())
         }
         "stm32f411" => {
-            let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             //  cmd!("python3 --version").run()?;
             cmd!("python3 convert2bin.py").run()?;
             // python script has a linux dependency - `wolfcrypt`
@@ -106,7 +106,7 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
 fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
-            let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
             cmd!("pyocd flash -t nrf52840 --base-address {boot_part_addr} nrf52840_bootfw_v1234_signed.bin").run()?;
 
@@ -115,7 +115,7 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f411" => {
-            let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
             cmd!("pyocd flash --base-address {boot_part_addr} stm32f411_bootfw_v1235_signed.bin")
                 .run()?;
@@ -163,7 +163,7 @@ fn root_dir() -> PathBuf {
 fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
-            let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
             cmd!("pyocd erase -t nrf52840 -s 0x0").run()?;
             let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
@@ -179,7 +179,7 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f411" => {
-            let _p = xshell::pushd(root_dir().join("boards/signing_tools/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
             cmd!("pyocd erase -t stm32f411 -s 0x0").run()?;
             let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);

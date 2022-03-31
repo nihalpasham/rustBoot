@@ -28,7 +28,7 @@ pub struct Header {
 }
 
 impl Header {
-    /// DTS spec says all compliant device-trees include a 40-byte header
+    /// DT spec says all compliant device-trees include a 40-byte header
     pub fn len(&self) -> usize {
         0x28
     }

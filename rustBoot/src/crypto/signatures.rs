@@ -11,10 +11,10 @@ use k256::{
 };
 #[cfg(feature = "nistp256")]
 use p256::{
+    ecdsa::signature::digest::Digest,
     ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
     elliptic_curve::consts::U32,
 };
-use sha2::Digest;
 
 /// A type to represent an ECDSA-SHA256 Signature
 #[cfg(feature = "nistp256")]
@@ -36,6 +36,7 @@ impl NistP256Signature {
                 &Signature::try_from(signature).map_err(|_| RustbootError::BadSignature)?,
             )
             .is_ok();
+
         Ok(res)
     }
 }

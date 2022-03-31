@@ -16,6 +16,10 @@ pub struct SerializedBuffer<const M: usize> {
 }
 
 impl<const M: usize> SerializedBuffer<M> {
+    /// Creates a new [`SerializedBuffer`]
+    pub fn new(buffer: [u8; M], len: usize) -> Self {
+        SerializedBuffer { buffer, len }
+    }
     /// Returns a slice containing the entire vector.
     pub fn as_slice(&self) -> &[u8] {
         unsafe { core::slice::from_raw_parts(self.buffer.as_ptr() as *const u8, self.len) }
@@ -30,13 +34,44 @@ impl<const M: usize> Deref for SerializedBuffer<M> {
     }
 }
 
-impl<const N: usize> fmt::Debug for SerializedBuffer<N> {
+impl<const M: usize> fmt::Debug for SerializedBuffer<M> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <[u8] as fmt::Debug>::fmt(self, f)
     }
 }
 
-#[derive(Debug)]
+/// Concatenates a slice of bytes with `self` and converts the result to a [`SerializedBuffer`]  
+///
+/// Note:
+/// - The resultant buffer is contains the concatenated string-literal
+/// - The length of concatenated string-literal is `< 50`
+///
+pub trait Concat {
+    fn serialize_and_concat(self, slice_2: &[u8]) -> SerializedBuffer<50>;
+}
+
+impl<'a> Concat for &'a str {
+    /// Concatenates a slice of bytes with `self` and converts the result to a [`SerializedBuffer`]  
+    ///
+    /// Note:
+    /// - The resultant buffer contains the concatenated string-literal
+    /// - The length of concatenated string-literal has to be `< 50`
+    ///
+    fn serialize_and_concat(self, slice_2: &[u8]) -> SerializedBuffer<50> {
+        let mut buffer = [0u8; 50];
+        let slice_1 = self.as_bytes();
+
+        let _ = slice_1
+            .iter()
+            .chain(slice_2.iter())
+            .enumerate()
+            .for_each(|(idx, byte)| buffer[idx] = *byte);
+        let len = slice_1.len() + slice_2.len();
+        SerializedBuffer { buffer, len }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
 /// A [`RawNodeConstructor`] represents the binary form of a device-tree node. This includes
 /// a `FDT_BEGIN_NODE` and the node’s name as extra data.
@@ -46,6 +81,12 @@ pub struct RawNodeConstructor<'a> {
 }
 
 impl<'a> RawNodeConstructor<'a> {
+    pub fn new(fdt_begin_node: u32, node_name: &'a [u8]) -> Self {
+        RawNodeConstructor {
+            fdt_begin_node,
+            node_name,
+        }
+    }
     /// Constructs a device-tree `node`, given a name and buffer. The buffer must be adequately sized.
     pub fn make_raw_node(buf: &'a mut [u8], name: &'a str) -> Result<Self> {
         // calculate `raw node size and count` in bytes. size includes null + padding bytes
@@ -156,7 +197,7 @@ impl<'a> RawNodeConstructor<'a> {
 }
 
 /// A property value is an array of zero or more bytes that contain information associated with the property.
-/// [Table 2.3] of the DTSpec (https://github.com/devicetree-org/devicetree-specification/releases/download/v0.4-rc1/devicetree-specification-v0.4-rc1.pdf)
+/// [Table 2.3](https://github.com/devicetree-org/devicetree-specification/releases/download/v0.4-rc1/devicetree-specification-v0.4-rc1.pdf) of the DTSpec
 /// describes the set of basic value types.
 ///
 /// Note:  This impl doesnt account for all property value types.
@@ -176,8 +217,6 @@ impl<'a> AsRef<[u8]> for PropertyValue<'a> {
     }
 }
 
-#[derive(Debug)]
-#[repr(C)]
 /// A [`RawPropertyConstructor`] represents the binary form of a device-tree property. It starts with the FDT_PROP
 /// token which marks the beginning of one property in the devicetree. This is followed by the property’s length,
 /// a name-offset and the property value.
@@ -186,6 +225,8 @@ impl<'a> AsRef<[u8]> for PropertyValue<'a> {
 /// - name-offset gives an offset into the strings block at which the property’s name is stored as a null-terminated string
 /// - Lastly, the property’s value is given as a byte string of length `prop_len`.
 ///
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
 pub struct RawPropertyConstructor<'a> {
     fdt_prop: u32,
     prop_len: u32,
@@ -193,7 +234,26 @@ pub struct RawPropertyConstructor<'a> {
     prop_val: &'a [u8],
 }
 
+impl Default for RawPropertyConstructor<'_> {
+    fn default() -> Self {
+        Self {
+            fdt_prop: Default::default(),
+            prop_len: Default::default(),
+            name_off: Default::default(),
+            prop_val: Default::default(),
+        }
+    }
+}
+
 impl<'a> RawPropertyConstructor<'a> {
+    pub fn new(fdt_prop: u32, prop_len: u32, name_off: u32, prop_val: &'a [u8]) -> Self {
+        RawPropertyConstructor {
+            fdt_prop,
+            prop_len,
+            name_off,
+            prop_val,
+        }
+    }
     /// Constructs a device-tree `property`, given a buffer, a property value and an offset into the
     /// device-tree `strings-block`. The buffer must be adequately sized.
     pub fn make_raw_property(

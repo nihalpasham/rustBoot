@@ -207,6 +207,41 @@ impl<'a> StructItems<'a> {
         }
     }
 
+    /// Returns the value of a property (if it exists) within a node.
+    ///
+    /// Note:
+    /// - `self` here must point to the [`StructItem`] after the requested [`StructItem::BeginNode`]
+    /// i.e. if I want the value for the `default` property within the `configurations` node of a given
+    /// FIT Image, I will have to first parse the configurations node which will return a `self`. We can use
+    /// this `self` to retrieve the property's value.
+    /// - This methods return a `None` if you try to retrieve a `nested node as a property`.
+    ///   
+    pub fn get_node_property(self, name: &'a str) -> Option<&'a [u8]> {
+        let mut property_val = None;
+        let mut sub_node_end = false;
+        for item in self {
+            if item.is_property() {
+                match item.name() {
+                    Ok(val) if val == name => {
+                        property_val = Some(item.value().unwrap());
+                        break;
+                    }
+                    _ => {}
+                }
+            } else if item.is_begin_node() {
+                sub_node_end = true;
+            } else if item.is_end_node() {
+                if sub_node_end == true {
+                    sub_node_end = false;
+                    continue;
+                } else {
+                    break;
+                }
+            }
+        }
+        property_val
+    }
+
     /// Returns a structure path iterator for a given path.
     pub fn path_struct_items<'b>(&self, path: &'b str) -> PathStructItems<'a, 'b> {
         PathStructItems {

@@ -1,0 +1,22 @@
+[package]
+edition = "2021"
+name = "rbsigner"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+as-slice = "0.2.1"
+p256 = {version = "0.10.1", default-features = false, features = ["ecdsa"], optional = true}
+rustBoot = {path = "../rustBoot"}
+sha2 = {version = "0.9.9", default-features = false}
+signature = {version = "1.3.1", default-features = false, features = ["digest-preview"]}
+
+[features]
+default = ["sha256", "nistp256"]
+nistp256 = ["p256/ecdsa", "sha256"]
+sha256 = []
+secp256k1 = []
+# secp256k1 = ["k256/ecdsa", "sha256"]
+# ed25519 = ["sha256"]
+# sha384 = []

@@ -15,13 +15,15 @@ use k256::{
 };
 #[cfg(feature = "nistp256")]
 use p256::{
+    ecdsa::signature::digest::Digest,
     ecdsa::VerifyingKey,
     elliptic_curve::{consts::U32, generic_array::GenericArray, FieldSize},
     EncodedPoint, NistP256,
 };
+use sha2::Sha256;
 #[cfg(feature = "sha384")]
 use sha2::Sha384;
-use sha2::{Digest, Sha256};
+// use sha2::digest::{Digest};
 
 use core::convert::TryInto;
 use core::lazy::OnceCell;

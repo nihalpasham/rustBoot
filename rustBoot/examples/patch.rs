@@ -1,9 +1,11 @@
 #![allow(warnings)]
 
-use as_slice::AsSlice;
+use core::convert::TryInto;
 use rustBoot::dt::{
-    PropertyValue, RawNodeConstructor, Reader, StringsBlock, StructItem, TOKEN_SIZE,
+    patch::*, Error, PropertyValue, RawNodeConstructor, RawPropertyConstructor, Reader, Result,
+    StringsBlock, StructItem, TOKEN_SIZE,
 };
+
 use std::fs;
 use std::io::Read;
 
@@ -16,34 +18,23 @@ fn main() {
     )
     .unwrap();
     file.read_to_end(&mut buf).unwrap();
-    let dtb_blob = buf.as_slice();
     let reader = Reader::read(buf.as_slice()).unwrap();
-    let mut header = Reader::get_header(buf.as_slice()).unwrap();
-    let strings_block_len = header.strings_size as usize;
-    let struct_offset = header.struct_offset;
-    let header_len = header.len();
 
-    // *** Add the suppiled device-tree property names to the strings-block ***
-
+    let dtb_blob = buf.as_slice();
     let mut buf = [0; 100];
+    let mut new_strings_block = StringsBlock::new(&mut buf[..]).unwrap();
+
     let name_list = ["bootargs", "linux,initrd-start", "linux,initrd-end"];
-    let mut appended_strings_block = StringsBlock::new(&mut buf[..]).unwrap();
-    let mut offset_list = appended_strings_block
-        .make_new_strings_block_with(&name_list)
-        .unwrap();
-    let appended_strings_block = appended_strings_block.finalize();
-    let offset_list = &mut offset_list[..name_list.len()];
-    println!("appended_strings_block: {:?}", appended_strings_block);
-    // add strings_block_len to each offset in the list
-    offset_list
-        .iter_mut()
-        .for_each(|offset| *offset = *offset + strings_block_len);
-    println!("offset_list: {:?}", offset_list);
+    let res = make_new_strings_block_with::<3>(&name_list, &mut new_strings_block, dtb_blob);
+    let (offset_list, strings_block_patch, strings_block_patch_len) = match res {
+        Ok((strings_block, offset_list)) => {
+            println!("strings_block_patch: {:?}\n", strings_block);
+            println!("offset_list: {:?}\n", offset_list);
+            (offset_list, strings_block, strings_block.len())
+        }
+        Err(e) => panic!("error: {:?}", e),
+    };
 
-    // *** Construct a device-tree node with node_name `chosen` along with property-values 
-    // corresponding to the above property-names. ***
-
-    let mut buf = [0u8; 200];
     let node_name = "chosen";
     let prop_val_list = [
         PropertyValue::String(
@@ -54,75 +45,85 @@ fn main() {
         PropertyValue::U32([0x05, 0x89, 0x00, 0x00]),
         PropertyValue::U32([0x07, 0x7f, 0x08, 0x4a]),
     ];
-    let node_size = RawNodeConstructor::make_node_with_props(
-        &mut buf[..],
-        node_name,
-        offset_list,
-        &prop_val_list,
-    )
-    .unwrap();
-    let serialized_node = &buf[..node_size];
-    println!("serialized_node: {:?} ", serialized_node);
-    println!("node_len: {:?} ", node_size);
+    let res = make_node_with_props::<200>(node_name, &prop_val_list, &offset_list);
+    let (patch_bytes_1_len, patch_bytes_1) = match res {
+        Ok((patch_bytes_1_len, patch_bytes_1)) => {
+            println!("patch_bytes_1_len: {:?}\n", patch_bytes_1_len);
+            (patch_bytes_1_len, patch_bytes_1)
+        }
+        Err(e) => panic!("error: {:?}", e),
+    };
+    let patch_bytes_1 = &patch_bytes_1[..patch_bytes_1_len];
+    println!("patch_bytes_1: {:?}\n", patch_bytes_1);
 
-    // *** Find the chosen node start and end ***
+    let res = parse_raw_node::<10>(&reader, "/chosen", dtb_blob);
+    let parsed_node = match res {
+        Ok(val) => {
+            val.iter().for_each(|(prop_name, item, prop_len)| {
+                println!(
+                    "prop_name: {:?}, item: {:?}, prop_len: {:?}\n",
+                    prop_name, item, prop_len
+                )
+            });
+            val
+        }
+        Err(e) => panic!("error: {:?}", e),
+    };
 
-    let root = reader.struct_items();
-    let (node, node_iter) = root.path_struct_items("/chosen").next().unwrap();
-    let chosen_node_check_len = node_iter.check_chosen_for_properties();
-    println!("check_chosen_node: {:?}", chosen_node_check_len);
-
-    let chosen_node_len = TOKEN_SIZE + node.node_name().unwrap().len();
-    let chosen_node_padded_len = chosen_node_len + (chosen_node_len % 4);
-    let chosen_node_start =
-        (node_iter.get_offset() + struct_offset as usize) - chosen_node_padded_len;
-    let chosen_node_end = chosen_node_start + chosen_node_padded_len + chosen_node_check_len;
+    let res = check_chosen_node::<10, 200>(parsed_node);
+    let (patch_bytes_2, len_to_be_subtracted) = match res {
+        Ok((buf, len_to_be_subtracted)) => {
+            println!(
+                "patch_bytes_2: {:?}, subtracted_len: {:?}\n",
+                buf.as_slice(),
+                len_to_be_subtracted
+            );
+            (buf, len_to_be_subtracted)
+        }
+        Err(e) => panic!("error: {:?}", e),
+    };
+    // `patch_bytes_1_len` includes a `BEGIN_NODE`, we have to subtract it from the new length.
+    // i.e. the `chosen` node takes up 12 bytes (0x00000001 + "chosen" + padding)
+    let padded_node_len = get_padded_node_len(&reader, "/chosen");
+    let new_node_len = patch_bytes_1_len + patch_bytes_2.as_slice().len() - padded_node_len;
     println!(
-        "chosen_node_start: {}, chosen_node_end: {:?}",
-        chosen_node_start, chosen_node_end
+        "new_node_len: {:?}, padded_node_len: {:?}\n",
+        new_node_len, padded_node_len
     );
 
-    // *** Update device-tree header ***
+    let mut header = Reader::get_header(dtb_blob).unwrap();
+    let updated_header = update_dtb_header(
+        &mut header,
+        strings_block_patch_len,
+        new_node_len,
+        len_to_be_subtracted,
+    );
+    println!("header: {:?}\n", updated_header);
 
-    println!("strings_offset_before: {:?}", header.strings_offset);
+    let (node_start, node_end) =
+        match get_node_start_and_end(&reader, "/chosen", dtb_blob, len_to_be_subtracted) {
+            Ok((node_start, node_end)) => (node_start, node_end),
+            Err(e) => panic!("error: {:?}", e),
+        };
 
-    let appended_strings_block_len = appended_strings_block.len() as u32;
-    header.strings_size = header.strings_size + appended_strings_block_len;
-    header.struct_size = (header.struct_size + node_size as u32)
-        - (chosen_node_padded_len + chosen_node_check_len) as u32;
-    header.strings_offset = (header.strings_offset + node_size as u32)
-        - (chosen_node_padded_len + chosen_node_check_len) as u32;
-    header.total_size = (header.total_size + appended_strings_block_len + node_size as u32)
-        - (chosen_node_padded_len + chosen_node_check_len) as u32;
-    let strings_offset = header.strings_offset as usize;
-    let hdr_total_size = header.total_size as usize;
+    let patched_blob = patch_dtb_node::<27000>(
+        &header,
+        node_start,
+        node_end,
+        dtb_blob,
+        patch_bytes_1,
+        patch_bytes_2.as_slice(),
+        strings_block_patch,
+    );
 
-    println!("struct_offset: {:?}", header.struct_offset);
-    println!("struct_size: {:?}", header.struct_size);
+    dump(&patched_blob[..]);
+}
 
-    println!("strings_offset_after: {:?}", strings_offset);
-    println!("total_size: {:?}", header.total_size);
+pub fn dump<'a>(dtb_blob: &'a [u8]) {
+    let header = Reader::get_header(dtb_blob).unwrap();
+    let hdr_total_size = header.total_size;
+    let reader = Reader::read(&dtb_blob[..hdr_total_size as usize]).unwrap();
 
-    let header = header.as_slice();
-    println!("updated header: {:?}", header);
-
-    // *** Relocate device tree and patch chosen node ***
-
-    let dtb_slice = dtb_blob[chosen_node_end..].len();
-    let slice_1 = chosen_node_start..chosen_node_start + node_size;
-    let slice_2 = chosen_node_start + node_size..chosen_node_start + node_size + dtb_slice;
-    let slice_3 = chosen_node_start + node_size + dtb_slice
-        ..chosen_node_start + node_size + dtb_slice + appended_strings_block_len as usize;
-    let mut dt = [0u8; 27000];
-    dt[..header_len].copy_from_slice(&header);
-    dt[header_len..chosen_node_start].copy_from_slice(&dtb_blob[header_len..chosen_node_start]);
-    dt[slice_1].copy_from_slice(serialized_node);
-    dt[slice_2].copy_from_slice(&dtb_blob[chosen_node_end..]);
-    dt[slice_3].copy_from_slice(appended_strings_block);
-
-    // println!("string_offset: {:?}", &dt[strings_offset - 50..]);
-
-    let reader = Reader::read(&dt[..hdr_total_size]).unwrap();
     for entry in reader.reserved_mem_entries() {
         println!("reserved: {:?} bytes at {:?}", entry.size, entry.address);
     }

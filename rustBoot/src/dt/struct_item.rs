@@ -37,6 +37,13 @@ impl<'a> StructItem<'a> {
             _ => false,
         }
     }
+    /// Returns true if the structure item is Property.
+    pub fn is_end_node(&self) -> bool {
+        match self {
+            StructItem::EndNode => true,
+            _ => false,
+        }
+    }
 
     /// Returns name for BeginNode or Property structure items.
     pub fn name(&self) -> Result<&'a str> {

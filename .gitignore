@@ -1,6 +1,9 @@
 /rustBoot/src/dt/writer_test.rs
+/rustBoot/examples/fit2.rs
+/rustBoot/examples/patch2.rs
 boards/bootloaders/rpi4/src/testing_stuff
 boards/bootloaders/rpi4/kernel8.img
+boards/bootloaders/rpi4/apertis/unpatched-bcm2711-rpi-4-b.dtb
 /target
 Cargo.lock
 test.md

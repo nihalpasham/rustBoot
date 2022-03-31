@@ -16,8 +16,8 @@
 		pcie0 = "/scb/pcie@7d500000";
 	};
 
-	chosen {				  
-		stdout-path = "serial1:115200n8";
+	chosen {	
+		stdout-path = "serial1:115200n8";		
 	};
 
 	reserved-memory {
