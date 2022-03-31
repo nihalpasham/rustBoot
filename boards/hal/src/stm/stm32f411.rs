@@ -34,12 +34,12 @@ impl FlashWriterEraser {
 }
 
 impl FlashInterface for FlashWriterEraser {
-    /// A method is to write data on flash
+    /// This method is to write data on flash
     ///
     /// Method arguments:
     /// -   address: It holds the address of flash where data has to be written
     /// -   data: u8 pointer holding the holding data.
-    /// -   len :  len of bytes of data
+    /// -   len :  number of bytes
     ///
     /// Returns:
     /// -  NONE
@@ -111,14 +111,14 @@ impl FlashInterface for FlashWriterEraser {
         self.hal_flash_lock();
     }
 
-    /// A method is to erase data on flash
+    /// This method is used to erase data on flash
     ///
-    /// In STM32F411 only sector erase is available. whatever be the length of bytes we pass to this function it will erase
-    /// the whole sector which ever the sector of the address belong to.
+    /// In STM32F411 only sector erase is available. whatever be the length of bytes we pass to this function will erase
+    /// the whole sector, whichever the sector the address belong to.
     ///
     /// Method arguments:
-    /// -   addr: Address fro m where data has to be erased
-    /// -   len :  len of bytes to be erased
+    /// -   addr: Address where data has to be erased
+    /// -   len :  number of bytes to be erased
     ///
     /// Returns:
     /// -  NONE
@@ -161,7 +161,7 @@ impl FlashInterface for FlashWriterEraser {
             self.hal_flash_lock();
         }
     }
-    /// A method is used to lock flash
+    /// This method is used to lock the flash
     ///
     /// Once the flash is locked no operation on flash can be perfomed.
     /// Method arguments:
@@ -171,7 +171,7 @@ impl FlashInterface for FlashWriterEraser {
     fn hal_flash_lock(&self) {
         self.nvm.cr.modify(|_, w| w.lock().set_bit());
     }
-    /// A method is used to unlock flash
+    /// This method is used to unlock the flash
     ///
     /// Flash has to be unlocked to do any operation on it.
     /// Method arguments:
@@ -189,20 +189,20 @@ pub fn preboot() {}
 struct RefinedUsize<const MIN: u32, const MAX: u32, const VAL: u32>(u32);
 
 impl<const MIN: u32, const MAX: u32, const VAL: u32> RefinedUsize<MIN, MAX, VAL> {
-    /// A method is used check the address bound for stack pointer
+    /// This method is used to check the address bound of stack pointer
     ///
     /// Method arguments:
-    /// -   i : address where starting address of stack is stored  
+    /// -   i : starting address of stack  
     /// Returns:
     /// -  It returns u32 address of stack pointer
     pub fn bounded_int(i: u32) -> Self {
         assert!(i >= MIN && i <= MAX);
         RefinedUsize(i)
     }
-    /// A method is used check the address of reset pointer
+    /// This method is used to check the address of reset pointer
     ///
     /// Method arguments:
-    /// -   i : address where starting address of reset is stored  
+    /// -   i : starting address of reset  
     /// Returns:
     /// -  It returns u32 address of reset pointer
     pub fn single_valued_int(i: u32) -> Self {
@@ -211,10 +211,10 @@ impl<const MIN: u32, const MAX: u32, const VAL: u32> RefinedUsize<MIN, MAX, VAL>
     }
 }
 
-    /// A method is used to boot from a particular address
+    /// This method is used to boot the firmware from a particular address
     ///
     /// Method arguments:
-    /// -   fw_base_address  : address of firmware
+    /// -   fw_base_address  : address of the firmware
     /// Returns:
     /// -  NONE
 #[rustfmt::skip]

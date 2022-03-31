@@ -58,3 +58,10 @@ jobs:
           use-cross: false
           command: run
           args: -p xtask -- build rustBoot-only nrf52840
+      - name: stm32f411
+        if: ${{ matrix.target }} == thumbv7em-none-eabihf
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: run
+          args: -p xtask -- build rustBoot-only stm32f411
