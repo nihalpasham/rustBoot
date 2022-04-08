@@ -4,8 +4,10 @@
 extern crate cortex_m;
 extern crate cortex_m_rt;
 
-extern crate embedded_hal as hal;
 extern crate stm32f4xx_hal as mcu;
+
+#[cfg(feature = "defmt")]
+use defmt_rtt as _; // global logger
 
 use cortex_m::peripheral::Peripherals;
 use cortex_m_rt::entry;
@@ -43,10 +45,10 @@ fn main() -> ! {
             delay.delay_ms(1000_u16);
             count = count + 1;
         }
-        //defmt::println!("before calling update trigger");
+       
         let flash_writer = FlashWriterEraser { nvm: flash1 };
         let updater = FlashUpdater::new(flash_writer);
-        // //defmt::println!("before calling update trigger");
+        
         match updater.update_trigger() {
             Ok(_v) => {}
             Err(e) => panic!("couldnt trigger update: {}", e),

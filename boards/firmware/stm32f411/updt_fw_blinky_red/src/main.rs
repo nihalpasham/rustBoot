@@ -4,7 +4,6 @@
 extern crate cortex_m;
 extern crate cortex_m_rt;
 
-extern crate embedded_hal as hal;
 extern crate stm32f4xx_hal as mcu;
 
 use cortex_m::peripheral::Peripherals;

@@ -7,3 +7,4 @@ boards/bootloaders/rpi4/apertis/unpatched-bcm2711-rpi-4-b.dtb
 /target
 Cargo.lock
 test.md
+**/*.DS_Store
