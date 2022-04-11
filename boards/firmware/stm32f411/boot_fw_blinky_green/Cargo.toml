@@ -3,32 +3,25 @@ name = "boot_fw_blinky_green"
 version = "0.1.0"
 edition = "2021"
 
-#[[bin]]
-#name = "stm32f411_bootfw"
-#bench = false
-#doctest = false
-#test = false
+[[bin]]
+name = "boot_fw_blinky_green"
+bench = false
+doctest = false
+test = false
 
 [dependencies]
-defmt  = "0.3.0"
-defmt-rtt = {version = "0.3.1"}
-embedded-hal = "0.2"
+defmt = {version = "0.3.1", optional = true}
+defmt-rtt = {version = "0.3.2", optional = true}
 cortex-m = "0.7.1"
 cortex-m-rt = "0.6.15"
 rustBoot-hal ={path = "../../../hal",default-features = false,features = ["stm32f411"]}
 panic-probe = { version = "0.2.0" }
 rustBoot-update = {path = "../../../update"}
 
+# board-specific features
 [dependencies.stm32f4xx-hal]
 version = "0.10.1"
 features = ["stm32f411"]
 
 [features]
-default = ["defmt-default"]
-
-defmt-default = []
-defmt-trace = []
-defmt-debug = []
-defmt-info = []
-defmt-warn = []
-defmt-error = []
+default = ["defmt", "defmt-rtt"]
