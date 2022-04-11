@@ -13,7 +13,7 @@ use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 
 const NS_PER_S: u64 = 1_000_000_000;
 
-/// Timekeeping interfaces. 
+/// Timekeeping interfaces.
 pub trait TimeManager {
     /// The timer's resolution.
     fn resolution(&self) -> Duration;
@@ -23,13 +23,12 @@ pub trait TimeManager {
     /// This includes time consumed by firmware and bootloaders.
     fn uptime(&self) -> Duration;
 
-    /// Get the current value of the system counter 
+    /// Get the current value of the system counter
     fn get_sys_tick_count(&self) -> u64;
 
     /// Wait for a given duration.
     fn wait_for(&self, duration: Duration);
 }
-
 
 /// ARMv8 Generic Timer.
 struct GenericTimer;
@@ -131,4 +130,3 @@ impl TimeManager for GenericTimer {
         CNTP_CTL_EL0.modify(CNTP_CTL_EL0::ENABLE::CLEAR);
     }
 }
-

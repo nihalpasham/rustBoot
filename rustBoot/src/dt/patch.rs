@@ -206,14 +206,15 @@ pub fn patch_dtb_node<'a, const N: usize>(
     patch_bytes_1: &'a [u8],
     patch_bytes_2: &'a [u8],
     strings_block_patch: &'a [u8],
-) -> [u8; N] {
+    patched_dtb_blob: &'a mut [u8],
+) {
     let header_len = 0x28;
     let patch_bytes_1_slice = patch_bytes_1.len();
     let patch_bytes_2_slice = patch_bytes_2.len();
     let remaining_bytes = dtb_blob[node_end..].len();
     let strings_block_patch_len = strings_block_patch.len();
 
-    let mut patched_dtb_blob = [0u8; N];
+    // let mut patched_dtb_blob = [0u8; N];
     let slice_0 = header_len..node_start;
     let slice_1 = node_start..node_start + patch_bytes_1_slice;
     let slice_2 =
@@ -233,14 +234,14 @@ pub fn patch_dtb_node<'a, const N: usize>(
     patched_dtb_blob[slice_2].copy_from_slice(patch_bytes_2);
     patched_dtb_blob[slice_3].copy_from_slice(&dtb_blob[node_end..]);
     patched_dtb_blob[slice_4].copy_from_slice(strings_block_patch);
-    patched_dtb_blob
 }
 
 pub fn patch_chosen_node<'a, const N: usize>(
     reader: Reader<'a>,
     dtb_blob: &'a [u8],
     prop_val_list: &[PropertyValue],
-) -> SerializedBuffer<N> {
+    new_dtb_buffer: &'a mut [u8; N],
+) -> (&'a mut [u8; N], usize) {
     let mut buf = [0; 100];
     let mut new_strings_block = StringsBlock::new(&mut buf[..]).unwrap();
 
@@ -292,7 +293,7 @@ pub fn patch_chosen_node<'a, const N: usize>(
             Err(e) => panic!("error: {:?}", e),
         };
 
-    let patched_dtb_blob = patch_dtb_node::<N>(
+    let _ = patch_dtb_node::<N>(
         &header,
         node_start,
         node_end,
@@ -300,7 +301,19 @@ pub fn patch_chosen_node<'a, const N: usize>(
         patch_bytes_1,
         patch_bytes_2.as_slice(),
         strings_block_patch,
+        new_dtb_buffer.as_mut(),
     );
-    let hdr_total_size = header.total_size;
-    SerializedBuffer::new(patched_dtb_blob, hdr_total_size as usize)
+    let hdr_total_size = correct_endianess(header.total_size);
+    // info!("len: {:?}", hdr_total_size);
+    (new_dtb_buffer, hdr_total_size as usize)
+}
+
+fn correct_endianess(val: u32) -> u32 {
+    let byte_4 = val >> 24 & 0xff;
+    let byte_3 = val >> 8 & 0xff00;
+    let byte_2 = val << 8 & 0xff0000;
+    let byte_1 = val << 24 & 0xff000000;
+
+    let res = byte_1 | byte_2 | byte_3 | byte_4;
+    res
 }

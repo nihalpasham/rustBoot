@@ -139,4 +139,3 @@ impl<T> interface::ReadWriteEx for InitStateLock<T> {
         f(data)
     }
 }
-

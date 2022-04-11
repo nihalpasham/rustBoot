@@ -1,8 +1,7 @@
-
-
 const MAX_INITRAMFS_SIZE: usize = 16066 * 4 * 512;
 const MAX_KERNEL_SIZE: usize = 14624 * 4 * 512;
 const MAX_DTB_SIZE: usize = 100 * 512;
+const MAX_ITB_SIZE: usize = 32000 * 4 * 512;
 
 // #[repr(align(2097152))]
 pub struct InitRamfsEntry(pub [u8; MAX_INITRAMFS_SIZE]);
@@ -11,13 +10,22 @@ pub struct KernelEntry(pub [u8; MAX_KERNEL_SIZE]);
 #[repr(align(2097152))]
 pub struct DtbEntry(pub [u8; MAX_DTB_SIZE]);
 
+pub struct ImageTreeEntry(pub [u8; MAX_ITB_SIZE]);
+
+impl ImageTreeEntry {
+    /// Get an entry point to the ITB.
+    pub const fn new() -> Self {
+        Self([0u8; MAX_ITB_SIZE])
+    }
+}
+
 impl KernelEntry {
     /// Get the kernel's entry point. We assume all Aarch64 kernels use a 2MB aligned base.
     /// i.e. this impl wont work for kernels that aren't 2MB aligned.  
-    /// 
-    /// The flags field (introduced in v3.17) is a little-endian 64-bit field. 
+    ///
+    /// The flags field (introduced in v3.17) is a little-endian 64-bit field.
     /// Bit 3 of the flags field specifies `Kernel physical placement`
-    /// - 0 - 2MB aligned base should be as close as possible to the base of DRAM, since memory 
+    /// - 0 - 2MB aligned base should be as close as possible to the base of DRAM, since memory
     /// below it is not accessible via the linear mapping
     /// - 1 - 2MB aligned base may be anywhere in physical memory
     pub const fn new() -> Self {
@@ -33,7 +41,7 @@ impl DtbEntry {
 }
 
 impl InitRamfsEntry {
-    /// Get an entry point to the `initramfs`. 
+    /// Get an entry point to the `initramfs`.
     pub const fn new() -> Self {
         Self([0u8; MAX_INITRAMFS_SIZE])
     }
@@ -47,6 +55,8 @@ pub static mut KERNEL_LOAD_ADDR: KernelEntry = KernelEntry::new();
 
 // #[link_section = ".dtb_load_addr._dtb_start"]
 pub static mut DTB_LOAD_ADDR: DtbEntry = DtbEntry::new();
+
+pub static mut ITB_LOAD_ADDR: ImageTreeEntry = ImageTreeEntry::new();
 
 type EntryPoint = unsafe extern "C" fn(dtb: usize, rsv0: usize, rsv1: usize, rsv2: usize);
 
@@ -91,5 +101,3 @@ pub fn halt() -> ! {
 //     // we dont intend to return, i.e. `boot_into_kernel` diverges.
 //     halt()
 // }
-
-

@@ -4,7 +4,7 @@
 
 //! BSP Processor code. Top-level BSP file for the Raspberry Pi 4.
 
-use super::drivers::{gpio::GPIO, emmc::EMMCController, uart0::PL011Uart};
+use super::drivers::{emmc::EMMCController, gpio::GPIO, uart0::PL011Uart};
 use super::memory_map;
 
 //--------------------------------------------------------------------------------------------------

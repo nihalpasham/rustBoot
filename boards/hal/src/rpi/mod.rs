@@ -1,1 +1,3 @@
-mod rpi4;
+#[cfg(feature = "rpi4")]
+pub mod rpi4;
+

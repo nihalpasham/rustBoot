@@ -1,0 +1,74 @@
+/dts-v1/;
+
+/ {
+        description = "rustBoot FIT Image";
+        #address-cells = <1>;
+
+        images {
+                kernel {
+                        description = "Kernel";
+                        data = /incbin/("vmlinuz");     
+                        type = "kernel";
+                        arch = "arm64";
+                        os = "linux";
+                        compression = "none";
+                        load = <0x40480000>;
+                        entry = <0x40480000>;
+                        hash {
+                                algo = "sha256";
+                        };
+                };
+                fdt {
+                        description = "DTB";
+                        data = /incbin/("unpatched-bcm2711-rpi-4-b.dtb");
+                        type = "flat_dt";
+                        arch = "arm64";
+                        compression = "none";
+                        load = <0x43000000>;
+                        entry = <0x43000000>;
+                        hash {
+                                algo = "sha256";
+                        };
+                };
+                initrd {
+                        description = "Initrd";
+                        data = /incbin/("initramfs");
+                        type = "ramdisk";
+                        arch = "arm64";
+                        os = "linux";
+                        compression = "none";
+                        hash {
+                                algo = "sha256";
+                        };
+                };
+                rbconfig {
+                        description = "rustBoot Config";
+                        data = /incbin/("rbconfig.txt");
+                        type = "rustBoot cmdline config";
+                        arch = "none";
+                        os = "linux";
+                        compression = "none";
+                        hash {
+                                algo = "sha256";
+                        };
+                };
+        };
+
+        configurations {
+                default = "bootconfig";
+                bootconfig {
+                        description = "Boot Config";
+                        kernel = "kernel";
+                        fdt = "fdt";
+                        ramdisk = "initrd";
+                        rbconfig = "rbconfig";
+                        signature@1 {
+				algo = "sha256,ecdsa256,nistp256";
+				key-name-hint = "dev";
+				signed-images = "fdt", "kernel", "ramdisk", "rbconfig";
+                                value = "";
+			};
+                };
+        };
+
+};

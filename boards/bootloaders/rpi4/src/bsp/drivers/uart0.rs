@@ -213,9 +213,9 @@ impl PL011UartInner {
     /// Set up baud rate and characteristics. For PL011's baud rate calculations, look at
     /// https://developer.arm.com/documentation/ddi0183/g/programmers-model/register-descriptions/fractional-baud-rate-register--uartfbrd
     ///
-    /// For a bitrate of 115200 bps, the corresponding integer and fractional 
+    /// For a bitrate of 115200 bps, the corresponding integer and fractional
     /// divisor values (when UARTCLK is 4MHz) are
-    /// 
+    ///
     /// - **integer divisor:** 2
     /// - **fractional divisor:** 0xB
     pub fn init(&mut self) {

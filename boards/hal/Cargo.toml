@@ -3,7 +3,7 @@ authors = ["Twitter: @npashi <nihal.pasham@gmail.com>"]
 categories = ["embedded", "no_std", "authentication"]
 description = """
 A hardware asbtraction layer for rustBoot. It contains HW-specific impls 
-for board-specific flash programming, written in pure-Rust .
+for board-specific programming, written in pure-Rust .
 """
 documentation = ""
 edition = "2018"
@@ -24,16 +24,27 @@ doctest = false
 test = false
 
 [dependencies]
+# common dependencies
 cortex-m = "0.7.3"
 defmt = {version = "0.3.1", optional = true}
+# Platform specific dependencies for rpi4
+# [target.'cfg(target_arch = "aarch64")'.dependencies]
+cortex-a = {version = "7.0.1", optional = true}
+rustBoot = {path = "../../rustBoot", default-features = true, optional = true}
+tock-registers = {version = "0.7.x", default-features = false, features = ["register_types"], optional = true}
+# nrf52840-specific dependency
 nrf52840-hal = {version = "0.13.0", optional = true}
+# stm32F4-specific dependency
 stm32f4xx-hal = {version = "0.10.1", features = ["rt", "stm32f411"], optional = true}
 
 [features]
-default = []
+default = ["rpi", "rpi4"]
+log = []
 
 # board-specific features
 nrf = []
 nrf52840 = ["nrf", "nrf52840-hal"]
+rpi = []
+rpi4 = ["rpi", "tock-registers", "cortex-a", "rustBoot"]
 stm = []
 stm32f411 = ["stm", "stm32f4xx-hal"]

@@ -3,10 +3,10 @@
 //! Implements the File Allocation Table file system. Supports FAT16 and FAT32 volumes.
 
 use super::blockdevice::{Block, BlockCount, BlockDevice, BlockIdx};
+use super::emmcfat::{Controller, Error, VolumeType};
 use super::filesystem::{
     Attributes, Cluster, DirEntry, Directory, ShortFileName, TimeSource, Timestamp,
 };
-use super::emmcfat::{Error, VolumeType, Controller};
 use super::structure::define_field;
 
 use crate::{info, warn};

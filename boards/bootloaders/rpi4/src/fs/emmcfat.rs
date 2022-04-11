@@ -18,6 +18,7 @@
 use crate::bsp::drivers::emmc::{EMMCController, SdResult};
 use crate::bsp::global::EMMC_CONT;
 use crate::info;
+use crate::log::console::console;
 use byteorder::{ByteOrder, LittleEndian};
 use core::convert::TryFrom;
 
@@ -640,7 +641,7 @@ where
         volume: &Volume,
         mut cluster: Cluster,
     ) -> Result<u32, Error<D::Error>> {
-        let mut contiguous_cluster_count = 1u32;
+        let mut contiguous_cluster_count = 0u32;
         let mut next_cluster = match &volume.volume_type {
             VolumeType::Fat(fat) => match fat.next_cluster(self, cluster) {
                 Ok(cluster) => cluster,
@@ -648,26 +649,39 @@ where
                     // If this is the last cluster for the file, simply return the same cluster.
                     Error::EndOfFile => cluster,
                     _ => panic!(
-                        "Error: traversing the FAT table, accessed free space or a bad cluster"
+                        "Error: traversing the FAT table, accessed free space or a bad cluster, {:?}", e
                     ),
                 },
             },
         };
+        info!(
+            "next_cluster_1: {:?}, curr_cluster_1: {:?}",
+            next_cluster.0, cluster.0
+        );
         while next_cluster.0.wrapping_sub(cluster.0) == 1 {
             cluster = next_cluster;
             next_cluster = match &volume.volume_type {
                 VolumeType::Fat(fat) => match fat.next_cluster(self, cluster) {
-                    Ok(cluster) => cluster,
+                    Ok(next_next_cluster) => next_next_cluster,
                     Err(e) => match e {
                         Error::EndOfFile => break,
                         _ => panic!(
-                            "Error: traversing the FAT table, accessed free space or a bad cluster"
+                            "Error: traversing the FAT table, accessed free space or a bad cluster, {:?}", e
                         ),
                     },
                 },
             };
-            contiguous_cluster_count += 1;
+            // avoid `block_device` timeouts for contiguous block transfers > 100000 blocks
+            if contiguous_cluster_count < 50000 {
+                contiguous_cluster_count += 1;
+            } else {
+                break;
+            }
         }
+        info!(
+            "\n*************** contiguous_cluster_count: {:?}",
+            contiguous_cluster_count
+        );
         Ok(contiguous_cluster_count)
     }
 
@@ -705,13 +719,17 @@ where
         } else {
             file_blocks = (file.length / Block::LEN as u32) + 1;
         }
+        info!(
+            "************file-blocks_total: {:?} ***************",
+            file_blocks
+        );
 
         while file_blocks > 0 {
             // Walk the FAT to see if we have contiguos clusters
             let contiguous_cluster_count =
                 self.check_contiguous_cluster_count(volume, starting_cluster)?;
 
-            let blocks_to_read = (contiguous_cluster_count * blocks_per_cluster as u32);
+            let blocks_to_read = (contiguous_cluster_count + 1) * blocks_per_cluster as u32;
             let bytes_to_read = Block::LEN * blocks_to_read as usize;
             let (blocks, _) = buffer[block_read_counter..block_read_counter + bytes_to_read]
                 .as_chunks_mut::<{ Block::LEN }>();
@@ -729,7 +747,31 @@ where
                 Some(val) => val,
                 None => 0,
             };
-            starting_cluster = starting_cluster + contiguous_cluster_count;
+
+            let next_cluster = match &volume.volume_type {
+                VolumeType::Fat(fat) => {
+                    match fat.next_cluster(self, starting_cluster + contiguous_cluster_count) {
+                        Ok(cluster) => cluster,
+                        Err(e) => match e {
+                            Error::EndOfFile => {
+                                let bytes = bytes_to_read.min(file.left() as usize);
+                                bytes_read += bytes;
+                                file.seek_from_current(bytes as i32).unwrap();
+                                break;
+                            }
+                            _ => panic!("Error: traversing the FAT table, {:?}", e),
+                        },
+                    }
+                }
+            };
+            starting_cluster = next_cluster;
+
+            // Note: FAT32 clusters start at idx 2 i.e. a FAT32 cluster's idx 
+            // is unsigned and can never be less than 2
+            info!(
+                "file-blocks_remaining: {:?}, starting_cluster: {:?}",
+                file_blocks, starting_cluster
+            );
 
             let bytes = bytes_to_read.min(file.left() as usize);
             bytes_read += bytes;

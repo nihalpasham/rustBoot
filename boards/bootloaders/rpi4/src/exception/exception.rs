@@ -1,5 +1,3 @@
-
-
 use cortex_a::registers::*;
 use tock_registers::interfaces::Readable;
 

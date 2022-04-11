@@ -1,4 +1,5 @@
 mod common;
+#[macro_use]
 mod fit;
 #[cfg_attr(test, macro_use)]
 mod internal;

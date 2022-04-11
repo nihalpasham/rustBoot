@@ -15,6 +15,7 @@ fn main() {
     file.read_to_end(&mut buf).unwrap();
     let reader = Reader::read(buf.as_slice()).unwrap();
 
+    let _ = log_init();
     let dtb_blob = buf.as_slice();
     let prop_val_list = [
         PropertyValue::String(
@@ -25,14 +26,16 @@ fn main() {
         PropertyValue::U32([0x05, 0x89, 0x00, 0x00]),
         PropertyValue::U32([0x07, 0x7f, 0x08, 0x4a]),
     ];
-
-    let res = patch_chosen_node::<27000>(reader, dtb_blob, &prop_val_list);
-    let patched_dtb_blob = res.as_slice();
+    let mut buf = [0; 27000];
+    let (res, len) = patch_chosen_node(reader, dtb_blob, &prop_val_list, &mut buf);
+    println!("len: {}", len);
+    let patched_dtb_blob = &res[..len];
 
     dump(patched_dtb_blob);
 }
 
 pub fn dump<'a>(dtb_blob: &'a [u8]) {
+    println!("test");
     let header = Reader::get_header(dtb_blob).unwrap();
     let hdr_total_size = header.total_size;
     let reader = Reader::read(&dtb_blob[..hdr_total_size as usize]).unwrap();
@@ -59,4 +62,37 @@ pub fn dump<'a>(dtb_blob: &'a [u8]) {
             }
         }
     }
+}
+
+use log::{Level, Metadata, Record};
+use log::{LevelFilter, SetLoggerError};
+
+struct SimpleLogger;
+
+impl log::Log for SimpleLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Info
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            println!("\x1b[93m[{}]\x1b[0m  {}", record.level(), record.args());
+            match (record.module_path(), record.line()) {
+                (Some(file), Some(line)) => {
+                    println!("\t \u{2319} {} @ line:{}", file, line);
+                }
+                (_, None) => {
+                    println!("... ")
+                }
+                (_, Some(line)) => println!("\t  \u{2a3d} {} @ line:{}", record.target(), line),
+                (Some(file), None) => println!("\t  \u{2a3d} @ {}", file),
+            }
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+pub fn log_init() -> core::result::Result<(), SetLoggerError> {
+    log::set_boxed_logger(Box::new(SimpleLogger)).map(|()| log::set_max_level(LevelFilter::Info))
 }

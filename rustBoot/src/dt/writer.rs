@@ -1,6 +1,8 @@
+use super::Result;
 use core::fmt;
 use core::mem::size_of;
 use core::ops::Deref;
+// use log::info;
 
 use super::common::*;
 use super::internal::*;
@@ -23,6 +25,13 @@ impl<const M: usize> SerializedBuffer<M> {
     /// Returns a slice containing the entire vector.
     pub fn as_slice(&self) -> &[u8] {
         unsafe { core::slice::from_raw_parts(self.buffer.as_ptr() as *const u8, self.len) }
+    }
+
+    pub fn as_str<'a>(&'a self) -> Result<&'a str> {
+        let val = core::str::from_utf8(self.as_slice())
+            .map_err(|val| Error::BadStrEncoding(val))?
+            .strip_suffix("\u{0}");
+        Ok(val.unwrap())
     }
 }
 
@@ -47,7 +56,7 @@ impl<const M: usize> fmt::Debug for SerializedBuffer<M> {
 /// - The length of concatenated string-literal is `< 50`
 ///
 pub trait Concat {
-    fn serialize_and_concat(self, slice_2: &[u8]) -> SerializedBuffer<50>;
+    fn concat<const N: usize>(self, slice_2: &[u8]) -> SerializedBuffer<N>;
 }
 
 impl<'a> Concat for &'a str {
@@ -57,8 +66,8 @@ impl<'a> Concat for &'a str {
     /// - The resultant buffer contains the concatenated string-literal
     /// - The length of concatenated string-literal has to be `< 50`
     ///
-    fn serialize_and_concat(self, slice_2: &[u8]) -> SerializedBuffer<50> {
-        let mut buffer = [0u8; 50];
+    fn concat<const N: usize>(self, slice_2: &[u8]) -> SerializedBuffer<N> {
+        let mut buffer = [0u8; N];
         let slice_1 = self.as_bytes();
 
         let _ = slice_1

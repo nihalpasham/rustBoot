@@ -58,21 +58,25 @@ pub fn import_signing_key(curve: CurveType, bytes: &[u8]) -> Result<SigningKeyTy
         _ => todo!(),
     }
 }
-
+/// Retruns a signed fit-image, given a image tree blob, a signing key and the curve type. Only supports `elliptic curve crypto`
+///
+/// NOTE:
+/// - the image tree blob must be a `rustBoot` compliant fit-image.
+///
 pub fn sign_fit(curve: CurveType, itb_blob: Vec<u8>, sk_type: SigningKeyType) -> Result<Vec<u8>> {
     match curve {
         #[cfg(feature = "secp256k1")]
         CurveType::Secp256k1 => {}
         #[cfg(feature = "nistp256")]
         CurveType::NistP256 => {
-            let prehashed_digest = prepare_img_hash::<Sha256, 32, 64, 4>(itb_blob.as_slice())
+            let (prehashed_digest, _) = prepare_img_hash::<Sha256, 32, 64, 4>(itb_blob.as_slice())
                 .map_err(|_v| RbSignerError::BadHashValue)?;
             let signature = match sk_type {
                 SigningKeyType::NistP256(sk) => {
                     let signature = sk
                         .try_sign_digest(prehashed_digest)
                         .map_err(|v| RbSignerError::SignatureError(v))?;
-                    // println!("signature: {:?}", signature);
+                    println!("signature: {:?}", signature);
                     set_config_signature(itb_blob, SignatureType::NistP256(signature), "bootconfig")
                 }
                 _ => return Err(RbSignerError::InvalidKeyType),

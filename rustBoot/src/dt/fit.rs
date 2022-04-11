@@ -1,6 +1,12 @@
 use super::{Concat, Error, Reader, Result};
 use core::convert::TryInto;
+use core::ops::Add;
+use log::info;
+use nom::AsBytes;
+use p256::elliptic_curve::generic_array::ArrayLength;
 use sha2::{Digest, Sha256};
+
+use crate::crypto::signatures::{verify_ecc256_signature, HDR_IMG_TYPE_AUTH};
 
 #[derive(Debug)]
 #[repr(C)]
@@ -84,27 +90,40 @@ pub struct Images<'a, const H: usize, const N: usize> {
     images: [Image<'a, H>; N],
 }
 
-pub fn parse_fit<const H: usize, const S: usize, const N: usize>(
+#[derive(Debug)]
+pub enum CurveType {
+    #[allow(dead_code)]
+    Secp256k1,
+    #[allow(dead_code)]
+    Ed25519,
+    NistP256,
+    #[allow(dead_code)]
+    NistP384,
+    None,
+}
+
+pub fn parse_fit<D, const H: usize, const S: usize, const N: usize>(
     reader: Reader,
-) -> Result<(Config<S>, Images<H, N>)> {
+) -> Result<(Config<S>, Images<H, N>)>
+where
+    D: Digest,
+    <D as Digest>::OutputSize: Add,
+    <<D as Digest>::OutputSize as Add>::Output: ArrayLength<u8>,
+{
     let mut configuration = Config::default();
     let mut images = [Image::default(); N];
     let root = reader.struct_items();
     let (_, node_iter) = root.path_struct_items("/configurations").next().unwrap();
 
     // *** Find the default config ***
-
     if let Some(config) = node_iter.get_node_property("default") {
         // parse the default config
-        let config = "/configurations/".serialize_and_concat(config);
-        let config = core::str::from_utf8(config.as_slice())
-            .map_err(|val| Error::BadStrEncoding(val))?
-            .strip_suffix("\u{0}"); // strip null byte
+        let config = "/configurations/".concat::<50>(config);
+        let config = config.as_str()?;
         #[cfg(feature = "defmt")]
         defmt::info!("config: {:?}", config);
 
-        let (_, node_iter) = root.path_struct_items(config.unwrap()).next().unwrap();
-
+        let (_, node_iter) = root.path_struct_items(config).next().unwrap();
         let config_properties = [
             "description",
             "kernel",
@@ -184,40 +203,17 @@ pub fn parse_fit<const H: usize, const S: usize, const N: usize>(
 
         let signature: Signature<S> = Signature {
             value: signature,
-            algo: core::str::from_utf8(signature_algo.unwrap())
-                .map_err(|val| Error::BadStrEncoding(val))?
-                .strip_suffix("\u{0}")
-                .unwrap(),
-            key_hint: core::str::from_utf8(key_hint.unwrap())
-                .map_err(|val| Error::BadStrEncoding(val))?
-                .strip_suffix("\u{0}")
-                .unwrap(),
-            signed_images: core::str::from_utf8(signed_images.unwrap())
-                .map_err(|val| Error::BadStrEncoding(val))?
-                .strip_suffix("\u{0}")
-                .unwrap(),
+            algo: as_str(signature_algo.unwrap())?.expect("algo not specified in itb"),
+            key_hint: as_str(key_hint.unwrap())?.expect("key_hint not specified in itb"),
+            signed_images: as_str(signed_images.unwrap())?
+                .expect("signed images list not specified in itb"),
         };
         let config = Config {
-            description: core::str::from_utf8(description.unwrap())
-                .map_err(|val| Error::BadStrEncoding(val))?
-                .strip_suffix("\u{0}")
-                .unwrap(),
-            kernel: core::str::from_utf8(kernel.unwrap())
-                .map_err(|val| Error::BadStrEncoding(val))?
-                .strip_suffix("\u{0}")
-                .unwrap(),
-            fdt: core::str::from_utf8(fdt.unwrap())
-                .map_err(|val| Error::BadStrEncoding(val))?
-                .strip_suffix("\u{0}")
-                .unwrap(),
-            ramdisk: core::str::from_utf8(ramdisk.unwrap())
-                .map_err(|val| Error::BadStrEncoding(val))?
-                .strip_suffix("\u{0}")
-                .unwrap(),
-            rbconfig: core::str::from_utf8(rbconfig.unwrap())
-                .map_err(|val| Error::BadStrEncoding(val))?
-                .strip_suffix("\u{0}")
-                .unwrap(),
+            description: as_str(description.unwrap())?.expect("missing config description field"),
+            kernel: as_str(kernel.unwrap())?.expect("kernel not specified in itb"),
+            fdt: as_str(fdt.unwrap())?.expect("fdt not specified in itb"),
+            ramdisk: as_str(ramdisk.unwrap())?.expect("ramdisk not specified in itb"),
+            rbconfig: as_str(rbconfig.unwrap())?.expect("rbconfig not specified in itb"),
             signature,
         };
         configuration = config;
@@ -228,14 +224,12 @@ pub fn parse_fit<const H: usize, const S: usize, const N: usize>(
         for (idx, prop) in conf_properties.iter().enumerate() {
             match node_iter.get_node_property(prop) {
                 Some(val) => {
-                    let img = "/images/".serialize_and_concat(val);
-                    let img = core::str::from_utf8(img.as_slice())
-                        .unwrap()
-                        .strip_suffix("\u{0}"); // strip null byte
+                    let img = "/images/".concat::<50>(val);
+                    let img = img.as_str()?;
                     #[cfg(feature = "defmt")]
                     defmt::info!("img: {:?}", img);
 
-                    let (_, node_iter) = root.path_struct_items(img.unwrap()).next().unwrap();
+                    let (_, node_iter) = root.path_struct_items(img).next().unwrap();
                     let img_properties = [
                         "description",
                         "data",
@@ -291,9 +285,10 @@ pub fn parse_fit<const H: usize, const S: usize, const N: usize>(
                         _ => {}
                     });
 
-                    // let img_data = node_iter.get_node_property("data");
-                    let computed_hash = Sha256::digest(data.unwrap());
-                    // println!("hash: {:x}", computed_hash);
+                    let mut hasher = D::new();
+                    let _ = hasher.update(data.unwrap());
+                    let computed_hash = hasher.finalize();
+                    info!("computing {:?} hash: {:x}", prop, computed_hash);
 
                     let (_, node_iter) = node_iter.path_struct_items("hash").next().unwrap();
                     let hash_value = node_iter.get_node_property("value");
@@ -302,22 +297,19 @@ pub fn parse_fit<const H: usize, const S: usize, const N: usize>(
                     match computed_hash.as_slice().ne(hash_value.unwrap()) {
                         true => panic!("{} intergity check failed...", prop),
                         false => {
-                            #[cfg(feature = "defmt")]
-                            defmt::info!("{} integrity check passed...", prop)
+                            info!(
+                                "\x1b[95m{} integrity consistent\x1b[0m with supplied itb...",
+                                prop
+                            )
                         }
                     }
 
                     let hash: Hash<H> = Hash {
                         value: computed_hash.as_slice().try_into().unwrap(),
-                        algo: core::str::from_utf8(hash_algo.unwrap())
-                            .map_err(|val| Error::BadStrEncoding(val))?
-                            .strip_suffix("\u{0}")
-                            .unwrap(),
+                        algo: as_str(hash_algo.unwrap())?.expect("hash_algo not specified in itb"),
                     };
                     let os = match os {
-                        Some(val) => core::str::from_utf8(val)
-                            .map_err(|val| Error::BadStrEncoding(val))?
-                            .strip_suffix("\u{0}"),
+                        Some(val) => as_str(val)?,
                         None => None,
                     };
                     let load = match load {
@@ -330,23 +322,13 @@ pub fn parse_fit<const H: usize, const S: usize, const N: usize>(
                     };
 
                     let img = Image {
-                        description: core::str::from_utf8(description.unwrap())
-                            .map_err(|val| Error::BadStrEncoding(val))?
-                            .strip_suffix("\u{0}")
-                            .unwrap(),
-                        typ: core::str::from_utf8(typ.unwrap())
-                            .map_err(|val| Error::BadStrEncoding(val))?
-                            .strip_suffix("\u{0}")
-                            .unwrap(),
-                        arch: core::str::from_utf8(arch.unwrap())
-                            .map_err(|val| Error::BadStrEncoding(val))?
-                            .strip_suffix("\u{0}")
-                            .unwrap(),
+                        description: as_str(description.unwrap())?
+                            .expect("image description not specified in itb"),
+                        typ: as_str(typ.unwrap())?.expect("image type not specified in itb"),
+                        arch: as_str(arch.unwrap())?.expect("image arch not specified in itb"),
                         os,
-                        compression: core::str::from_utf8(compression.unwrap())
-                            .map_err(|val| Error::BadStrEncoding(val))?
-                            .strip_suffix("\u{0}")
-                            .unwrap(),
+                        compression: as_str(compression.unwrap())?
+                            .expect("image compression not specified in itb"),
                         load,
                         entry,
                         hash,
@@ -365,17 +347,19 @@ pub fn parse_fit<const H: usize, const S: usize, const N: usize>(
 
 pub fn prepare_img_hash<'a, D, const H: usize, const S: usize, const N: usize>(
     itb_blob: &'a [u8],
-) -> Result<D>
+) -> Result<(D, [u8; S])>
 where
     D: Digest,
 {
     let reader = Reader::read(itb_blob).unwrap();
     let root = &reader.struct_items();
     let (_, node_iter) = root.path_struct_items("/").next().unwrap();
-    let timestamp = node_iter.get_node_property("timestamp");
-    let timestamp_hash = Sha256::digest(timestamp.unwrap());
 
-    let (config, images) = parse_fit::<H, S, N>(reader)?;
+    let mut hasher = D::new();
+    let timestamp = node_iter.get_node_property("timestamp");
+    hasher.update(timestamp.unwrap());
+
+    let (config, images) = parse_fit::<Sha256, H, S, N>(reader)?;
     let cfg_values = [
         config.description,
         config.kernel,
@@ -393,26 +377,19 @@ where
         offset += val.len()
     });
     let cfg_bytes = &buf[..offset];
-    let cfg_hash = Sha256::digest(cfg_bytes);
+    hasher.update(cfg_bytes);
 
     let mut img_hashes = [[0u8; H]; N];
     let _ = for (idx, img) in images.images.iter().enumerate() {
         img_hashes[idx] = img.hash.value;
     };
 
-    // rustBoot FIT imagess include the time_stamp, the entire configuration,
-    // and 4 (i.e kernel, fdt, ramdisk, config) image hashes, we concatenate 6 hashes in total.
-    let mut hash_buffer = [0u8; 32 * 6];
-    let _ = timestamp_hash
-        .as_slice()
-        .iter()
-        .chain(cfg_hash.as_slice())
-        .chain(flatten(img_hashes).as_slice())
-        .enumerate()
-        .for_each(|(idx, byte)| hash_buffer[idx] = *byte);
-    let mut hasher = D::new();
-    hasher.update(hash_buffer.as_slice());
-    Ok(hasher)
+    // rustBoot FIT images include a time_stamp, configuration details,
+    // and 4 (i.e kernel, fdt, ramdisk, config) images i.e. we concatenate 6 hashes in total.
+    hasher.update(flatten(img_hashes).as_slice());
+    let signature = config.signature.value;
+
+    Ok((hasher, signature))
 }
 
 pub fn flatten<'a, const H: usize, const N: usize>(img_hash: [[u8; H]; N]) -> [u8; 32 * 4] {
@@ -424,4 +401,85 @@ pub fn flatten<'a, const H: usize, const N: usize>(img_hash: [[u8; H]; N]) -> [u
         .enumerate()
         .for_each(|(idx, byte)| bytes[idx] = *byte);
     bytes
+}
+
+/// Verifies a signed fit-image, given a image tree blob.
+///
+/// NOTE:
+/// - the image tree blob must be a `rustBoot` compliant fit-image.
+///
+pub fn verify_fit<const H: usize, const S: usize, const N: usize>(
+    itb_blob: &[u8],
+) -> crate::Result<bool> {
+    let algo = parse_algo(itb_blob);
+    match algo {
+        #[cfg(feature = "secp256k1")]
+        Ok(CurveType::Secp256k1) => {}
+        #[cfg(feature = "nistp256")]
+        Ok(CurveType::NistP256) => {
+            let (prehashed_digest, signature) = prepare_img_hash::<Sha256, 32, 64, 4>(itb_blob)
+                .map_err(|_v| crate::RustbootError::BadHashValue)?;
+            let res = verify_ecc256_signature::<Sha256, HDR_IMG_TYPE_AUTH>(
+                prehashed_digest,
+                signature.as_ref(),
+            );
+            res
+        }
+        _ => todo!(),
+    }
+}
+
+pub fn parse_algo<'a>(itb_blob: &'a [u8]) -> Result<CurveType> {
+    let mut curve_type = CurveType::None;
+    let reader = Reader::read(itb_blob).unwrap();
+    let root = reader.struct_items();
+    let (_, node_iter) = root.path_struct_items("/configurations").next().unwrap();
+
+    if let Some(config) = node_iter.get_node_property("default") {
+        // parse the default config's signature algo
+        let config = "/configurations/".concat::<50>(config);
+        let config = config.as_str()?;
+        let sig_node = config.concat::<50>("/signature\0".as_bytes());
+        let sig_node = sig_node.as_str()?;
+
+        let (_, node_iter) = root.path_struct_items(sig_node).next().unwrap();
+        let algo_val = node_iter.get_node_property("algo");
+
+        match algo_val {
+            Some(val) => {
+                let algo = as_str(val)?;
+                match algo {
+                    Some("sha256,ecdsa256,nistp256") => curve_type = CurveType::NistP256,
+                    _ => unimplemented!(),
+                }
+            }
+            None => {
+                panic!("no signing algorithm specified in supplied itb")
+            }
+        }
+    };
+    Ok(curve_type)
+}
+
+pub fn get_image_data<'a>(itb_blob: &'a [u8], img: &'a str) -> Option<&'a [u8]> {
+    let mut img_path = "";
+    match img {
+        "kernel" => img_path = "/images/kernel",
+        "fdt" => img_path = "/images/fdt",
+        "ramdisk" => img_path = "/images/initrd",
+        "rbconfig" => img_path = "/images/rbconfig",
+        _ => {}
+    }
+    let reader = Reader::read(itb_blob).unwrap();
+    let root = reader.struct_items();
+    let (_, node_iter) = root.path_struct_items(img_path).next().unwrap();
+    let data = node_iter.get_node_property("data");
+    data
+}
+
+pub fn as_str(bytes: &[u8]) -> Result<Option<&str>> {
+    let val = core::str::from_utf8(bytes)
+        .map_err(|val| Error::BadStrEncoding(val))?
+        .strip_suffix("\u{0}");
+    Ok(val)
 }

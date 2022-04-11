@@ -1971,8 +1971,8 @@ impl EMMCController {
         if unsafe { EMMC_CARD.rca == 0 } {
             let resp = self.emmc_sendcommand_p(SdCardCommands::APP_CMD.get_cmd(), 0x00000000);
             timer_wait_micro(100); // add a 100 us delay for cmds that automatically send APP_CMDs
-            // info!(" no-rca APP_CMD result: {:?} ", resp);
-            // If there is an RCA, include that in APP_CMD and check card accepted it.
+                                   // info!(" no-rca APP_CMD result: {:?} ", resp);
+                                   // If there is an RCA, include that in APP_CMD and check card accepted it.
         } else {
             let resp = self.emmc_sendcommand_p(SdCardCommands::APP_CMD_RCA.get_cmd(), unsafe {
                 EMMC_CARD.rca
@@ -2152,7 +2152,7 @@ impl EMMCController {
     pub fn emmc_set_clock2(&self, freq: u32) -> SdResult {
         // A divisor of zero doesnt work. I think a divisor of 1 equates to half the base clock rate.
         // TODO: need to find confirmation of the above.
-        assert!(freq < BASE_CLOCK as u32); 
+        assert!(freq < BASE_CLOCK as u32);
 
         let mut div;
         div = BASE_CLOCK as u32 / (freq << 1);
@@ -2195,7 +2195,7 @@ impl EMMCController {
         info!(
             "Divisor = {:?}, Freq Set = {:?}",
             div,
-            (BASE_CLOCK as u32 / div) >> 1 
+            (BASE_CLOCK as u32 / div) >> 1
         );
 
         return SdResult::EMMC_OK; // Clock frequency set worked

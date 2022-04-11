@@ -4,8 +4,7 @@ use fitsigner::{import_signing_key, CurveType};
 use std::env;
 use std::fs;
 use std::fs::File;
-use std::io::Read;
-use std::io::Write;
+use std::io::{Read, Write};
 
 use crate::fitsigner::sign_fit;
 
@@ -21,9 +20,8 @@ fn main() {
     kf.read_to_end(&mut buf2).unwrap();
 
     let kf = buf2.as_slice();
-
     let _signed_fit = match args[3] {
-        "ecc256" => {
+        "nistp256" => {
             let sk = import_signing_key(CurveType::NistP256, &kf[0x40..]).unwrap();
             let signed_fit = sign_fit(CurveType::NistP256, buf1, sk);
             match signed_fit {

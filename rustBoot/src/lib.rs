@@ -1,12 +1,17 @@
 #![cfg_attr(not(test), no_std)]
 #![allow(non_snake_case)]
-#![feature(once_cell, is_sorted)]
+#![feature(once_cell, is_sorted, slice_as_chunks)]
 
+// #[cfg(feature = "mcu")]
 pub mod constants;
 mod crypto;
 pub mod dt;
+#[cfg(feature = "mcu")]
 pub mod flashapi;
+pub mod fs;
+#[cfg(feature = "mcu")]
 pub mod image;
+#[cfg(feature = "mcu")]
 pub mod parser;
 
 use core::fmt;

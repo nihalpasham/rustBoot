@@ -32,7 +32,9 @@ use log::console;
 use crate::fs::emmcfat::{Controller, TestClock, VolumeIdx};
 use crate::fs::filesystem::Mode;
 
-use crate::boot::{boot_to_kernel, DTB_LOAD_ADDR, INITRAMFS_LOAD_ADDR, KERNEL_LOAD_ADDR};
+use crate::boot::{
+    boot_to_kernel, DTB_LOAD_ADDR, INITRAMFS_LOAD_ADDR, ITB_LOAD_ADDR, KERNEL_LOAD_ADDR, halt
+};
 
 /// Early init code.
 ///
@@ -86,7 +88,6 @@ fn kernel_main() -> ! {
     // Test a failing timer case.
     time_manager().wait_for(Duration::from_nanos(1));
 
-
     let mut ctrlr = Controller::new(&EMMC_CONT, TestClock);
     let volume = ctrlr.get_volume(VolumeIdx(0));
 
@@ -95,7 +96,7 @@ fn kernel_main() -> ! {
         info!("\tListing root directory:\n");
         ctrlr
             .iterate_dir(&volume, &root_dir, |x| {
-                info!("\t\tFound: {:?}", x);
+                if x.size > 60000000 { info!("\t\tFound: {:?}", x)};
             })
             .unwrap();
 
@@ -120,7 +121,7 @@ fn kernel_main() -> ! {
         // Load kernel
         info!("Get handle to `kernel` file in root_dir...");
         let mut kernel_file = ctrlr
-            .open_file_in_dir(&mut volume, &root_dir, "VMLINUZ", Mode::ReadOnly)
+            .open_file_in_dir(&mut volume, &root_dir, "KERNEL.IMG", Mode::ReadOnly)
             .unwrap();
         info!("\t\tload `kernel` into RAM...");
         while !kernel_file.eof() {
@@ -137,35 +138,52 @@ fn kernel_main() -> ! {
         }
         ctrlr.close_file(&volume, kernel_file).unwrap();
 
-        // Load initramfs
-        info!("Get handle to `initramfs` file in root_dir...");
-        let mut initramfs = ctrlr
-            .open_file_in_dir(&mut volume, &root_dir, "INITRA~1", Mode::ReadOnly)
+        // // Load initramfs
+        // info!("Get handle to `initramfs` file in root_dir...");
+        // let mut initramfs = ctrlr
+        //     .open_file_in_dir(&mut volume, &root_dir, "INITRA~1", Mode::ReadOnly)
+        //     .unwrap();
+        // info!("\t\tload `initramfs` into RAM...");
+        // while !initramfs.eof() {
+        //     let num_read = ctrlr
+        //         .read_multi(&volume, &mut initramfs, unsafe {
+        //             &mut INITRAMFS_LOAD_ADDR.0
+        //         })
+        //         .unwrap();
+        //     info!(
+        //         "\t\tloaded initramfs: {:?} bytes, starting at addr: {:p}\n",
+        //         num_read,
+        //         unsafe { &mut INITRAMFS_LOAD_ADDR.0 }
+        //     );
+        // }
+        // ctrlr.close_file(&volume, initramfs).unwrap();
+
+        // Load itb
+        info!("\nGet handle to `fit-image` file in root_dir...");
+        let mut itb = ctrlr
+            .open_file_in_dir(&mut volume, &root_dir, "SIGNED~1.ITB", Mode::ReadOnly)
             .unwrap();
-        info!("\t\tload `initramfs` into RAM...");
-        while !initramfs.eof() {
+        info!("\t\tload `fit-image` into RAM...");
+        while !itb.eof() {
             let num_read = ctrlr
-                .read_multi(&volume, &mut initramfs, unsafe {
-                    &mut INITRAMFS_LOAD_ADDR.0
-                })
+                .read_multi(&volume, &mut itb, unsafe { &mut ITB_LOAD_ADDR.0 })
                 .unwrap();
             info!(
-                "\t\tloaded initramfs: {:?} bytes, starting at addr: {:p}\n",
+                "\t\tloaded fit-image: {:?} bytes, starting at addr: {:p}\n",
                 num_read,
-                unsafe { &mut INITRAMFS_LOAD_ADDR.0 }
+                unsafe { &mut ITB_LOAD_ADDR.0 }
             );
         }
-        ctrlr.close_file(&volume, initramfs).unwrap();
+        ctrlr.close_file(&volume, itb).unwrap();
     }
-
-    info!(
-        "***************************************** \
-            Starting kernel \
-            ********************************************\n"
-    );
-    boot_to_kernel(
-        unsafe { &mut KERNEL_LOAD_ADDR.0 }.as_ptr() as usize,
-        unsafe { &mut DTB_LOAD_ADDR.0 }.as_ptr() as usize,
-    )
-
+    halt()
+    // info!(
+    //     "***************************************** \
+    //         Starting kernel \
+    //         ********************************************\n"
+    // );
+    // boot_to_kernel(
+    //     unsafe { &mut KERNEL_LOAD_ADDR.0 }.as_ptr() as usize,
+    //     unsafe { &mut DTB_LOAD_ADDR.0 }.as_ptr() as usize,
+    // )
 }

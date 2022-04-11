@@ -1,1 +1,0 @@
-bootargs="root=UUID=f2fa8d24-c392-4176-ab1c-367d60b66c6a rootwait ro plymouth.ignore-serial-consoles fsck.mode=auto fsck.repair=yes cma=128M"
