@@ -634,7 +634,7 @@ where
     /// - Providing a buffer that isn't a multiple of `block-size` bytes and is less-than file-length will result
     /// in an `out of bounds` error. In other words, for files that aren't exact multiples of `block-size` bytes,
     /// a buffer of length (block-size * (file length/ block size)) + 1 must be provided.
-    /// 
+    ///
     pub fn read_multi(
         &mut self,
         volume: &Volume,

@@ -1,40 +1,29 @@
-#![feature(const_fn_fn_ptr_basics)]
-#![feature(panic_info_message)]
-#![feature(format_args_nl)]
-#![feature(global_asm)]
-#![feature(asm_const)]
-#![feature(asm)]
-#![cfg_attr(not(test), no_std)]
-#![feature(slice_as_chunks)]
+#![no_std]
 #![no_main]
-#![allow(warnings)]
-
-pub mod arch;
-pub mod bsp;
-mod exception;
-pub mod fs;
-pub mod log;
-mod panic_wait;
-mod state;
-mod sync;
+#![feature(format_args_nl)]
 
 mod boot;
+mod log;
+mod fit;
+use fit::{load_fit, relocate_and_patch, verify_authenticity};
+mod dtb;
 
-use arch::time::*;
-use bsp::drivers::common::interface::DriverManager;
-use bsp::drivers::driver_manager::driver_manager;
-use bsp::global;
-use bsp::global::EMMC_CONT;
-use console::{Read, Statistics};
-use core::time::Duration;
-use log::console;
-
-use crate::fs::emmcfat::{Controller, TestClock, VolumeIdx};
-use crate::fs::filesystem::Mode;
-
-use crate::boot::{
-    boot_to_kernel, DTB_LOAD_ADDR, INITRAMFS_LOAD_ADDR, ITB_LOAD_ADDR, KERNEL_LOAD_ADDR, halt
+use rustBoot::fs::controller::{Controller, TestClock, VolumeIdx};
+use rustBoot_hal::{info, println};
+use rustBoot_hal::rpi::rpi4::bsp::{
+    drivers::{common::interface::DriverManager, driver_manager::driver_manager},
+    global,
+    global::EMMC_CONT,
 };
+use rustBoot_hal::rpi::rpi4::{
+    exception,
+    log::{
+        console,
+        console::{Read, Statistics},
+    },
+};
+
+use crate::boot::{DTB_LOAD_ADDR, KERNEL_LOAD_ADDR, boot_kernel};
 
 /// Early init code.
 ///
@@ -42,7 +31,7 @@ use crate::boot::{
 ///
 /// - Only a single core must be active and running this function.
 /// - The init calls in this function must appear in the correct order.
-unsafe fn kernel_init() -> ! {
+unsafe fn kernel_init() {
     for i in driver_manager().all_device_drivers().iter() {
         if let Err(x) = i.init() {
             panic!("Error loading driver: {}: {}", i.compatible(), x);
@@ -85,105 +74,28 @@ fn kernel_main() -> ! {
     // Discard any spurious received characters before going into echo mode.
     console::console().clear_rx();
 
-    // Test a failing timer case.
-    time_manager().wait_for(Duration::from_nanos(1));
+    // initialize logger, prints debug info
+    let _ = log::logger_init();
 
     let mut ctrlr = Controller::new(&EMMC_CONT, TestClock);
     let volume = ctrlr.get_volume(VolumeIdx(0));
-
     if let Ok(mut volume) = volume {
-        let root_dir = ctrlr.open_root_dir(&volume).unwrap();
-        info!("\tListing root directory:\n");
-        ctrlr
-            .iterate_dir(&volume, &root_dir, |x| {
-                if x.size > 60000000 { info!("\t\tFound: {:?}", x)};
-            })
-            .unwrap();
+        let itb_blob = load_fit(&mut volume, &mut ctrlr);
+        let res = verify_authenticity();
 
-        // Load dtb
-        info!("Get handle to `dtb` file in root_dir...");
-        let mut dtb_file = ctrlr
-            .open_file_in_dir(&mut volume, &root_dir, "BCM271~1.DTB", Mode::ReadOnly)
-            .unwrap();
-        info!("\t\tload `dtb` into RAM...");
-        while !dtb_file.eof() {
-            let num_read = ctrlr
-                .read_multi(&volume, &mut dtb_file, unsafe { &mut DTB_LOAD_ADDR.0 })
-                .unwrap();
-            info!(
-                "\t\tloaded dtb: {:?} bytes, starting at addr: {:p}",
-                num_read,
-                unsafe { &mut DTB_LOAD_ADDR.0 },
-            );
+        // relocate kernel, ramdisk and patch dtb
+        if res.eq(&true) {
+            let _ = relocate_and_patch(itb_blob);
         }
-        ctrlr.close_file(&volume, dtb_file).unwrap();
+    };
 
-        // Load kernel
-        info!("Get handle to `kernel` file in root_dir...");
-        let mut kernel_file = ctrlr
-            .open_file_in_dir(&mut volume, &root_dir, "KERNEL.IMG", Mode::ReadOnly)
-            .unwrap();
-        info!("\t\tload `kernel` into RAM...");
-        while !kernel_file.eof() {
-            let num_read = ctrlr
-                .read_multi(&volume, &mut kernel_file, unsafe {
-                    &mut KERNEL_LOAD_ADDR.0
-                })
-                .unwrap();
-            info!(
-                "\t\tloaded kernel: {:?} bytes, starting at addr: {:p}",
-                num_read,
-                unsafe { &mut KERNEL_LOAD_ADDR.0 }
-            );
-        }
-        ctrlr.close_file(&volume, kernel_file).unwrap();
-
-        // // Load initramfs
-        // info!("Get handle to `initramfs` file in root_dir...");
-        // let mut initramfs = ctrlr
-        //     .open_file_in_dir(&mut volume, &root_dir, "INITRA~1", Mode::ReadOnly)
-        //     .unwrap();
-        // info!("\t\tload `initramfs` into RAM...");
-        // while !initramfs.eof() {
-        //     let num_read = ctrlr
-        //         .read_multi(&volume, &mut initramfs, unsafe {
-        //             &mut INITRAMFS_LOAD_ADDR.0
-        //         })
-        //         .unwrap();
-        //     info!(
-        //         "\t\tloaded initramfs: {:?} bytes, starting at addr: {:p}\n",
-        //         num_read,
-        //         unsafe { &mut INITRAMFS_LOAD_ADDR.0 }
-        //     );
-        // }
-        // ctrlr.close_file(&volume, initramfs).unwrap();
-
-        // Load itb
-        info!("\nGet handle to `fit-image` file in root_dir...");
-        let mut itb = ctrlr
-            .open_file_in_dir(&mut volume, &root_dir, "SIGNED~1.ITB", Mode::ReadOnly)
-            .unwrap();
-        info!("\t\tload `fit-image` into RAM...");
-        while !itb.eof() {
-            let num_read = ctrlr
-                .read_multi(&volume, &mut itb, unsafe { &mut ITB_LOAD_ADDR.0 })
-                .unwrap();
-            info!(
-                "\t\tloaded fit-image: {:?} bytes, starting at addr: {:p}\n",
-                num_read,
-                unsafe { &mut ITB_LOAD_ADDR.0 }
-            );
-        }
-        ctrlr.close_file(&volume, itb).unwrap();
-    }
-    halt()
-    // info!(
-    //     "***************************************** \
-    //         Starting kernel \
-    //         ********************************************\n"
-    // );
-    // boot_to_kernel(
-    //     unsafe { &mut KERNEL_LOAD_ADDR.0 }.as_ptr() as usize,
-    //     unsafe { &mut DTB_LOAD_ADDR.0 }.as_ptr() as usize,
-    // )
+    println!(
+        "\x1b[5m\x1b[34m***************************************** \
+            Starting kernel \
+            ********************************************\x1b[0m"
+    );
+    boot_kernel(
+        unsafe { &mut KERNEL_LOAD_ADDR.0 }.as_ptr() as usize,
+        unsafe { &mut DTB_LOAD_ADDR.0 }.as_ptr() as usize,
+    )
 }

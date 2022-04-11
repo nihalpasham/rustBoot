@@ -1,6 +1,84 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//
+// Copyright (c) 2021 Andre Richter <andre.o.richter@gmail.com>
+
+//! Architectural boot code.
+
+use core::arch::global_asm;
+use cortex_a::{asm, registers::*};
+use tock_registers::interfaces::Writeable;
+
+// Assembly counterpart to this file.
+global_asm!(include_str!("boot.s"));
+
+/// Prepares the transition from EL2 to EL1.
+///
+/// # Safety
+///
+/// - The `bss` section is not initialized yet. The code must not use or reference it in any way.
+/// - The HW state of EL1 must be prepared in a sound way.
+#[inline(always)]
+unsafe fn el2_to_el1_transition(phys_boot_core_stack_end_exclusive_addr: u64) {
+    // Enable timer counter registers for EL1.
+    CNTHCTL_EL2.write(CNTHCTL_EL2::EL1PCEN::SET + CNTHCTL_EL2::EL1PCTEN::SET);
+
+    // No offset for reading the counters.
+    CNTVOFF_EL2.set(0);
+
+    // Set EL1 execution state to AArch64.
+    HCR_EL2.write(HCR_EL2::RW::EL1IsAarch64);
+
+    // Set up a simulated exception return.
+    //
+    // First, fake a saved program status where all interrupts were masked and SP_EL1 was used as a
+    // stack pointer.
+    SPSR_EL2.write(
+        SPSR_EL2::D::Masked
+            + SPSR_EL2::A::Masked
+            + SPSR_EL2::I::Masked
+            + SPSR_EL2::F::Masked
+            + SPSR_EL2::M::EL1h,
+    );
+
+    // Second, let the link register point to kernel_init().
+    ELR_EL2.set(crate::kernel_init as *const () as u64);
+
+    // Set up SP_EL1 (stack pointer), which will be used by EL1 once we "return" to it. Since there
+    // are no plans to ever return to EL2, just re-use the same stack.
+    SP_EL1.set(phys_boot_core_stack_end_exclusive_addr);
+}
+
+//--------------------------------------------------------------------------------------------------
+// Public Code
+//--------------------------------------------------------------------------------------------------
+
+/// The Rust entry of the `kernel` binary.
+///
+/// The function is called from the assembly `_start` function.
+///
+/// # Safety
+///
+/// - Exception return from EL2 must must continue execution in EL1 with `kernel_init()`.
+#[no_mangle]
+pub unsafe extern "C" fn _start_rust(phys_boot_core_stack_end_exclusive_addr: u64) -> ! {
+    el2_to_el1_transition(phys_boot_core_stack_end_exclusive_addr);
+
+    // Use `eret` to "return" to EL1. This results in execution of kernel_init() in EL1.
+    asm::eret()
+}
+
+//--------------------------------------------------------------------------------------------------
+// Public Definitions
+//--------------------------------------------------------------------------------------------------
+
+/// Used by `arch` code to find the early boot core.
+#[no_mangle]
+#[link_section = ".text._start_arguments"]
+pub static BOOT_CORE_ID: u64 = 0;
+
 const MAX_INITRAMFS_SIZE: usize = 16066 * 4 * 512;
 const MAX_KERNEL_SIZE: usize = 14624 * 4 * 512;
-const MAX_DTB_SIZE: usize = 100 * 512;
+pub(crate) const MAX_DTB_SIZE: usize = 100 * 512;
 const MAX_ITB_SIZE: usize = 32000 * 4 * 512;
 
 // #[repr(align(2097152))]
@@ -47,7 +125,7 @@ impl InitRamfsEntry {
     }
 }
 
-#[link_section = ".initramfs_load_addr._initramfs_start"]
+// #[link_section = ".initramfs_load_addr._initramfs_start"]
 pub static mut INITRAMFS_LOAD_ADDR: InitRamfsEntry = InitRamfsEntry::new();
 
 // #[link_section = ".kernel_load_addr._kernel_start"]
@@ -63,7 +141,7 @@ type EntryPoint = unsafe extern "C" fn(dtb: usize, rsv0: usize, rsv1: usize, rsv
 #[no_mangle]
 #[inline(never)]
 /// Jump to kernel. I like this method better as it has a safe abstraction around the `unsafe jump`
-pub fn boot_to_kernel(kernel_entry: usize, dtb_addr: usize) -> ! {
+pub fn boot_kernel(kernel_entry: usize, dtb_addr: usize) -> ! {
     unsafe {
         let f = core::mem::transmute::<usize, EntryPoint>(kernel_entry);
         f(dtb_addr, 0, 0, 0);

@@ -2,8 +2,9 @@
 /rustBoot/src/dt/reader_test.rs
 /rustBoot/examples/fit2.rs
 /rustBoot/examples/patch2.rs
-/boards/bootloaders/rpi4
 /target
 Cargo.lock
 test.md
 **/*.DS_Store
+/boards/bootloaders/rpi4-test/
+

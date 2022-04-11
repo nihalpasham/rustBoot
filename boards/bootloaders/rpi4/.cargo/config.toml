@@ -4,8 +4,7 @@
 
 [build]
 target = "aarch64-unknown-none-softfloat"
-
 rustflags = [
-  "-C", "link-arg=-Tbootloaders/rpi4/link.ld",
+  "-C", "link-arg=-Tbootloaders/rpi4/layout.ld",
   "-C", "target-cpu=cortex-a72"
 ]

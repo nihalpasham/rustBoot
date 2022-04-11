@@ -37,7 +37,7 @@ fn main() {
 
     // let header = Reader::get_header(buf.as_slice()).unwrap();
     // println!("header: {:?}\n", header);
-    
+
     let verified_fit = match verify_fit::<32, 64, 4>(buf.as_slice()) {
         Ok(val) => {
             print!("\n*********** \x1b[5m\x1b[33mecdsa signature\x1b[0m checks out, \x1b[92mimage is authentic\x1b[0m ***********\n");
