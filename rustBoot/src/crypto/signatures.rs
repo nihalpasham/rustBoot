@@ -12,6 +12,7 @@ use k256::{
 #[cfg(feature = "nistp256")]
 use p256::{
     ecdsa::signature::digest::Digest,
+    ecdsa::signature::digest::{FixedOutputDirty, Reset, Update},
     ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
     elliptic_curve::consts::U32,
     elliptic_curve::{generic_array::GenericArray, FieldSize},
@@ -80,10 +81,10 @@ impl Secp256k1Signature {
 /// Performs the signature verification; take as argument, a pre-updated
 /// [`Digest`] instance thats needs to be finalized and the associated signature
 /// to be verified.
-pub fn verify_ecc256_signature<D: Digest<OutputSize = U32>, const N: u16>(
-    digest: D,
-    signature: &[u8],
-) -> Result<bool> {
+pub fn verify_ecc256_signature<D, const N: u16>(digest: D, signature: &[u8]) -> Result<bool>
+where
+    D: Digest<OutputSize = U32>,
+{
     match N {
         #[cfg(feature = "nistp256")]
         HDR_IMG_TYPE_AUTH => {

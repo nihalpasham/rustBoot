@@ -62,7 +62,7 @@ impl log::Log for SimpleLogger {
             println!("\x1b[93m[{}]\x1b[0m  {}", record.level(), record.args());
             match (record.module_path(), record.line()) {
                 (Some(file), Some(line)) => {
-                    println!("\t \u{2319} {} @ line:{}", file, line);
+                    println!("\t \u{2a3d} {} @ line:{}", file, line);
                 }
                 (_, None) => {
                     println!("... ")

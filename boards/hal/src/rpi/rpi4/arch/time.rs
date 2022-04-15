@@ -104,7 +104,7 @@ impl TimeManager for GenericTimer {
         let warn: Option<&str> = if tval == 0 {
             Some("smaller")
         // The upper 32 bits of CNTP_TVAL_EL0 are reserved.
-        } else if tval > u32::max_value().into() {
+        } else if tval > u32::max_value() as u64{
             Some("bigger")
         } else {
             None

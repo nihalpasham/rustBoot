@@ -3,8 +3,9 @@ use core::convert::TryInto;
 use core::ops::Add;
 use log::info;
 use nom::AsBytes;
+use p256::ecdsa::signature::digest::Digest;
 use p256::elliptic_curve::generic_array::ArrayLength;
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 
 use crate::crypto::signatures::{verify_ecc256_signature, HDR_IMG_TYPE_AUTH};
 
@@ -285,10 +286,17 @@ where
                         _ => {}
                     });
 
-                    let mut hasher = D::new();
-                    let _ = hasher.update(data.unwrap());
-                    let computed_hash = hasher.finalize();
-                    info!("computing {:?} hash: {:x}", prop, computed_hash);
+                    info!("computing {:?} hash", prop,);
+                    let computed_hash;
+                    match data {
+                        Some(data) => {
+                            computed_hash = D::digest(data);
+                            info!("computed {:?} hash: {:x}", prop, computed_hash);
+                        }
+                        None => {
+                            panic!("invalid ITB supplied");
+                        }
+                    }
 
                     let (_, node_iter) = node_iter.path_struct_items("hash").next().unwrap();
                     let hash_value = node_iter.get_node_property("value");

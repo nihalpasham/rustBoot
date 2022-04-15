@@ -670,7 +670,7 @@ where
             };
 
             self.block_device
-                .read(Block::from_array_slice(blocks), block_idx, "read")
+                .read(Block::from_array_slice(blocks), block_idx, "read_multi")
                 .map_err(Error::DeviceError)?;
 
             file_blocks = match file_blocks.checked_sub(blocks_to_read) {
