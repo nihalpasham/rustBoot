@@ -15,13 +15,6 @@ pub static GPIO: GPIO = unsafe { GPIO::new(memory_map::map::mmio::GPIO_START) };
 pub static PL011_UART: PL011Uart =
     unsafe { PL011Uart::new(memory_map::map::mmio::PL011_UART_START) };
 
-// pub(crate) static IRQ_CNTLR: GICv2 = unsafe {
-//     GICv2::new(
-//         memory_map::map::mmio::GICD_START,
-//         memory_map::map::mmio::GICC_START,
-//     )
-// };
-
 pub static EMMC_CONT: EMMCController =
     unsafe { EMMCController::new(memory_map::map::mmio::EMMC_START) };
 

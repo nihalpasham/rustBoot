@@ -1,17 +1,19 @@
 #![no_std]
 #![no_main]
 #![feature(format_args_nl)]
+#![feature(core_intrinsics)]
 
 mod boot;
-mod log;
 mod fit;
+mod log;
 use fit::{load_fit, relocate_and_patch, verify_authenticity};
 mod dtb;
+mod memory;
 
+use memory::{mmu::mmu, vm_layout::interface::MMU, vmm};
 use rustBoot::fs::controller::{Controller, TestClock, VolumeIdx};
-use rustBoot_hal::{info, println};
 use rustBoot_hal::rpi::rpi4::bsp::{
-    drivers::{common::interface::DriverManager, driver_manager::driver_manager},
+    drivers::{common::interface::DriverManager, driver_manager::driver_manager, uart0},
     global,
     global::EMMC_CONT,
 };
@@ -19,11 +21,12 @@ use rustBoot_hal::rpi::rpi4::{
     exception,
     log::{
         console,
-        console::{Read, Statistics},
+        console::{Read, Statistics, Write},
     },
 };
+use rustBoot_hal::{info, println};
 
-use crate::boot::{DTB_LOAD_ADDR, KERNEL_LOAD_ADDR, boot_kernel};
+use crate::boot::{boot_kernel, DTB_LOAD_ADDR, KERNEL_LOAD_ADDR};
 
 /// Early init code.
 ///
@@ -32,6 +35,7 @@ use crate::boot::{DTB_LOAD_ADDR, KERNEL_LOAD_ADDR, boot_kernel};
 /// - Only a single core must be active and running this function.
 /// - The init calls in this function must appear in the correct order.
 unsafe fn kernel_init() {
+
     for i in driver_manager().all_device_drivers().iter() {
         if let Err(x) = i.init() {
             panic!("Error loading driver: {}: {}", i.compatible(), x);
@@ -39,6 +43,9 @@ unsafe fn kernel_init() {
     }
     driver_manager().post_device_driver_init();
     // println! is usable from here on.
+    if let Err(string) = mmu().enable_mmu_and_caching() {
+        panic!("MMU: {}", string);
+    }
 
     // Transition from unsafe to safe.
     kernel_main()
@@ -52,6 +59,9 @@ fn kernel_main() -> ! {
         env!("CARGO_PKG_VERSION")
     );
     info!("Booting on: {}", global::board_name());
+
+    info!("MMU online. Special regions:");
+    vmm::virt_mem_layout().print_layout();
 
     let (_, privilege_level) = exception::exception::current_privilege_level();
     info!("Current privilege level: {}", privilege_level);
@@ -73,6 +83,13 @@ fn kernel_main() -> ! {
 
     // Discard any spurious received characters before going into echo mode.
     console::console().clear_rx();
+
+    let remapped_uart = unsafe { uart0::PL011Uart::new(0x1FFF_1000) };
+    writeln!(
+        remapped_uart,
+        "[     !!!    ] Writing through the remapped UART at 0x1FFF_1000"
+    )
+    .unwrap();
 
     // initialize logger, prints debug info
     let _ = log::logger_init();

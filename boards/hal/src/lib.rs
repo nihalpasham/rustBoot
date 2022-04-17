@@ -6,7 +6,7 @@
 #![feature(asm)]
 #![feature(asm_const)]
 #![allow(warnings)]
-
+#![feature(core_intrinsics)]
 #[cfg(feature = "nrf")]
 pub mod nrf;
 #[cfg(feature = "rpi")]

@@ -179,3 +179,4 @@ pub fn halt() -> ! {
 //     // we dont intend to return, i.e. `boot_into_kernel` diverges.
 //     halt()
 // }
+

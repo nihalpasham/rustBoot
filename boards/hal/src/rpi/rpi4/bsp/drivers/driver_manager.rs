@@ -47,8 +47,8 @@ impl DriverManager for BSPDriverManager {
         // Configure PL011Uart's output pins.
         GPIO.map_pl011_uart();
         // initialize EMMC controller (i.e. sd card driver).
-        // Note: emmc HW is to be initialized only after we fully initialize the uart instance
-        // as we'll need the ability to `print` debug and error info prior to emmc initialization.
+        // Note: emmc HW is to be initialized only after we fully initialize the uart instance,
+        // we'll need the ability to `print` debug/error info prior to emmc initialization.
         match &EMMC_CONT.emmc_init_card() {
             &super::emmc::SdResult::EMMC_OK => {
                 info!("EMMC2 driver initialized...\n")
