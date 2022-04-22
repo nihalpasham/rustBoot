@@ -12,7 +12,7 @@
 use super::common::MMIODerefWrapper;
 use crate::rpi::rpi4::arch::cpu_core;
 use crate::rpi::rpi4::log::console;
-use crate::rpi::rpi4::sync::{interface::Mutex, IRQSafeNullLock};
+use crate::rpi::rpi4::sync::{interface::Mutex, NullLock};
 use crate::{print, println};
 use core::fmt;
 use tock_registers::{
@@ -189,7 +189,7 @@ pub use PL011UartInner as PanicUart;
 
 /// Representation of the UART.
 pub struct PL011Uart {
-    inner: IRQSafeNullLock<PL011UartInner>,
+    inner: NullLock<PL011UartInner>,
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -335,7 +335,7 @@ impl PL011Uart {
     /// - The user must ensure to provide a correct MMIO start address.
     pub const unsafe fn new(mmio_start_addr: usize) -> Self {
         Self {
-            inner: IRQSafeNullLock::new(PL011UartInner::new(mmio_start_addr)),
+            inner: NullLock::new(PL011UartInner::new(mmio_start_addr)),
         }
     }
 }

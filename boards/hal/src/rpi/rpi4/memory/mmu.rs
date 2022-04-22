@@ -6,14 +6,8 @@
 //!
 //! Only 64 KiB granule is supported.
 //!
-//! # Orientation
-//!
-//! Since arch modules are imported into generic modules using the path attribute, the path of this
-//! file is:
-//!
-//! crate::memory::mmu::arch_mmu
 
-use crate::rpi::rpi4::vm::{MMUEnableError, TranslationGranule, AddressSpace, interface::MMU};
+use super::layout::{interface::MMU, MMUEnableError, TranslationGranule};
 use core::intrinsics::unlikely;
 use cortex_a::{asm::barrier, registers::*};
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
@@ -56,7 +50,6 @@ static MMU: MemoryManagementUnit = MemoryManagementUnit;
 // Private Code
 //--------------------------------------------------------------------------------------------------
 
-
 impl MemoryManagementUnit {
     /// Setup function for the MAIR_EL1 register.
     fn set_up_mair(&self) {
@@ -73,7 +66,7 @@ impl MemoryManagementUnit {
 
     /// Configure various settings of stage 1 of the EL1 translation regime.
     fn configure_translation_control(&self) {
-        let t0sz = (64 - crate::rpi::rpi4::memory::vmm::KernelAddrSpace::SIZE_SHIFT) as u64;
+        let t0sz = (64 - super::vmm::KernelAddrSpace::SIZE_SHIFT) as u64;
 
         TCR_EL1.write(
             TCR_EL1::TBI0::Used
@@ -103,7 +96,7 @@ pub fn mmu() -> &'static impl MMU {
 // OS Interface Code
 //------------------------------------------------------------------------------
 
-use crate::rpi::rpi4::arch::tt::KernelTranslationTable;
+use super::tt::KernelTranslationTable;
 
 impl MMU for MemoryManagementUnit {
     unsafe fn enable_mmu_and_caching(&self) -> Result<(), MMUEnableError> {
@@ -148,5 +141,25 @@ impl MMU for MemoryManagementUnit {
     #[inline(always)]
     fn is_enabled(&self) -> bool {
         SCTLR_EL1.matches_all(SCTLR_EL1::M::Enable)
+    }
+
+    unsafe fn disable_mmu_and_caching(&self) {
+        match unlikely(self.is_enabled()) {
+            true => {
+                // Disable the MMU .
+                //
+                // First, force all previous changes to be seen before the MMU is disabled.
+                barrier::isb(barrier::SY);
+
+                // Disable the MMU and turn off data and instruction caching.
+                SCTLR_EL1.modify(
+                    SCTLR_EL1::M::Disable + SCTLR_EL1::C::NonCacheable + SCTLR_EL1::I::NonCacheable,
+                );
+
+                // Force MMU disabling to complete before next instruction.
+                barrier::isb(barrier::SY);
+            }
+            false => {}
+        }
     }
 }

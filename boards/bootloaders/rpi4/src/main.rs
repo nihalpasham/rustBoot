@@ -8,21 +8,21 @@ mod fit;
 mod log;
 use fit::{load_fit, relocate_and_patch, verify_authenticity};
 mod dtb;
-mod memory;
 
-use memory::{mmu::mmu, vm_layout::interface::MMU, vmm};
 use rustBoot::fs::controller::{Controller, TestClock, VolumeIdx};
 use rustBoot_hal::rpi::rpi4::bsp::{
-    drivers::{common::interface::DriverManager, driver_manager::driver_manager, uart0},
+    drivers::{common::interface::DriverManager, driver_manager::driver_manager},
     global,
     global::EMMC_CONT,
+    
 };
 use rustBoot_hal::rpi::rpi4::{
     exception,
     log::{
         console,
-        console::{Read, Statistics, Write},
+        console::{Read, Statistics},
     },
+    memory::{mmu::mmu, layout::interface::MMU, vmm},
 };
 use rustBoot_hal::{info, println};
 
@@ -35,7 +35,10 @@ use crate::boot::{boot_kernel, DTB_LOAD_ADDR, KERNEL_LOAD_ADDR};
 /// - Only a single core must be active and running this function.
 /// - The init calls in this function must appear in the correct order.
 unsafe fn kernel_init() {
-
+    exception::exception::handling_init();
+    if let Err(string) = mmu().enable_mmu_and_caching() {
+        panic!("MMU: {}", string);
+    }
     for i in driver_manager().all_device_drivers().iter() {
         if let Err(x) = i.init() {
             panic!("Error loading driver: {}: {}", i.compatible(), x);
@@ -43,9 +46,6 @@ unsafe fn kernel_init() {
     }
     driver_manager().post_device_driver_init();
     // println! is usable from here on.
-    if let Err(string) = mmu().enable_mmu_and_caching() {
-        panic!("MMU: {}", string);
-    }
 
     // Transition from unsafe to safe.
     kernel_main()
@@ -84,13 +84,6 @@ fn kernel_main() -> ! {
     // Discard any spurious received characters before going into echo mode.
     console::console().clear_rx();
 
-    let remapped_uart = unsafe { uart0::PL011Uart::new(0x1FFF_1000) };
-    writeln!(
-        remapped_uart,
-        "[     !!!    ] Writing through the remapped UART at 0x1FFF_1000"
-    )
-    .unwrap();
-
     // initialize logger, prints debug info
     let _ = log::logger_init();
 
@@ -111,8 +104,11 @@ fn kernel_main() -> ! {
             Starting kernel \
             ********************************************\x1b[0m"
     );
-    boot_kernel(
-        unsafe { &mut KERNEL_LOAD_ADDR.0 }.as_ptr() as usize,
-        unsafe { &mut DTB_LOAD_ADDR.0 }.as_ptr() as usize,
-    )
+    unsafe {
+        mmu().disable_mmu_and_caching();
+        boot_kernel(
+            { &mut KERNEL_LOAD_ADDR.0 }.as_ptr() as usize,
+            { &mut DTB_LOAD_ADDR.0 }.as_ptr() as usize,
+        )
+    }
 }

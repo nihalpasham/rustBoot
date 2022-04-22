@@ -2,10 +2,11 @@
 //
 // Copyright (c) 2018-2022 Andre Richter <andre.o.richter@gmail.com>
 
-//! BSP Memory Management Unit.
+//! Instantiates the `KernelVirtualLayout` type declared in the `layout` module and provides functions to return a reference 
+//! to the virtual memory layout.
 
 use crate::rpi::rpi4::bsp::memory_map;
-use crate::rpi::rpi4::vm::*;
+use super::layout::*;
 use core::ops::RangeInclusive;
 
 //--------------------------------------------------------------------------------------------------

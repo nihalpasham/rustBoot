@@ -4,14 +4,14 @@
 
 //! Memory Management Unit.
 //!
-//! In order to decouple `BSP` and `arch` parts of the MMU code (to keep them pluggable), this file
+//! In order to decouple `vmm layout` and the actual MMU `driver`, (to keep them pluggable), this file
 //! provides types for composing an architecture-agnostic description of the kernel's virtual memory
 //! layout.
 //!
-//! The `BSP` provides such a description through the `bsp::memory::mmu::virt_mem_layout()`
+//! The `vmm` module provides such a description through the `memory::vmm::virt_mem_layout()`
 //! function.
 //!
-//! The `MMU` driver of the `arch` code uses `bsp::memory::mmu::virt_mem_layout()` to compile and
+//! The `MMU` driver uses `memory::vmm::virt_mem_layout()` to compile and
 //! install respective translation tables.
 
 // mod translation_table;
@@ -44,6 +44,9 @@ pub mod interface {
         ///
         /// - Changes the HW's global state.
         unsafe fn enable_mmu_and_caching(&self) -> Result<(), MMUEnableError>;
+
+        /// Disables the MMU and `instruction + data` caching. 
+        unsafe fn disable_mmu_and_caching(&self);
 
         /// Returns true if the MMU is enabled, false otherwise.
         fn is_enabled(&self) -> bool;

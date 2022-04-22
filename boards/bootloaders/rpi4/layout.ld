@@ -7,11 +7,6 @@ PAGE_SIZE = 4K;
 PAGE_MASK = PAGE_SIZE - 1;
 
 __rpi_phys_dram_start_addr = 0;
-/*__boot_core_stack_end_exclusive = 93847552; /* we need a much bigger stack if we're loading the full kernel into RAM*/
-
-__initramfs_load_addr = 0x5890000;
-__kernel_load_addr = 0x3C00000;
-__dtb_load_addr = 0x3A00000;
 
 /* The physical address at which the the kernel binary will be loaded by the Raspberry's firmware */
 __rpi_phys_binary_load_addr = 0x80000;
@@ -76,8 +71,10 @@ SECTIONS
     /***********************************************************************************************
     * Data + BSS
     ***********************************************************************************************/
-    .data : { *(.data*) } :segment_data
-
+    .data : ALIGN(65536) { *(.data*) } :segment_data /* align .data to a 64KiB boundary. */
+                                                     /* As we enable the MMU and set the paging granularity to 64KiB. */
+                                                     /* So, the end of code section and start of data section needs to be 64KiB aligned.*/
+    
     /* Section is zeroed in pairs of u64. Align start and end to 16 bytes */
     .bss (NOLOAD): ALIGN(16)
     {
@@ -86,31 +83,5 @@ SECTIONS
         . = ALIGN(16);
         __bss_end_exclusive = .;
     } :segment_data /* not a section that's loaded into memory, we just need to allocate as many zeroed bytes.*/
-
-    /***********************************************************************************************
-    * A section to store the dtb
-    ***********************************************************************************************/
-    . = __dtb_load_addr;
-    .dtb_load_addr (NOLOAD): 
-    {
-        *(.dtb_load_addr._dtb_start)
-    } :segment_dtb_load /* not a section that's loaded into memory, we just need to allocate as many zeroed bytes.*/
-
-    /***********************************************************************************************
-    * A section to store the Kernel
-    ***********************************************************************************************/
-    . = __kernel_load_addr;
-    .kernel_load_addr (NOLOAD): 
-    {
-        *(.kernel_load_addr._kernel_start)
-    } :segment_kernel_load /* not a section that's loaded into memory, we just need to allocate as many zeroed bytes.*/
-
-    /***********************************************************************************************
-    * A section to store the Initramfs
-    ***********************************************************************************************/
-    . = __initramfs_load_addr;
-    .initramfs_load_addr (NOLOAD): 
-    {
-        *(.initramfs_load_addr._initramfs_start)
-    } :segment_initramfs_load /* not a section that's loaded into memory, we just need to allocate as many zeroed bytes.*/
+    
 }

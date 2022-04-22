@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //
-// Copyright (c) 2020-2021 Andre Richter <andre.o.richter@gmail.com>
+// Copyright (c) 2020-2022 Andre Richter <andre.o.richter@gmail.com>
 
 //! Synchronization primitives.
 //!
@@ -28,21 +28,6 @@ pub mod interface {
         /// Locks the mutex and grants the closure temporary mutable access to the wrapped data.
         fn lock<R>(&self, f: impl FnOnce(&mut Self::Data) -> R) -> R;
     }
-
-    /// A reader-writer exclusion type.
-    ///
-    /// The implementing object allows either a number of readers or at most one writer at any point
-    /// in time.
-    pub trait ReadWriteEx {
-        /// The type of encapsulated data.
-        type Data;
-
-        /// Grants temporary mutable access to the encapsulated data.
-        fn write<R>(&self, f: impl FnOnce(&mut Self::Data) -> R) -> R;
-
-        /// Grants temporary immutable access to the encapsulated data.
-        fn read<R>(&self, f: impl FnOnce(&Self::Data) -> R) -> R;
-    }
 }
 
 /// A pseudo-lock for teaching purposes.
@@ -51,18 +36,8 @@ pub mod interface {
 /// other cores to the contained data. This part is preserved for later lessons.
 ///
 /// The lock will only be used as long as it is safe to do so, i.e. as long as the kernel is
-/// executing on a single core.
-pub struct IRQSafeNullLock<T>
-where
-    T: ?Sized,
-{
-    data: UnsafeCell<T>,
-}
-
-/// A pseudo-lock that is RW during the single-core kernel init phase and RO afterwards.
-///
-/// Intended to encapsulate data that is populated during kernel init when no concurrency exists.
-pub struct InitStateLock<T>
+/// executing single-threaded, aka only running on a single core with interrupts disabled.
+pub struct NullLock<T>
 where
     T: ?Sized,
 {
@@ -73,22 +48,10 @@ where
 // Public Code
 //--------------------------------------------------------------------------------------------------
 
-unsafe impl<T> Send for IRQSafeNullLock<T> where T: ?Sized + Send {}
-unsafe impl<T> Sync for IRQSafeNullLock<T> where T: ?Sized + Send {}
+unsafe impl<T> Send for NullLock<T> where T: ?Sized + Send {}
+unsafe impl<T> Sync for NullLock<T> where T: ?Sized + Send {}
 
-impl<T> IRQSafeNullLock<T> {
-    /// Create an instance.
-    pub const fn new(data: T) -> Self {
-        Self {
-            data: UnsafeCell::new(data),
-        }
-    }
-}
-
-unsafe impl<T> Send for InitStateLock<T> where T: ?Sized + Send {}
-unsafe impl<T> Sync for InitStateLock<T> where T: ?Sized + Send {}
-
-impl<T> InitStateLock<T> {
+impl<T> NullLock<T> {
     /// Create an instance.
     pub const fn new(data: T) -> Self {
         Self {
@@ -100,41 +63,14 @@ impl<T> InitStateLock<T> {
 //------------------------------------------------------------------------------
 // OS Interface Code
 //------------------------------------------------------------------------------
-use crate::rpi::rpi4::{exception, state};
 
-impl<T> interface::Mutex for IRQSafeNullLock<T> {
+impl<T> interface::Mutex for NullLock<T> {
     type Data = T;
 
     fn lock<R>(&self, f: impl FnOnce(&mut Self::Data) -> R) -> R {
         // In a real lock, there would be code encapsulating this line that ensures that this
         // mutable reference will ever only be given out once at a time.
         let data = unsafe { &mut *self.data.get() };
-
-        // Execute the closure while IRQs are masked.
-        exception::asynchronous::exec_with_irq_masked(|| f(data))
-    }
-}
-
-impl<T> interface::ReadWriteEx for InitStateLock<T> {
-    type Data = T;
-
-    fn write<R>(&self, f: impl FnOnce(&mut Self::Data) -> R) -> R {
-        assert!(
-            state::state_manager().is_init(),
-            "InitStateLock::write called after kernel init phase"
-        );
-        assert!(
-            !exception::asynchronous::is_local_irq_masked(),
-            "InitStateLock::write called with IRQs unmasked"
-        );
-
-        let data = unsafe { &mut *self.data.get() };
-
-        f(data)
-    }
-
-    fn read<R>(&self, f: impl FnOnce(&Self::Data) -> R) -> R {
-        let data = unsafe { &*self.data.get() };
 
         f(data)
     }
