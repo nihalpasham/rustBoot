@@ -2,8 +2,8 @@
 
 use core::convert::TryInto;
 use rustBoot::dt::{
-    patch::*, Error, PropertyValue, RawNodeConstructor, RawPropertyConstructor, Reader, Result,
-    StringsBlock, StructItem, TOKEN_SIZE,
+    correct_endianess, patch::*, Error, PropertyValue, RawNodeConstructor, RawPropertyConstructor,
+    Reader, Result, StringsBlock, StructItem, TOKEN_SIZE,
 };
 
 use std::fs;
@@ -92,13 +92,15 @@ fn main() {
     );
 
     let mut header = Reader::get_header(dtb_blob).unwrap();
-    let updated_header = update_dtb_header(
-        &mut header,
-        strings_block_patch_len,
-        new_node_len,
-        len_to_be_subtracted,
-    );
-    println!("header: {:?}\n", updated_header);
+    {
+        let updated_header = update_dtb_header(
+            &mut header,
+            strings_block_patch_len,
+            new_node_len,
+            len_to_be_subtracted,
+        );
+        println!("header: {:?}\n", updated_header);
+    }
 
     let (node_start, node_end) =
         match get_node_start_and_end(&reader, "/chosen", dtb_blob, len_to_be_subtracted) {
@@ -106,7 +108,8 @@ fn main() {
             Err(e) => panic!("error: {:?}", e),
         };
 
-    let patched_blob = patch_dtb_node::<27000>(
+    let mut buf = [0u8; 27000];
+    let _ = patch_dtb_node::<27000>(
         &header,
         node_start,
         node_end,
@@ -114,9 +117,10 @@ fn main() {
         patch_bytes_1,
         patch_bytes_2.as_slice(),
         strings_block_patch,
+        buf.as_mut(),
     );
-
-    dump(&patched_blob[..]);
+    let hdr_total_size = correct_endianess(header.total_size);
+    dump(&buf[..hdr_total_size as usize]);
 }
 
 pub fn dump<'a>(dtb_blob: &'a [u8]) {

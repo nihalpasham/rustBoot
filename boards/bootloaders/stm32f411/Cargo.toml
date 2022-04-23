@@ -12,12 +12,12 @@ name = "stm32f411"
 test = false
 
 [dependencies]
-cortex-m-rt = "0.6.14"
+cortex-m = "0.7.4"
+cortex-m-rt = "0.7.1"
 defmt = {version = "0.3.1", optional = true}
 defmt-rtt = {version = "0.3.2", optional = true}
-panic-probe = {version = "0.3.0", features = ["print-defmt"]}
-rustBoot-hal = {path = "../../hal", default-features = false, features = ["stm32f411"]}
-rustBoot-update = {path = "../../update"}
+rustBoot-hal = {path = "../../hal", features = ["stm32f411", "stm"]}
+rustBoot-update = {path = "../../update", features = ["stm32f411"]}
 
 [features]
 default = ["defmt", "defmt-rtt"]

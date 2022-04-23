@@ -2,6 +2,7 @@ use core::marker::PhantomData;
 
 use crate::hal::hal::*;
 use rustBoot::constants::*;
+use rustBoot::crypto::signatures::HDR_IMG_TYPE_AUTH;
 use rustBoot::image::image::*;
 use rustBoot::parser::*;
 use rustBoot::{Result, RustbootError};

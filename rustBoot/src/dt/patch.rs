@@ -308,7 +308,7 @@ pub fn patch_chosen_node<'a, const N: usize>(
     (new_dtb_buffer, hdr_total_size as usize)
 }
 
-fn correct_endianess(val: u32) -> u32 {
+pub fn correct_endianess(val: u32) -> u32 {
     let byte_4 = val >> 24 & 0xff;
     let byte_3 = val >> 8 & 0xff00;
     let byte_2 = val << 8 & 0xff0000;

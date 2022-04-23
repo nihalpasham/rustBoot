@@ -2,7 +2,7 @@ use stm32f4xx_hal as hal;
 
 use crate::FlashInterface;
 use core::ptr::write_volatile;
-use hal::stm32::{Peripherals, FLASH};
+use hal::pac::{Peripherals, FLASH};
 use stm32f411rc_constants::*;
 #[rustfmt::skip]
 mod stm32f411rc_constants {
@@ -12,13 +12,13 @@ mod stm32f411rc_constants {
     pub const RB_HDR_SIZE     : u32 = 0x100;
     pub const BASE_ADDR       : u32 = 0x08020000;   //  sector 5 starting address
     pub const VTR_TABLE_SIZE  : u32 = 0x100;
-    pub const FW_RESET_VTR    : u32 = BASE_ADDR + RB_HDR_SIZE + VTR_TABLE_SIZE +0x99;
-    pub const UNLOCKKEY1  : u32 = 0x45670123;
-    pub const UNLOCKKEY2  : u32 = 0xCDEF89AB;
-    pub const PSIZE_X8    : u8 = 0b00;
-    pub const PSIZE_X16   : u8 = 0b01;
-    pub const PSIZE_X32   : u8 = 0b10;
-    pub const PSIZE_X64   : u8 = 0b11;
+    pub const FW_RESET_VTR    : u32 = BASE_ADDR + RB_HDR_SIZE + VTR_TABLE_SIZE + 0x99;
+    pub const UNLOCKKEY1      : u32 = 0x45670123;
+    pub const UNLOCKKEY2      : u32 = 0xCDEF89AB;
+    pub const PSIZE_X8        : u8  = 0b00;
+    pub const PSIZE_X16       : u8  = 0b01;
+    pub const PSIZE_X32       : u8  = 0b10;
+    pub const PSIZE_X64       : u8  = 0b11;
 }
 
 pub struct FlashWriterEraser {

@@ -16,8 +16,8 @@ test = false
 # defmt = "0.2.3"
 # defmt-rtt = "0.2.0"
 cortex-m = "0.7.3"
-cortex-m-rt = "0.6.15"
-nrf52840-hal = "0.13.0"
+cortex-m-rt = "0.7.1"
+nrf52840-hal = "0.15.0"
 panic-probe = { version = "0.2.0" }
 rustBoot-hal = {path = "../../../hal", default-features = false, features = ["nrf52840", "nrf"]}
 rustBoot-update = {path = "../../../update"}

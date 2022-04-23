@@ -2,13 +2,6 @@
 
 // **** TARGET PLATFORM - FLASH PARTIONINING ****
 
-/** Default target **/
-pub const SECTOR_SIZE: usize = 0x10;
-pub const PARTITION_SIZE: usize = 0x10;
-pub const BOOT_PARTITION_ADDRESS: usize = 0x10;
-pub const SWAP_PARTITION_ADDRESS: usize = 0x10;
-pub const UPDATE_PARTITION_ADDRESS: usize = 0x10;
-
 #[cfg(feature = "nrf52840")]
 pub const SECTOR_SIZE: usize = 0x1000;
 #[cfg(feature = "nrf52840")]
@@ -25,21 +18,19 @@ pub const SECTOR_SIZE: usize = 0x20000;
 #[cfg(feature = "stm32f411")]
 pub const PARTITION_SIZE: usize = 0x20000;
 #[cfg(feature = "stm32f411")]
-pub const BOOT_PARTITION_ADDRESS: usize = 0x08020000;
+pub const BOOT_PARTITION_ADDRESS: usize = 0x8020000;
 #[cfg(feature = "stm32f411")]
-pub const SWAP_PARTITION_ADDRESS: usize = 0x08060000;
+pub const SWAP_PARTITION_ADDRESS: usize = 0x8060000;
 #[cfg(feature = "stm32f411")]
-pub const UPDATE_PARTITION_ADDRESS: usize = 0x08040000;
+pub const UPDATE_PARTITION_ADDRESS: usize = 0x8040000;
 
 // **** RAM BOOT options for staged OS (update_ram only) ****
-
 pub const DTS_BOOT_ADDRESS: usize = 0xa0000;
 pub const DTS_UPDATE_ADDRESS: usize = 0x10a0000;
 pub const RAM_LOAD_ADDRESS: usize = 0x3000000;
 pub const LOAD_DTS_ADDRESS: usize = 0x4000000;
 
 // **** rustBoot constants ****
-
 pub const IMAGE_HEADER_SIZE: usize = 0x100;
 pub const IMAGE_HEADER_OFFSET: usize = 0x8;
 
@@ -72,7 +63,6 @@ pub const PART_STATUS_LEN: usize = 1;
 pub const MAGIC_TRAIL_LEN: usize = 4;
 
 /*  Hash Config */
-
 // SHA256 constants
 pub const HDR_SHA256: u16 = 0x0003;
 pub const SHA256_DIGEST_SIZE: usize = 32;

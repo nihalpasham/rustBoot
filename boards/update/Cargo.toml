@@ -30,3 +30,6 @@ rustBoot-hal = {path = "../hal"}
 
 [features]
 default = []
+nrf52840 = ["rustBoot/nrf52840"]
+stm32f411 = ["rustBoot/stm32f411"]
+
