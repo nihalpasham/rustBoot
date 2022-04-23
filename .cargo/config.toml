@@ -1,2 +1,4 @@
 [alias]
 xtask = 'run -p xtask --'
+nrf52840 = 'run -p xtask --features nrf52840 -- nrf52840'
+stm32f411 = 'run -p xtask --features stm32f411 -- stm32f411'

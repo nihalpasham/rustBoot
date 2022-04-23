@@ -15,13 +15,13 @@ fn main() -> Result<(), anyhow::Error> {
     
     match &args[..] {
         ["test", "rustBoot"] => test_rustBoot(),
-        ["build", "pkgs-for", board]    => build_rustBoot(board),
-        ["sign" , "pkgs-for", board]    => sign_packages(board),
-        ["flash", "signed-pkg", board]  => flash_signed_fwimages(board),
-        ["flash", "rustBoot", board]    => flash_rustBoot(board),
-        ["build", "rustBoot-only", board] => build_rustBoot_only(board),
-        ["build-sign-flash", "rustBoot", board] => full_image_flash(board),
-        ["erase-and-flash-trailer-magic", board] => erase_and_flash_trailer_magic(board),
+        [board, "build", "pkgs-for",]    => build_rustBoot(board),
+        [board, "sign" , "pkgs-for",]    => sign_packages(board),
+        [board, "flash", "signed-pkg",]  => flash_signed_fwimages(board),
+        [board, "flash", "rustBoot",]    => flash_rustBoot(board),
+        [board, "build", "rustBoot-only",] => build_rustBoot_only(board),
+        [board, "build-sign-flash", "rustBoot",] => full_image_flash(board),
+        [board, "erase-and-flash-trailer-magic",] => erase_and_flash_trailer_magic(board),
         _ => {
             println!("USAGE: cargo xtask test rustBoot");
             println!("OR");

@@ -24,10 +24,14 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v1
-      - name: rustBoot package (parser and device-tree) tests
+      - name: device-tree - unit tests
         run: |
           rustup install nightly
-          cargo +nightly test --package rustBoot --lib --features mcu
+          cargo +nightly test --package rustBoot --lib -- --nocapture
+      - name: rustBoot image parser - unit tests
+        run: |
+          cargo test --package rustBoot --lib --features nrf52840 -- parser::tests --nocapture
+          cargo test --package rustBoot --lib --features stm32f411 -- parser::tests --nocapture
 
   builds:
     runs-on: ${{ matrix.os }}
@@ -57,11 +61,11 @@ jobs:
         with:
           use-cross: false
           command: run
-          args: -p xtask -- build rustBoot-only nrf52840
+          args: nrf52840 build rustBoot-only
       - name: stm32f411
         if: ${{ matrix.target }} == thumbv7em-none-eabihf
         uses: actions-rs/cargo@v1
         with:
           use-cross: false
           command: run
-          args: -p xtask -- build rustBoot-only stm32f411
+          args: stm32f411 build rustBoot-only
