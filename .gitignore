@@ -2,6 +2,7 @@
 /rustBoot/src/dt/reader_test.rs
 /rustBoot/examples/fit2.rs
 /rustBoot/examples/patch2.rs
+/rustBoot/examples/test.rs
 /target
 Cargo.lock
 test.md
@@ -9,4 +10,3 @@ test.md
 /boards/bootloaders/rpi4-test/
 /boards/bootloaders/rpi4/layout_copy.ld
 /boards/bootloaders/rpi4/bl_objdump.s
-

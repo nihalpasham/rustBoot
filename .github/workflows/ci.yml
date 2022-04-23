@@ -27,7 +27,7 @@ jobs:
       - name: rustBoot package (parser and device-tree) tests
         run: |
           rustup install nightly
-          cargo +nightly test --package rustBoot --lib
+          cargo +nightly test --package rustBoot --lib --features mcu
 
   builds:
     runs-on: ${{ matrix.os }}

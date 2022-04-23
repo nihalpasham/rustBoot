@@ -6,8 +6,10 @@
 mod boot;
 mod fit;
 mod log;
-use fit::{load_fit, relocate_and_patch, verify_authenticity};
 mod dtb;
+
+use fit::{load_fit, relocate_and_patch, verify_authenticity};
+use boot::{boot_kernel, DTB_LOAD_ADDR, KERNEL_LOAD_ADDR};
 
 use rustBoot::fs::controller::{Controller, TestClock, VolumeIdx};
 use rustBoot_hal::rpi::rpi4::bsp::{
@@ -25,8 +27,6 @@ use rustBoot_hal::rpi::rpi4::{
     memory::{mmu::mmu, layout::interface::MMU, vmm},
 };
 use rustBoot_hal::{info, println};
-
-use crate::boot::{boot_kernel, DTB_LOAD_ADDR, KERNEL_LOAD_ADDR};
 
 /// Early init code.
 ///

@@ -12,7 +12,7 @@ path = "src/main.rs"
 [dependencies]
 cortex-a = {version = "7.0.1"}
 rustBoot = {path = "../../../rustBoot", default-features = true}
-rustBoot-hal = {path = "../../hal", default-features = true}
+rustBoot-hal = {path = "../../hal", default-features = false, features = ["rpi", "rpi4"]}
 tock-registers = {version = "0.7.x", default-features = false, features = ["register_types"]}
 log = { version = "0.4.16", default-features = false }
 

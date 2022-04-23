@@ -18,25 +18,25 @@ fn main() {
     log_init();
 
     let reader = Reader::read(buf.as_slice()).unwrap();
-    // let res = parse_fit::<Sha256, 32, 64, 4>(reader);
-    // match res {
-    //     Ok((config, images)) => {
-    //         println!("\nconfig: {:?}\n", config);
-    //         println!("images: {:?}", images)
-    //     }
-    //     Err(e) => panic!("error: {:?}", e),
-    // }
+    let res = parse_fit::<Sha256, 32, 64, 4>(reader);
+    match res {
+        Ok((config, images)) => {
+            println!("\nconfig: {:?}\n", config);
+            println!("images: {:?}", images)
+        }
+        Err(e) => panic!("error: {:?}", e),
+    }
 
-    // let fit = prepare_img_hash::<Sha256, 32, 64, 4>(buf.as_slice());
-    // match fit {
-    //     Ok((fit_hash, signature)) => {
-    //         println!("\nfit_sha: {:x}\n", fit_hash.finalize());
-    //     }
-    //     Err(e) => panic!("error: {:?}", e),
-    // }
+    let fit = prepare_img_hash::<Sha256, 32, 64, 4>(buf.as_slice());
+    match fit {
+        Ok((fit_hash, signature)) => {
+            println!("\nfit_sha: {:x}\n", fit_hash.finalize());
+        }
+        Err(e) => panic!("error: {:?}", e),
+    }
 
-    // let header = Reader::get_header(buf.as_slice()).unwrap();
-    // println!("header: {:?}\n", header);
+    let header = Reader::get_header(buf.as_slice()).unwrap();
+    println!("header: {:?}\n", header);
 
     let verified_fit = match verify_fit::<32, 64, 4>(buf.as_slice()) {
         Ok(val) => {
