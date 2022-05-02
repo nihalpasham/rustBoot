@@ -16,7 +16,7 @@ use core::ops::RangeInclusive;
 /// The kernel's address space defined by this BSP.
 pub type KernelAddrSpace = AddressSpace<{ memory_map::map::END_INCLUSIVE + 1 }>;
 
-const NUM_MEM_RANGES: usize = 3;
+const NUM_MEM_RANGES: usize = 2;
 
 /// The virtual memory layout.
 ///
@@ -33,16 +33,6 @@ pub static LAYOUT: KernelVirtualLayout<NUM_MEM_RANGES> = KernelVirtualLayout::ne
                 mem_attributes: MemAttributes::CacheableDRAM,
                 acc_perms: AccessPermissions::ReadOnly,
                 execute_never: false,
-            },
-        },
-        TranslationDescriptor {
-            name: "Remapped Device MMIO",
-            virtual_range: remapped_mmio_range_inclusive,
-            physical_range_translation: Translation::Offset(memory_map::map::mmio::START + 0x20_0000),
-            attribute_fields: AttributeFields {
-                mem_attributes: MemAttributes::Device,
-                acc_perms: AccessPermissions::ReadWrite,
-                execute_never: true,
             },
         },
         TranslationDescriptor {

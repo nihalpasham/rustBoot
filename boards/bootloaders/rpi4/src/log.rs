@@ -1,3 +1,4 @@
+use cortex_a::asm::barrier;
 use log::{Level, Metadata, Record};
 use log::{LevelFilter, SetLoggerError};
 
@@ -31,6 +32,6 @@ impl log::Log for Logger {
 
 static LOGGER: Logger = Logger;
 
-pub fn logger_init() -> Result<(), SetLoggerError> {
+pub fn init() -> Result<(), SetLoggerError> {
     unsafe { log::set_logger_racy(&LOGGER).map(|()| log::set_max_level(LevelFilter::Info)) }
 }

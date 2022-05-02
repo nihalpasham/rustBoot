@@ -10,11 +10,22 @@ use super::filesystem::{
 use super::structure::define_field;
 
 use byteorder::{ByteOrder, LittleEndian};
-use core::convert::TryFrom;
+use core::convert::{TryFrom, TryInto};
 use log::{info, warn};
 
 /// Number of entries reserved at the start of a File Allocation Table
 pub const RESERVED_ENTRIES: u32 = 2;
+
+const MAX_FAT_SECTORS: u32 = 5000;
+pub(crate) const MAX_FAT_ENTRIES: u32 = (MAX_FAT_SECTORS * Block::LEN as u32) / 4;
+pub struct FatCache(pub [[u8; 4]; MAX_FAT_ENTRIES as usize]);
+impl FatCache {
+    /// Creates an initialized FAT_CACHE.
+    pub const fn new() -> Self {
+        Self([[0u8; 4]; MAX_FAT_ENTRIES as usize])
+    }
+}
+pub static mut FAT_CACHE: FatCache = FatCache::new();
 
 /// Indentifies the supported types of FAT format
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -556,6 +567,91 @@ impl FatVolume {
             .write(&blocks, this_fat_block_num)
             .map_err(Error::DeviceError)?;
         Ok(())
+    }
+
+    /// Walking the FAT table for large files can be really slow. 
+    /// 
+    /// This method allows us to cache the `file allocation table` contents.
+    /// 
+    /// TODO:
+    /// - need to ensure that the cache is only ever populated once i.e. the cache is static
+    /// - `rustBoot` has no need to update the `fat` as it does NOT support file-system writes to a `block-device`. 
+    /// This is a security design-goal. 
+    /// 
+    /// Note: 
+    /// - the maximum `cache-size` is fixed at 5000 sectors/blocks
+    pub(crate) fn populate_static_fat_cache<D, T>(
+        &self,
+        controller: &Controller<D, T>,
+    ) -> Result<(), Error<D::Error>>
+    where
+        D: BlockDevice,
+        T: TimeSource,
+    {
+        // retrieve the boot parameter block
+        let mut blocks = [Block::new()];
+        controller
+            .block_device
+            .read(&mut blocks, self.lba_start, "read_bpb")
+            .map_err(Error::DeviceError)?;
+        let block = &blocks[0];
+        let bpb = Bpb::create_from_bytes(&block).map_err(Error::FormatError)?;
+
+        // retrieve the block idx where the `fat` starts
+        let fat_start_blockidx = self.lba_start + self.fat_start;
+        info!("fat_start_blockidx: {:?}", fat_start_blockidx);
+        let fat_size = bpb.fat_size();
+        info!("fat_size: {:?}", fat_size);
+        assert!(fat_size <= MAX_FAT_SECTORS);
+
+        // populate fat cache
+        let fat_buffer = Block::from_fat_entries(unsafe { &mut FAT_CACHE.0 });
+        controller
+            .block_device
+            .read(fat_buffer, fat_start_blockidx, "fat_read")
+            .map_err(Error::DeviceError)?;
+        let fat_entries: [[u8; 4]; MAX_FAT_ENTRIES as usize] = Block::to_fat_entries(fat_buffer)
+            .try_into()
+            .map_err(|_| Error::ConversionError)?;
+        info!("4 entries of fat_cache: {:?}", &fat_entries[..4]);
+        info!("number of fat_cache entries: {:?}", (fat_size * 512) / 4);
+
+        Ok(())
+    }
+
+    /// Look in the FAT_CACHE to see which cluster comes next.
+    pub(crate) fn next_cluster_in_fat_cache(
+        &self,
+        cluster: Cluster,
+    ) -> Result<Cluster, Error<&'static str>> {
+        match &self.fat_specific_info {
+            FatSpecificInfo::Fat16(_fat16_info) => {
+                unimplemented!()
+            }
+            FatSpecificInfo::Fat32(_fat32_info) => {
+                let fat_entry_idx = cluster.0 as usize;
+                let fat_entry =
+                    LittleEndian::read_u32(unsafe { &FAT_CACHE.0[fat_entry_idx] }) & 0x0FFF_FFFF;
+                match fat_entry {
+                    0x0000_0000 => {
+                        // Jumped to free space
+                        Err(Error::JumpedFree)
+                    }
+                    0x0FFF_FFF7 => {
+                        // Bad cluster
+                        Err(Error::BadCluster)
+                    }
+                    0x0000_0001 | 0x0FFF_FFF8..=0x0FFF_FFFF => {
+                        // There is no next cluster
+                        Err(Error::EndOfFile)
+                    }
+                    f => {
+                        // Seems legit
+                        Ok(Cluster(f))
+                    }
+                }
+            }
+        }
     }
 
     /// Look in the FAT to see which cluster comes next.

@@ -17,7 +17,7 @@ use tock_registers::{
     LocalRegisterCopy,
 };
 
-use rustBoot::fs::blockdevice::{Block, BlockDevice, BlockIdx, BlockCount};
+use rustBoot::fs::blockdevice::{Block, BlockCount, BlockDevice, BlockIdx};
 
 // --------------------------------------------------------------------
 // PRIVATE INTERNAL SD HOST REGISTER STRUCTURES AS PER BCM2835 MANUAL
@@ -1503,7 +1503,7 @@ impl BlockDevice for &EMMCController {
     ) -> Result<(), Self::Error> {
         match reason {
             "read_multi" | "read" | "read_mbr" | "read_bpb" | "read_info_sector" | "read_fat"
-            | "next_cluster" | "read_dir" => {}
+            | "next_cluster" | "read_dir" | "fat_read" => {}
             _ => {
                 info!("invalid read operation");
                 return Err(SdResult::NONE);

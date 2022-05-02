@@ -1,22 +1,21 @@
 #![no_std]
 #![no_main]
-#![feature(format_args_nl)]
-#![feature(core_intrinsics)]
+#![feature(format_args_nl, core_intrinsics, once_cell)]
+#![allow(warnings)]
 
 mod boot;
+mod dtb;
 mod fit;
 mod log;
-mod dtb;
 
-use fit::{load_fit, relocate_and_patch, verify_authenticity};
 use boot::{boot_kernel, DTB_LOAD_ADDR, KERNEL_LOAD_ADDR};
+use fit::{load_fit, relocate_and_patch, verify_authenticity};
 
-use rustBoot::fs::controller::{Controller, TestClock, VolumeIdx};
+use rustBoot::fs::controller::{Controller, TestClock, VolumeIdx, FAT_CACHE};
 use rustBoot_hal::rpi::rpi4::bsp::{
     drivers::{common::interface::DriverManager, driver_manager::driver_manager},
     global,
     global::EMMC_CONT,
-    
 };
 use rustBoot_hal::rpi::rpi4::{
     exception,
@@ -24,7 +23,7 @@ use rustBoot_hal::rpi::rpi4::{
         console,
         console::{Read, Statistics},
     },
-    memory::{mmu::mmu, layout::interface::MMU, vmm},
+    memory::{layout::interface::MMU, mmu::mmu, vmm},
 };
 use rustBoot_hal::{info, println};
 
@@ -49,6 +48,14 @@ unsafe fn kernel_init() {
 
     // Transition from unsafe to safe.
     kernel_main()
+}
+
+fn init_logger() {
+    // initialize logger, prints debug info
+    match log::init() {
+        Ok(_v) => {}
+        Err(e) => panic!("logger error: {:?}", e),
+    };
 }
 
 /// The main function running after the early init.
@@ -84,12 +91,20 @@ fn kernel_main() -> ! {
     // Discard any spurious received characters before going into echo mode.
     console::console().clear_rx();
 
-    // initialize logger, prints debug info
-    let _ = log::logger_init();
+    // initialize logger.
+    init_logger();
 
     let mut ctrlr = Controller::new(&EMMC_CONT, TestClock);
     let volume = ctrlr.get_volume(VolumeIdx(0));
     if let Ok(mut volume) = volume {
+        let _fat_cache = match ctrlr.populate_fat_cache(&volume) {
+            Ok(val) => {
+                info!("fat cache populated ...")
+            }
+            Err(e) => {
+                panic!("error populating fat_cache, {:?}", e)
+            }
+        };
         let itb_blob = load_fit(&mut volume, &mut ctrlr);
         let res = verify_authenticity();
 
@@ -99,11 +114,16 @@ fn kernel_main() -> ! {
         }
     };
 
+    println!("first 4 entries of FAT_CACHE, {:?}", unsafe {
+        &FAT_CACHE.0[..4]
+    });
+    // panic!("end of program")
     println!(
         "\x1b[5m\x1b[34m***************************************** \
             Starting kernel \
             ********************************************\x1b[0m"
     );
+
     unsafe {
         mmu().disable_mmu_and_caching();
         boot_kernel(

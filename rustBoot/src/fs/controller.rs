@@ -28,6 +28,8 @@ use super::filesystem::{
     Timestamp, MAX_FILE_SIZE,
 };
 
+pub use super::fat::FAT_CACHE;
+
 // ****************************************************************************
 //
 // Public Types
@@ -130,7 +132,7 @@ where
 #[derive(Debug, PartialEq, Eq)]
 pub struct Volume {
     idx: VolumeIdx,
-    volume_type: VolumeType,
+    pub volume_type: VolumeType,
 }
 
 /// This enum holds the data for the various different types of filesystems we
@@ -580,6 +582,23 @@ where
         };
     }
 
+    /// Populates a static cache with the `file allocation table` contents (of the supplied volume). 
+    /// We use the cache to walk the FAT table. This greatly improves performance when loading large 
+    /// files (such as fit-images).
+    /// 
+    /// Note: 
+    /// - Only `FAT32` volumes are supported
+    /// 
+    pub fn populate_fat_cache(
+        &self,
+        volume: &Volume,
+    ) -> Result<(), Error<<D as BlockDevice>::Error>> {
+        match &volume.volume_type {
+            VolumeType::Fat(vol) => vol.populate_static_fat_cache(self)?,
+        }
+        Ok(())
+    }
+
     /// Returns the number of contiguous clusters. If the next cluster in the sequence isn't contiguous
     /// (i.e. is fragmented), it returns a 0
     fn check_contiguous_cluster_count(
@@ -589,7 +608,7 @@ where
     ) -> Result<u32, Error<D::Error>> {
         let mut contiguous_cluster_count = 0u32;
         let mut next_cluster = match &volume.volume_type {
-            VolumeType::Fat(fat) => match fat.next_cluster(self, cluster) {
+            VolumeType::Fat(fat) => match fat.next_cluster_in_fat_cache(cluster) {
                 Ok(cluster) => cluster,
                 Err(e) => match e {
                     // If this is the last cluster for the file, simply return the same cluster.
@@ -601,7 +620,7 @@ where
         while next_cluster.0.wrapping_sub(cluster.0) == 1 {
             cluster = next_cluster;
             next_cluster = match &volume.volume_type {
-                VolumeType::Fat(fat) => match fat.next_cluster(self, cluster) {
+                VolumeType::Fat(fat) => match fat.next_cluster_in_fat_cache(cluster) {
                     Ok(cluster) => cluster,
                     Err(e) => match e {
                         Error::EndOfFile => break,
@@ -648,7 +667,7 @@ where
         let mut bytes_read = 0;
         let mut block_read_counter = 0;
         let mut starting_cluster = file.starting_cluster;
-        let mut file_blocks = 0u32;
+        let mut file_blocks;
         if (file.length % Block::LEN as u32) == 0 {
             file_blocks = file.length / Block::LEN as u32;
         } else {
@@ -680,7 +699,7 @@ where
             };
             let next_cluster = match &volume.volume_type {
                 VolumeType::Fat(fat) => {
-                    match fat.next_cluster(self, starting_cluster + contiguous_cluster_count) {
+                    match fat.next_cluster_in_fat_cache(starting_cluster + contiguous_cluster_count) {
                         Ok(cluster) => cluster,
                         Err(e) => match e {
                             Error::EndOfFile => {

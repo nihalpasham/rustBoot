@@ -1,15 +1,10 @@
-use rustBoot::dt::{
-    get_image_data, patch_chosen_node, Error, PropertyValue, Reader, Result,
-};
+use rustBoot::dt::{get_image_data, patch_chosen_node, Error, PropertyValue, Reader, Result};
 
 use rustBoot_hal::info;
 
 use crate::boot::{DTB_LOAD_ADDR, INITRAMFS_LOAD_ADDR, MAX_DTB_SIZE};
 
-pub fn patch_dtb<'a>(
-    itb_blob: &'a [u8],
-) -> Result<(&'a mut [u8; MAX_DTB_SIZE], usize)>
-{
+pub fn patch_dtb<'a>(itb_blob: &'a [u8]) -> Result<(&'a mut [u8; MAX_DTB_SIZE], usize)> {
     // Load rbconfig
     info!("load rbconfig...");
     let rbconfig = get_image_data(itb_blob, "rbconfig").unwrap();

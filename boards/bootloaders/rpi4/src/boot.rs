@@ -81,7 +81,6 @@ const MAX_KERNEL_SIZE: usize = 14624 * 4 * 512;
 pub(crate) const MAX_DTB_SIZE: usize = 100 * 512;
 const MAX_ITB_SIZE: usize = 32000 * 4 * 512;
 
-// #[repr(align(2097152))]
 pub struct InitRamfsEntry(pub [u8; MAX_INITRAMFS_SIZE]);
 #[repr(align(2097152))]
 pub struct KernelEntry(pub [u8; MAX_KERNEL_SIZE]);
@@ -125,15 +124,9 @@ impl InitRamfsEntry {
     }
 }
 
-// #[link_section = ".initramfs_load_addr._initramfs_start"]
 pub static mut INITRAMFS_LOAD_ADDR: InitRamfsEntry = InitRamfsEntry::new();
-
-// #[link_section = ".kernel_load_addr._kernel_start"]
 pub static mut KERNEL_LOAD_ADDR: KernelEntry = KernelEntry::new();
-
-// #[link_section = ".dtb_load_addr._dtb_start"]
 pub static mut DTB_LOAD_ADDR: DtbEntry = DtbEntry::new();
-
 pub static mut ITB_LOAD_ADDR: ImageTreeEntry = ImageTreeEntry::new();
 
 type EntryPoint = unsafe extern "C" fn(dtb: usize, rsv0: usize, rsv1: usize, rsv2: usize);
@@ -179,4 +172,3 @@ pub fn halt() -> ! {
 //     // we dont intend to return, i.e. `boot_into_kernel` diverges.
 //     halt()
 // }
-

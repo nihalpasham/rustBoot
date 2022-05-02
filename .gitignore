@@ -10,3 +10,5 @@ test.md
 /boards/bootloaders/rpi4-test/
 /boards/bootloaders/rpi4/layout_copy.ld
 /boards/bootloaders/rpi4/bl_objdump.s
+/boards/bootloaders/rpi4/failtestdump.s
+/boards/bootloaders/rpi4/testdump.s

@@ -8,7 +8,7 @@
 ///
 /// This library does not support devices with a block size other than 512
 /// bytes.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Block {
     /// The 512 bytes in this block (or sector).
     pub contents: [u8; Block::LEN],
@@ -49,6 +49,8 @@ pub trait BlockDevice {
     fn num_blocks(&self) -> Result<BlockCount, Self::Error>;
 }
 
+use super::fat::MAX_FAT_ENTRIES;
+
 impl Block {
     /// All our blocks are a fixed length of 512 bytes. We do not support
     /// 'Advanced Format' Hard Drives with 4 KiB blocks, nor weird old
@@ -65,7 +67,7 @@ impl Block {
         }
     }
 
-    /// Converts a [[u8; 512]] slice into a slice of `Block`s,
+    /// Converts a `&[[u8; 512]]` slice into a slice of `Block`s,
     /// assuming that there's no remainder.
     pub fn from_array_slice(blocks: &mut [[u8; Self::LEN]]) -> &mut [Block] {
         let len = blocks.len();
@@ -74,6 +76,39 @@ impl Block {
         // - The slice splits exactly into `N`-element chunks (aka `self.len() % N == 0`).
         // - `N != 0`
         unsafe { core::slice::from_raw_parts_mut(blocks.as_mut_ptr().cast::<Block>(), len) }
+    }
+
+    /// Converts a `&[[u8; 4]]` slice into a slice of `Block`s,
+    /// assuming that there's no remainder.
+    pub fn from_fat_entries(blocks: &mut [[u8; 4]]) -> &mut [Block] {
+        let len = (blocks.len() * 4) / Block::LEN;
+        // # Safety
+        //
+        // - The slice splits exactly into `N`-element chunks (aka `self.len() % N == 0`).
+        // - `N != 0`
+        unsafe { core::slice::from_raw_parts_mut(blocks.as_mut_ptr().cast::<Block>(), len) }
+    }
+
+    pub fn to_fat_entries(blocks: &mut [Block]) -> &mut [[u8; 4]] {
+        let len = MAX_FAT_ENTRIES as usize;
+        let ptr = (&mut blocks[0].contents).as_mut_ptr() as *mut [u8; 4];
+        let buff;
+        unsafe {
+            // there is no way to turn a slice of arrays into a slice of bytes i.e.
+            // turn a &mut [[u8; 512]] to a &mut [[u8; 4]] safely.
+            // at least, we cannot do this without prior allocation. In a no_std environment, where
+            // a heap doesnt exist, this becomes a pain. We'd either have to use something like `heapless`
+            // (and predict the amount of space we'll use for allocation) or take the last resort.
+            //
+            // use `from_raw_parts_mut` to construct a mutable slice of bytes from a slice of arrays.
+            //
+            // # Safety
+            // - This is still safe as it satifies `of from_raw_parts_mut` usage conditions.
+            // - `Block's` are always multiples of 4.
+            buff = core::slice::from_raw_parts_mut(ptr, len);
+        }
+        assert_eq!(blocks.len() * Block::LEN, buff.len() * 4);
+        buff
     }
 }
 

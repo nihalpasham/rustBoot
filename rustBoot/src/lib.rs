@@ -2,13 +2,13 @@
 #![allow(non_snake_case)]
 #![feature(once_cell, is_sorted, slice_as_chunks)]
 
-#[cfg(feature = "mcu")]
-pub mod constants;
 pub mod crypto;
 pub mod dt;
+pub mod fs;
+#[cfg(feature = "mcu")]
+pub mod constants;
 #[cfg(feature = "mcu")]
 pub mod flashapi;
-pub mod fs;
 #[cfg(feature = "mcu")]
 pub mod image;
 #[cfg(feature = "mcu")]
