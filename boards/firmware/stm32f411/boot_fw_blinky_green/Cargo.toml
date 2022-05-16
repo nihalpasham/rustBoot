@@ -13,14 +13,14 @@ test = false
 defmt = {version = "0.3.1", optional = true}
 defmt-rtt = {version = "0.3.2", optional = true}
 cortex-m = "0.7.1"
-cortex-m-rt = "0.7.1"
+cortex-m-rt = "0.6.15"
 rustBoot-hal ={path = "../../../hal",default-features = false,features = ["stm32f411"]}
 panic-probe = { version = "0.2.0" }
 rustBoot-update = {path = "../../../update"}
 
 # board-specific features
 [dependencies.stm32f4xx-hal]
-version = "0.13.1"
+version = "0.10.1"
 features = ["stm32f411"]
 
 [features]

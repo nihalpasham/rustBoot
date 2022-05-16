@@ -33,9 +33,9 @@ cortex-a = {version = "7.0.1", optional = true}
 rustBoot = {path = "../../rustBoot", default-features = true, optional = true}
 tock-registers = {version = "0.7.x", default-features = false, features = ["register_types"], optional = true}
 # platform specific dependencies for nrf52840
-nrf52840-hal = {version = "0.15.0", optional = true}
+nrf52840-hal = {version = "0.13.0", optional = true}
 # platform specific dependencies for stm32f4 series
-stm32f4xx-hal = {version = "0.13.1", features = ["rt", "stm32f411"], optional = true}
+stm32f4xx-hal = {version = "0.10.1", features = ["rt", "stm32f411"], optional = true}
 
 [features]
 default = []
