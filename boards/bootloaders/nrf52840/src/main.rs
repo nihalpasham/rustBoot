@@ -13,3 +13,10 @@ fn main() -> ! {
     let updater = FlashUpdater::new(FlashWriterEraser::new());
     updater.rustboot_start()
 }
+
+#[panic_handler] // panicking behavior
+fn panic(_: &core::panic::PanicInfo) -> ! {
+    loop {
+        cortex_m::asm::bkpt();
+    }
+}

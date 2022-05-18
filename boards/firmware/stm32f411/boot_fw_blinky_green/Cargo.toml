@@ -16,7 +16,7 @@ cortex-m = "0.7.1"
 cortex-m-rt = "0.6.15"
 rustBoot-hal ={path = "../../../hal",default-features = false,features = ["stm32f411"]}
 panic-probe = { version = "0.2.0" }
-rustBoot-update = {path = "../../../update"}
+rustBoot-update = {path = "../../../update", features = ["stm32f411"]}
 
 # board-specific features
 [dependencies.stm32f4xx-hal]

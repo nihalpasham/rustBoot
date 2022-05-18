@@ -41,7 +41,7 @@ libc-print = "0.1.16"
 log = {version = "0.4", default-features = false, features = ["std"]}
 
 [features]
-default = ["sha256", "nistp256", "log", "stm32f411"]
+default = ["sha256", "nistp256", "log"]
 ed25519 = ["sha256"]
 ext_flash = []
 nistp256 = ["p256/ecdsa", "sha256"]

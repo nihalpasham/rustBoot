@@ -569,16 +569,16 @@ impl FatVolume {
         Ok(())
     }
 
-    /// Walking the FAT table for large files can be really slow. 
-    /// 
+    /// Walking the FAT table for large files can be really slow.
+    ///
     /// This method allows us to cache the `file allocation table` contents.
-    /// 
+    ///
     /// TODO:
     /// - need to ensure that the cache is only ever populated once i.e. the cache is static
-    /// - `rustBoot` has no need to update the `fat` as it does NOT support file-system writes to a `block-device`. 
-    /// This is a security design-goal. 
-    /// 
-    /// Note: 
+    /// - `rustBoot` has no need to update the `fat` as it does NOT support file-system writes to a `block-device`.
+    /// This is a security design-goal.
+    ///
+    /// Note:
     /// - the maximum `cache-size` is fixed at 5000 sectors/blocks
     pub(crate) fn populate_static_fat_cache<D, T>(
         &self,
