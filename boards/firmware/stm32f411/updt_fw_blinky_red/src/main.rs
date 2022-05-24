@@ -13,7 +13,7 @@ use mcu::gpio;
 use mcu::gpio::gpiod::PD14;
 use mcu::prelude::*;
 use mcu::stm32;
-use panic_probe as _;
+// use panic_probe as _;
 
 use rustBoot_hal::stm::stm32f411::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
@@ -56,4 +56,11 @@ fn main() -> ! {
         }
     }
     loop {}
+}
+
+#[panic_handler] // panicking behavior
+fn panic(_: &core::panic::PanicInfo) -> ! {
+    loop {
+        cortex_m::asm::bkpt();
+    }
 }
