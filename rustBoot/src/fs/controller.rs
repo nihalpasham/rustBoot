@@ -582,13 +582,13 @@ where
         };
     }
 
-    /// Populates a static cache with the `file allocation table` contents (of the supplied volume). 
-    /// We use the cache to walk the FAT table. This greatly improves performance when loading large 
+    /// Populates a static cache with the `file allocation table` contents (of the supplied volume).
+    /// We use the cache to walk the FAT table. This greatly improves performance when loading large
     /// files (such as fit-images).
-    /// 
-    /// Note: 
+    ///
+    /// Note:
     /// - Only `FAT32` volumes are supported
-    /// 
+    ///
     pub fn populate_fat_cache(
         &self,
         volume: &Volume,
@@ -699,7 +699,8 @@ where
             };
             let next_cluster = match &volume.volume_type {
                 VolumeType::Fat(fat) => {
-                    match fat.next_cluster_in_fat_cache(starting_cluster + contiguous_cluster_count) {
+                    match fat.next_cluster_in_fat_cache(starting_cluster + contiguous_cluster_count)
+                    {
                         Ok(cluster) => cluster,
                         Err(e) => match e {
                             Error::EndOfFile => {
