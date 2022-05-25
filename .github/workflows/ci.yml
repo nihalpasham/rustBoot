@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        target: [thumbv7em-none-eabihf]
+        target: [thumbv7em-none-eabihf, aarch64-unknown-none-softfloat]
     steps:
       - name: Checkout
         uses: actions/checkout@v1
@@ -69,3 +69,10 @@ jobs:
           use-cross: false
           command: run
           args: -p xtask --features stm32f411 -- stm32f411 build rustBoot-only
+      - name: rpi4
+        if: ${{ matrix.target }} == aarch64-unknown-none-softfloat
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: run
+          args: -p xtask -- rpi4 build rustBoot-only

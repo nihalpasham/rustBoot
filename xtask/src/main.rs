@@ -2,9 +2,10 @@
 #![allow(non_snake_case)]
 #![deny(unused_must_use)]
 
+#[cfg(feature = "mcu")]
 use rustBoot::constants::{BOOT_PARTITION_ADDRESS, PARTITION_SIZE, UPDATE_PARTITION_ADDRESS};
-use std::path::Path;
 use std::{env, path::PathBuf};
+// use std::path::Path;
 
 use xshell::cmd;
 
@@ -17,10 +18,13 @@ fn main() -> Result<(), anyhow::Error> {
         ["test", "rustBoot"] => test_rustBoot(),
         [board, "build", "pkgs-for",]    => build_rustBoot(board),
         [board, "sign" , "pkgs-for",]    => sign_packages(board),
+        #[cfg(feature = "mcu")]
         [board, "flash", "signed-pkg",]  => flash_signed_fwimages(board),
         [board, "flash", "rustBoot",]    => flash_rustBoot(board),
         [board, "build", "rustBoot-only",] => build_rustBoot_only(board),
+        #[cfg(feature = "mcu")]
         [board, "build-sign-flash", "rustBoot",] => full_image_flash(board),
+        #[cfg(feature = "mcu")]
         [board, "erase-and-flash-trailer-magic",] => erase_and_flash_trailer_magic(board),
         _ => {
             println!("USAGE: cargo xtask test rustBoot");
@@ -43,11 +47,11 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
     let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
     match target {
         &"rpi4" => {
-            cmd!("cargo build --release").run()?; // for logging add `--features log`
-            if Path::new("kernel8.img").exists() {
-                cmd!("powershell -command \"del kernel8.img\"").run()?;
-            }
-            cmd!("rust-objcopy --strip-all -O binary ..\\..\\target\\aarch64-unknown-none-softfloat\\release\\kernel kernel8.img").run()?;
+            cmd!("cargo build --release").run()?; // `
+                                                  // if Path::new("kernel8.img").exists() {
+                                                  //     cmd!("powershell -command \"del kernel8.img\"").run()?;
+                                                  // }
+            cmd!("rust-objcopy --strip-all -O binary ..\\..\\target\\aarch64-unknown-none-softfloat\\release\\kernel rustBoot.bin").run()?;
         }
         &"nrf52840" => {
             cmd!("cargo build --release").run()?;
@@ -103,6 +107,7 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
     }
 }
 
+#[cfg(feature = "mcu")]
 fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
@@ -144,6 +149,7 @@ fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
     }
 }
 
+#[cfg(feature = "mcu")]
 fn full_image_flash(target: &&str) -> Result<(), anyhow::Error> {
     build_rustBoot(target)?;
     sign_packages(target)?;
@@ -159,6 +165,7 @@ fn root_dir() -> PathBuf {
     xtask_dir
 }
 
+#[cfg(feature = "mcu")]
 /// to be used ONLY for testing.
 fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
     match *target {

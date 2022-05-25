@@ -2420,9 +2420,12 @@ impl EMMCController {
         let mut resp = SdResult::NONE;
         if (num_blocks > 1
             && unsafe {
-                if let Some(SCR::CMD_SUPPORT::Value::CMD_SUPP_SET_BLKCNT) =
-                    EMMC_CARD.scr.read_as_enum(SCR::CMD_SUPPORT)
+                if EMMC_CARD
+                    .scr
+                    .matches_any(SCR::CMD_SUPPORT::CMD_SUPP_SET_BLKCNT)
                 {
+                    #[cfg(feature = "log")]
+                    info!("card supports multi_block transfers\n");
                     true
                 } else {
                     false
@@ -2460,6 +2463,12 @@ impl EMMCController {
         if resp != SdResult::EMMC_OK {
             return self.emmc_debug_response(resp);
         }
+
+        #[cfg(feature = "log")]
+        info!( 
+            "EMMC: start_block: {:?}, num_blocks: {:?}\n",
+            block_address, num_blocks
+        );
 
         // Transfer all blocks.
         let mut blocks_done = 0;
@@ -2557,9 +2566,12 @@ impl EMMCController {
         // that there are no more blocks to be transferred.
         if ((num_blocks > 1)
             && unsafe {
-                if let Some(SCR::CMD_SUPPORT::Value::CMD_SUPP_SET_BLKCNT) =
-                    EMMC_CARD.scr.read_as_enum(SCR::CMD_SUPPORT)
+                if EMMC_CARD
+                    .scr
+                    .matches_any(SCR::CMD_SUPPORT::CMD_SUPP_SET_BLKCNT)
                 {
+                    #[cfg(feature = "log")]
+                    info!("card supports multi_block transfers\n");
                     false
                 } else {
                     true

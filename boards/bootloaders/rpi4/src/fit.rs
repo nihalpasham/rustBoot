@@ -120,7 +120,7 @@ pub fn relocate_and_patch<'a>(itb_blob: &'a [u8]) -> Result<&'a [u8]> {
     let res = patch_dtb(itb_blob);
     match res {
         Ok((buf, len)) => {
-            info!("relocating dtb to addr: {:p}", buf.as_slice());
+            info!("relocating dtb to addr: {:p}\n", buf.as_slice());
             Ok(&buf[..len])
         }
         Err(e) => return Err(e),

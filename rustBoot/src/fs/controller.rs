@@ -605,6 +605,7 @@ where
         &self,
         volume: &Volume,
         mut cluster: Cluster,
+        blocks_per_cluster: u8,
     ) -> Result<u32, Error<D::Error>> {
         let mut contiguous_cluster_count = 0u32;
         let mut next_cluster = match &volume.volume_type {
@@ -629,7 +630,7 @@ where
                 },
             };
             // avoid `block_device` timeouts for contiguous block transfers > 60000 blocks
-            if contiguous_cluster_count < 60000 {
+            if (contiguous_cluster_count * blocks_per_cluster as u32) < 60000 {
                 contiguous_cluster_count += 1;
             } else {
                 break;
@@ -677,7 +678,7 @@ where
         while file_blocks > 0 {
             // Walk the FAT to see if we have contiguos clusters
             let contiguous_cluster_count =
-                self.check_contiguous_cluster_count(volume, starting_cluster)?;
+                self.check_contiguous_cluster_count(volume, starting_cluster, blocks_per_cluster)?;
 
             let blocks_to_read = (contiguous_cluster_count + 1) * blocks_per_cluster as u32;
             let bytes_to_read = Block::LEN * blocks_to_read as usize;

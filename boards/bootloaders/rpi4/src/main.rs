@@ -92,7 +92,7 @@ fn kernel_main() -> ! {
     console::console().clear_rx();
 
     // initialize logger.
-    init_logger();
+    // init_logger();
 
     let mut ctrlr = Controller::new(&EMMC_CONT, TestClock);
     let volume = ctrlr.get_volume(VolumeIdx(0));
@@ -113,15 +113,10 @@ fn kernel_main() -> ! {
             let _ = relocate_and_patch(itb_blob);
         }
     };
-
-    println!("first 4 entries of FAT_CACHE, {:?}", unsafe {
-        &FAT_CACHE.0[..4]
-    });
-    // panic!("end of program")
     println!(
-        "\x1b[5m\x1b[34m***************************************** \
+        "\x1b[5m\x1b[34m*************** \
             Starting kernel \
-            ********************************************\x1b[0m"
+            ***************\x1b[0m\n"
     );
 
     unsafe {

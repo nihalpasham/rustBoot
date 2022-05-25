@@ -7,9 +7,10 @@ version = "0.1.0"
 
 [dependencies]
 anyhow = "1.0.38"
-rustBoot = {path = "../rustBoot", features = ["mcu"]}
+rustBoot = {path = "../rustBoot"}
 xshell = "0.1.9"
 
 [features]
 nrf52840 = ["rustBoot/nrf52840"]
 stm32f411 = ["rustBoot/stm32f411"]
+mcu = []

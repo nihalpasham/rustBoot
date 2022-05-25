@@ -5,6 +5,7 @@
 /rustBoot/examples/test.rs
 /target
 Cargo.lock
+.gdb_history
 test.md
 **/*.DS_Store
 /boards/bootloaders/rpi4-test/
@@ -12,3 +13,6 @@ test.md
 /boards/bootloaders/rpi4/bl_objdump.s
 /boards/bootloaders/rpi4/failtestdump.s
 /boards/bootloaders/rpi4/testdump.s
+/boards/bootloaders/rpi4/output.txt
+/boards/bootloaders/rpi4/kernel8.img
+/boards/bootloaders/rpi4/apertis/dts
