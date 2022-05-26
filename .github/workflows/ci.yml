@@ -57,10 +57,9 @@ jobs:
           args: flip-link
       - name: Install cargo-binutils
         uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: install
-          args: cargo-binutils
+        run: |
+          cargo install cargo-binutils
+          rustup component add llvm-tools-preview
       - name: nrf52840
         if: matrix.target == 'thumbv7em-none-eabihf'
         uses: actions-rs/cargo@v1
