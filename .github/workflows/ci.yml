@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v1
-      - name: Install rust
+      - name: Install rust for target
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
@@ -56,21 +56,21 @@ jobs:
           command: install
           args: flip-link
       - name: nrf52840
-        if: ${{ matrix.target }} == thumbv7em-none-eabihf
+        if: format('{0}', matrix.target) == thumbv7em-none-eabihf
         uses: actions-rs/cargo@v1
         with:
           use-cross: false
           command: run
           args: -p xtask --features nrf52840 -- nrf52840 build rustBoot-only
       - name: stm32f411
-        if: ${{ matrix.target }} == thumbv7em-none-eabihf
+        if: format('{0}', matrix.target) == thumbv7em-none-eabihf
         uses: actions-rs/cargo@v1
         with:
           use-cross: false
           command: run
           args: -p xtask --features stm32f411 -- stm32f411 build rustBoot-only
       - name: rpi4
-        if: ${{ matrix.target }} == aarch64-unknown-none-softfloat
+        if: format('{0}', matrix.target) == aarch64-unknown-none-softfloat
         uses: actions-rs/cargo@v1
         with:
           use-cross: false
