@@ -56,7 +56,6 @@ jobs:
           command: install
           args: flip-link
       - name: Install cargo-binutils
-        uses: actions-rs/cargo@v1
         run: |
           cargo install cargo-binutils
           rustup component add llvm-tools-preview
