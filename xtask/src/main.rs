@@ -55,7 +55,6 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("rust-objcopy --strip-all -O binary ..\\..\\target\\aarch64-unknown-none-softfloat\\release\\kernel rustBoot.bin").run()?;
             #[cfg(not(feature = "windows"))]
             cmd!("rust-objcopy --strip-all -O binary ../../target/aarch64-unknown-none-softfloat/release/kernel rustBoot.bin").run()?;
-
         }
         &"nrf52840" => {
             cmd!("cargo build --release").run()?;
