@@ -56,7 +56,6 @@ jobs:
           command: install
           args: flip-link
       - name: Install cargo-binutils
-        if: matrix.target == 'aarch64-unknown-none-softfloat'
         run: |
           cargo install cargo-binutils
           rustup component add llvm-tools-preview
