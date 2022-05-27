@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v1
-      - name: Install rust
+      - name: Install rust for target
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
