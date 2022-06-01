@@ -29,7 +29,8 @@ rustBoot = {path = "../../rustBoot", default-features = true, features = ["mcu"]
 rustBoot-hal = {path = "../hal"}
 
 [features]
-default = []
+default = ["defmt"]
 nrf52840 = ["rustBoot/nrf52840"]
 stm32f411 = ["rustBoot/stm32f411"]
+stm32f446 = ["rustBoot/stm32f446"]
 

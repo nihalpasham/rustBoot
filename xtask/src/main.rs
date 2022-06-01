@@ -63,6 +63,9 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
         &"stm32f411" => {
             cmd!("cargo build --release").run()?;
         }
+        &"stm32f446" => {
+            cmd!("cargo build --release").run()?;
+        }
         _ => {
             println!("board not supported");
         }
@@ -79,6 +82,7 @@ fn build_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
             .join("boot_fw_blinky_green"),
     )?;
     cmd!("cargo build --release").run()?;
+    println!("Second step done");
     let _p = xshell::pushd(
         root_dir()
             .join("boards/firmware")
