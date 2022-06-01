@@ -32,6 +32,7 @@ jobs:
         run: |
           cargo +nightly test --package rustBoot --lib --features nrf52840 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32f411 -- parser::tests --nocapture
+          cargo +nightly test --package rustBoot --lib --features stm32f446 -- parser::tests --nocapture
 
   builds:
     runs-on: ${{ matrix.os }}
@@ -76,3 +77,10 @@ jobs:
           use-cross: false
           command: run
           args: -p xtask -- rpi4 build rustBoot-only
+      - name: stm32f446
+        if: format('{0}', matrix.target) == thumbv7em-none-eabihf
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: run
+          args: -p xtask --features stm32f446 -- stm32f446 build rustBoot-only
