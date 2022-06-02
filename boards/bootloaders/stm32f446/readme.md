@@ -1,3 +1,11 @@
+RustBoot support for stm32f446 Nucleo board.
+Necleo board have only one LED therefore the Bootfirmware and the update firmware are designed in a way to blink the leds in following patterns
+Boot-fw : blinks Led at 0.5 sec interval
+Updt-fw : blinks Led at 1 sec interval
+
+the command line output for the compilation is as below
+
+```sh
 anand@anand-VirtualBox:~/Desktop/dev_space/production/rustBoot-forked/my_rustBoot$ cargo stm32f446 build pkgs-for
    Compiling version_check v0.9.4
    Compiling typenum v1.15.0
@@ -206,3 +214,4 @@ warning: path statement with no effect
 
 warning: `stm32f446` (bin "stm32f446") generated 1 warning
     Finished release [optimized] target(s) in 15.61s
+```
