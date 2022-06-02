@@ -29,6 +29,14 @@ def sign_image(path):
             # sign `bin` file
             os.system("python3 sign.py --ecc256 --sha256" + " " +
                       filename + " ecc256.der 1235")
+        elif filename == "stm32f446_bootfw.bin":
+            # sign `bin` file
+            os.system("python3 sign.py --ecc256 --sha256" + " " +
+                      filename + " ecc256.der 1234")
+        elif filename == "stm32f446_updtfw.bin":
+            # sign `bin` file
+            os.system("python3 sign.py --ecc256 --sha256" + " " +
+                      filename + " ecc256.der 1235")
 
 def clean_up():
     os.remove(os.getcwd() + "/ecc256.der")

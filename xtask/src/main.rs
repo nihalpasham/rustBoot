@@ -110,6 +110,14 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("python3 signer.py").run()?;
             Ok(())
         }
+        "stm32f446" => {
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            //  cmd!("python3 --version").run()?;
+            cmd!("python3 convert2bin.py").run()?;
+            // python script has a linux dependency - `wolfcrypt`
+            cmd!("python3 signer.py").run()?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }

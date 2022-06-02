@@ -193,7 +193,7 @@ $ cargo build --release
    Compiling signature v1.4.0
    Compiling hmac v0.11.0
    Compiling chrono v0.4.19
-   Compiling sha2 v0.9.9
+   Compiling sha2 v0.9.9cd 
    Compiling rfc6979 v0.1.0
    Compiling elliptic-curve v0.11.12
    Compiling ecdsa v0.13.4

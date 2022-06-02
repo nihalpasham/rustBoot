@@ -18,5 +18,11 @@ def convert_to_bin(path):
         elif filename == "boot_fw_blinky_green" and (filename + ".bin") not in os.listdir(os.getcwd()):
             os.system("rust-objcopy -I elf32-littlearm" + " " + target_path +
                       filename + " " + "-O binary stm32f411_bootfw.bin")
+        elif filename == "stm32f446_boot_fw" and (filename + ".bin") not in os.listdir(os.getcwd()):
+            os.system("rust-objcopy -I elf32-littlearm" + " " + target_path +
+                      filename + " " + "-O binary stm32f446_bootfw.bin")
+        elif filename == "stm32f446_updt_fw" and (filename + ".bin") not in os.listdir(os.getcwd()):
+            os.system("rust-objcopy -I elf32-littlearm" + " " + target_path +
+                      filename + " " + "-O binary stm32f446_updtfw.bin")
         
 convert_to_bin(target_path)
