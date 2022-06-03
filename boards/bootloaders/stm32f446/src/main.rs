@@ -18,6 +18,6 @@ fn main() -> ! {
 #[panic_handler] // panicking behavior
 fn panic(_: &core::panic::PanicInfo) -> ! {
     loop {
-        cortex_m::asm::bkpt;
+        cortex_m::asm::bkpt();
     }
 }
