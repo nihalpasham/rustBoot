@@ -10,7 +10,6 @@ use rustBoot::{Result, RustbootError};
 use super::UpdateInterface;
 use rustBoot::flashapi::FlashApi;
 use rustBoot_hal::FlashInterface;
-// use defmt::Format;
 
 struct RefinedUsize<const MIN: usize, const MAX: usize, const VAL: usize>(usize);
 
@@ -278,7 +277,6 @@ where
 
         // Check the BOOT partition for state - if it is still in TESTING, trigger rollback.
         if let ImageType::BootInTestingState(_v) = boot {
-            // defmt::println!("Starting Boot in testing stage");
             self.update_trigger();
             match self.rustboot_update(true) {
                 Ok(_v) => {}
@@ -288,7 +286,6 @@ where
             }
         // Check the UPDATE partition for state - if it is marked as UPDATING, trigger update.
         } else if let ImageType::UpdateInUpdatingState(_v) = updt {
-            // defmt::println!("Starting Update in update stage");
             match self.rustboot_update(false) {
                 Ok(_v) => {}
                 Err(_e) => {
@@ -298,7 +295,6 @@ where
         } else {
             match boot {
                 ImageType::BootInNewState(ref mut img) => {
-                    // defmt::println!("Starting Boot in new stage");
                     if (img.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                         || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                     {
@@ -321,7 +317,6 @@ where
                     }
                 }
                 ImageType::BootInSuccessState(ref mut img) => {
-                    // defmt::println!("Starting Boot in success stage");
                     if (img.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                         || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                     {
@@ -390,7 +385,6 @@ where
         Self::flash_unlock();
         match updt {
             ImageType::UpdateInNewState(img) => {
-                // defmt::println!("Now in update trigger() update in new stage");
                 let new_img = img.into_updating_state();
                 let part_desc = new_img.part_desc.get();
                 match part_desc {
@@ -410,7 +404,6 @@ where
         Self::flash_unlock();
         match boot {
             ImageType::BootInTestingState(img) => {
-                // defmt::println!("Now in update_success() boot in testing stage");
                 let new_img = img.into_success_state();
                 let part_desc = new_img.part_desc.get();
                 match part_desc {

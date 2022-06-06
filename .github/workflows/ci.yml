@@ -82,7 +82,7 @@ jobs:
           command: run
           args: -p xtask -- rpi4 build rustBoot-only
       - name: stm32f446
-        if: format('{0}', matrix.target) == thumbv7em-none-eabihf
+        if: matrix.target == 'thumbv7em-none-eabihf'
         uses: actions-rs/cargo@v1
         with:
           use-cross: false

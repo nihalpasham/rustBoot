@@ -3,7 +3,7 @@ use crate::constants::*;
 use crate::crypto::signatures::{verify_ecc256_signature, HDR_IMG_TYPE_AUTH};
 use crate::parser::*;
 use crate::{Result, RustbootError};
-use defmt::Format;
+
 use crate::flashapi::FlashApi;
 
 #[cfg(feature = "secp256k1")]
