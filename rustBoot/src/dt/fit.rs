@@ -219,7 +219,7 @@ where
         };
         configuration = config;
         #[cfg(feature = "defmt")]
-        defmt::info!("Config: {:?}\n", config);
+        defmt::info!("Config: {:?}\n", configuration);
 
         let conf_properties = ["kernel", "fdt", "ramdisk", "rbconfig"];
         for (idx, prop) in conf_properties.iter().enumerate() {

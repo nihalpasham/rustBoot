@@ -1,18 +1,18 @@
-use stm32f411_hal as hal;
+use stm32f446_hal as hal;
 
 use crate::FlashInterface;
 use core::ptr::write_volatile;
 use hal::stm32::{Peripherals, FLASH};
-use stm32f411rc_constants::*;
+use stm32f446re_constants::*;
 #[rustfmt::skip]
-mod stm32f411rc_constants {
+mod stm32f446re_constants {
     pub const FLASH_PAGE_SIZE : u32 = 131072;   // 1 sector size = 128KB   
     pub const STACK_LOW       : u32 = 0x2000_0000;
     pub const STACK_UP        : u32 = 0x2002_0000;
     pub const RB_HDR_SIZE     : u32 = 0x100;
     pub const BASE_ADDR       : u32 = 0x08020000;   //  sector 5 starting address
     pub const VTR_TABLE_SIZE  : u32 = 0x100;
-    pub const FW_RESET_VTR    : u32 = BASE_ADDR + RB_HDR_SIZE + VTR_TABLE_SIZE + 0x99;
+    pub const FW_RESET_VTR    : u32 = BASE_ADDR + RB_HDR_SIZE + VTR_TABLE_SIZE + 0xA9;
     pub const UNLOCKKEY1      : u32 = 0x45670123;
     pub const UNLOCKKEY2      : u32 = 0xCDEF89AB;
     pub const PSIZE_X8        : u8  = 0b00;
@@ -21,28 +21,71 @@ mod stm32f411rc_constants {
     pub const PSIZE_X64       : u8  = 0b11;
 }
 
-pub struct FlashWriterEraser {
-    pub nvm: FLASH,
+pub struct FlashWriterEraser{
+    pub nvm : FLASH,
 }
 
-impl FlashWriterEraser {
+impl FlashWriterEraser{
     pub fn new() -> Self {
-        FlashWriterEraser {
+        FlashWriterEraser{
             nvm: Peripherals::take().unwrap().FLASH,
         }
     }
 }
 
-impl FlashInterface for FlashWriterEraser {
-    /// This method is to write data on flash
-    ///
-    /// Method arguments:
-    /// -   address: It holds the address of flash where data has to be written
-    /// -   data: u8 pointer holding the holding data.
-    /// -   len :  number of bytes
-    ///
-    /// Returns:
-    /// -  NONE
+impl FlashInterface for FlashWriterEraser{
+    fn hal_flash_lock(&self) {
+        self.nvm.cr.modify(|_, w| w.lock().set_bit());
+    }
+
+    fn hal_flash_erase(&self, addr: usize, len: usize) {
+        let mut sec: u8 = 0;
+        let mut flag: bool = true;
+        let address = addr as u32;
+        match address {
+            (0x0800_0000..=0x0800_3FFF) => sec = 0,
+            (0x0800_4000..=0x0800_7FFF) => sec = 1,
+            (0x0800_8000..=0x0800_BFFF) => sec = 2,
+            (0x0800_C000..=0x0800_FFFF) => sec = 3,
+            (0x0801_0000..=0x0801_FFFF) => sec = 4,
+            (0x0802_0000..=0x0803_3FFF) => sec = 5,
+            (0x0804_0000..=0x0805_5FFF) => sec = 6,
+            (0x0806_0000..=0x0807_7FFF) => sec = 7,
+            _ => flag = false,
+        }
+
+        if flag {
+            self.hal_flash_unlock();
+            // Erase page starting at addr
+            #[rustfmt::skip]
+            self.nvm.cr.modify(|_, w| unsafe {
+                w
+                    // start
+                    .strt().set_bit()
+                    .psize().bits(PSIZE_X8)
+                    // sector number
+                    .snb().bits(sec)
+                    // sectore erase
+                    .ser().set_bit()
+                    // no programming
+                    .pg().clear_bit()
+            });
+            // Wait until erasing is done
+            while self.nvm.sr.read().bsy().bit() {}
+            //Lock the FLASH
+            self.hal_flash_lock();
+        }
+    }
+
+    fn hal_flash_unlock(&self) {
+        self.nvm.keyr.write(|w| unsafe {w.key().bits(UNLOCKKEY1)});
+        self.nvm.keyr.write(|w| unsafe {w.key().bits(UNLOCKKEY2)});
+    }
+
+    fn hal_init() {
+        
+    }
+
     fn hal_flash_write(&self, address: usize, data: *const u8, len: usize) {
         let address = address as u32;
         let len = len as u32;
@@ -110,81 +153,7 @@ impl FlashInterface for FlashWriterEraser {
         //Lock the FLASH
         self.hal_flash_lock();
     }
-
-    /// This method is used to erase data on flash
-    ///
-    /// In STM32F411 only sector erase is available. whatever be the length of bytes we pass to this function will erase
-    /// the whole sector, whichever the sector the address belong to.
-    ///
-    /// Method arguments:
-    /// -   addr: Address where data has to be erased
-    /// -   len :  number of bytes to be erased
-    ///
-    /// Returns:
-    /// -  NONE
-
-    fn hal_flash_erase(&self, addr: usize, len: usize) {
-        let mut sec: u8 = 0;
-        let mut flag: bool = true;
-        let address = addr as u32;
-        match address {
-            (0x0800_0000..=0x0800_3FFF) => sec = 0,
-            (0x0800_4000..=0x0800_7FFF) => sec = 1,
-            (0x0800_8000..=0x0800_BFFF) => sec = 2,
-            (0x0800_C000..=0x0800_FFFF) => sec = 3,
-            (0x0801_0000..=0x0801_FFFF) => sec = 4,
-            (0x0802_0000..=0x0803_3FFF) => sec = 5,
-            (0x0804_0000..=0x0805_5FFF) => sec = 6,
-            (0x0806_0000..=0x0807_7FFF) => sec = 7,
-            _ => flag = false,
-        }
-
-        if flag {
-            self.hal_flash_unlock();
-            // Erase page starting at addr
-            #[rustfmt::skip]
-            self.nvm.cr.modify(|_, w| unsafe {
-                w
-                    // start
-                    .strt().set_bit()
-                    .psize().bits(PSIZE_X8)
-                    // sector number
-                    .snb().bits(sec)
-                    // sectore erase
-                    .ser().set_bit()
-                    // no programming
-                    .pg().clear_bit()
-            });
-            // Wait until erasing is done
-            while self.nvm.sr.read().bsy().bit() {}
-            //Lock the FLASH
-            self.hal_flash_lock();
-        }
-    }
-    /// This method is used to lock the flash
-    ///
-    /// Once the flash is locked no operation on flash can be perfomed.
-    /// Method arguments:
-    /// -   NONE
-    /// Returns:
-    /// -  NONE
-    fn hal_flash_lock(&self) {
-        self.nvm.cr.modify(|_, w| w.lock().set_bit());
-    }
-    /// This method is used to unlock the flash
-    ///
-    /// Flash has to be unlocked to do any operation on it.
-    /// Method arguments:
-    /// -   NONE
-    /// Returns:
-    /// -  NONE
-    fn hal_flash_unlock(&self) {
-        self.nvm.keyr.write(|w| unsafe { w.key().bits(UNLOCKKEY1) });
-        self.nvm.keyr.write(|w| unsafe { w.key().bits(UNLOCKKEY2) });
-    }
-    fn hal_init() {}
 }
-pub fn preboot() {}
 
 struct RefinedUsize<const MIN: u32, const MAX: u32, const VAL: u32>(u32);
 
@@ -217,6 +186,7 @@ impl<const MIN: u32, const MAX: u32, const VAL: u32> RefinedUsize<MIN, MAX, VAL>
     /// -   fw_base_address  : address of the firmware
     /// Returns:
     /// -  NONE
+
 #[rustfmt::skip]
 pub fn boot_from(fw_base_address: usize) -> ! {
        let address = fw_base_address as u32;
