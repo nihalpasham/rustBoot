@@ -81,7 +81,6 @@ fn build_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
             .join("boot_fw_blinky_green"),
     )?;
     cmd!("cargo build --release").run()?;
-    println!("Second step done");
     let _p = xshell::pushd(
         root_dir()
             .join("boards/firmware")
