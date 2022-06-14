@@ -1,0 +1,26 @@
+[package]
+name = "stm32h723_updtfw"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "stm32h723_updtfw"
+bench = false
+doctest = false
+test = false
+
+[dependencies]
+cortex-m = "0.7.1"
+cortex-m-rt = "0.6.15"
+panic-probe = "0.3.0"
+defmt = {version = "0.3.1", optional = true}
+defmt-rtt = {version = "0.3.2", optional = true}
+rustBoot-hal ={path = "../../../hal", default-features = false, features = ["stm32h723"]}
+rustBoot-update = {path = "../../../update", features = ["stm32h723"]}
+# board-specific features
+stm32h7xx-hal = {version = "0.12.2", features = ["stm32h735", "rt"]}
+
+[features]
+default = ["defmt", "defmt-rtt"]

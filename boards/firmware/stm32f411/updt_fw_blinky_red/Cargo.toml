@@ -1,10 +1,10 @@
 [package]
-name = "update_fw_blinky_red"
+name = "stm32f411_updtfw"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "update_fw_blinky_red"
+name = "stm32f411_updtfw"
 bench = false
 doctest = false
 test = false

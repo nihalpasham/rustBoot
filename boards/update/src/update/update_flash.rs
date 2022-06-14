@@ -242,7 +242,7 @@ where
                 }
                 // Re-open the `Boot` partition after swap.
                 // Note: A successful swap moves the image in the update partition to the boot partition.
-                // TODO: As we're using singletons (i.e. BOOT, UPDT), swap the following `rustBoot header` fields - 
+                // TODO: As we're using singletons (i.e. BOOT, UPDT), swap the following `rustBoot header` fields -
                 //       size, sha_hash, signature_ok, sha_ok, hdr_ok.
                 let boot = PartDescriptor::open_partition(Boot, self).unwrap();
                 // the only valid state for the boot partition after a swap is `newState` as all state
@@ -301,7 +301,6 @@ where
                         match self.rustboot_update(true) {
                             Err(_v) => {
                                 #[cfg(feature = "defmt")]
-                                defmt::info!("all boot options exhausted");
                                 panic!("all boot options exhausted")
                             } // all boot options exhausted
                             Ok(ref mut img) => {
@@ -323,7 +322,6 @@ where
                         match self.rustboot_update(true) {
                             Err(_v) => {
                                 #[cfg(feature = "defmt")]
-                                defmt::info!("all boot options exhausted");
                                 panic!("all boot options exhausted")
                             } // all boot options exhausted
                             Ok(ref mut img) => {
@@ -341,10 +339,10 @@ where
                 _ => unreachable!(),
             }
         }
-        
+
         // After an update or rollback re-open the `boot` partition.
         // Note: Swapping moves the image in the update partition to the boot partition.
-        // TODO: As we're using singletons (i.e. BOOT, UPDT), swap the following `rustBoot header` fields - 
+        // TODO: As we're using singletons (i.e. BOOT, UPDT), swap the following `rustBoot header` fields -
         //       size, sha_hash, signature_ok, sha_ok, hdr_ok.
         let boot = PartDescriptor::open_partition(Boot, self).unwrap();
         match boot {

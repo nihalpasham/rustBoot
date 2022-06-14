@@ -1,10 +1,10 @@
 [package]
-name = "stm32f446_boot_fw"
+name = "stm32f446_bootfw"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "stm32f446_boot_fw"
+name = "stm32f446_bootfw"
 bench = false
 doctest = false
 test = false
