@@ -3,7 +3,8 @@
 
 #[cfg(feature = "defmt")]
 use defmt_rtt as _; // global logger
-use rustBoot_hal::stm::stm32f446::FlashWriterEraser;
+
+use rustBoot_hal::stm::stm32h723::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
 
 use cortex_m_rt::entry;

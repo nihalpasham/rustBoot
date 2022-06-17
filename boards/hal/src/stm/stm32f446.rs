@@ -21,23 +21,41 @@ mod stm32f446re_constants {
     pub const PSIZE_X64       : u8  = 0b11;
 }
 
-pub struct FlashWriterEraser{
-    pub nvm : FLASH,
+pub struct FlashWriterEraser {
+    pub nvm: FLASH,
 }
 
-impl FlashWriterEraser{
+impl FlashWriterEraser {
     pub fn new() -> Self {
-        FlashWriterEraser{
+        FlashWriterEraser {
             nvm: Peripherals::take().unwrap().FLASH,
         }
     }
 }
 
-impl FlashInterface for FlashWriterEraser{
+impl FlashInterface for FlashWriterEraser {
+    /// This method is used to lock the flash
+    ///
+    /// Once the flash is locked no operation on flash can be perfomed.
+    /// Method arguments:
+    /// -   NONE
+    /// Returns:
+    /// -  NONE
     fn hal_flash_lock(&self) {
         self.nvm.cr.modify(|_, w| w.lock().set_bit());
     }
 
+    /// This method is used to erase data on flash
+    ///
+    /// In STM32F411 only sector erase is available. whatever be the length of bytes we pass to this function will erase
+    /// the whole sector, whichever the sector the address belong to.
+    ///
+    /// Method arguments:
+    /// -   addr: Address where data has to be erased
+    /// -   len :  number of bytes to be erased
+    ///
+    /// Returns:
+    /// -  NONE
     fn hal_flash_erase(&self, addr: usize, len: usize) {
         let mut sec: u8 = 0;
         let mut flag: bool = true;
@@ -77,15 +95,29 @@ impl FlashInterface for FlashWriterEraser{
         }
     }
 
+    /// This method is used to unlock the flash
+    ///
+    /// Flash has to be unlocked to do any operation on it.
+    /// Method arguments:
+    /// -   NONE
+    /// Returns:
+    /// -  NONE
     fn hal_flash_unlock(&self) {
-        self.nvm.keyr.write(|w| unsafe {w.key().bits(UNLOCKKEY1)});
-        self.nvm.keyr.write(|w| unsafe {w.key().bits(UNLOCKKEY2)});
+        self.nvm.keyr.write(|w| unsafe { w.key().bits(UNLOCKKEY1) });
+        self.nvm.keyr.write(|w| unsafe { w.key().bits(UNLOCKKEY2) });
     }
 
-    fn hal_init() {
-        
-    }
+    fn hal_init() {}
 
+    /// This method is to write data on flash
+    ///
+    /// Method arguments:
+    /// -   address: It holds the address of flash where data has to be written
+    /// -   data: u8 pointer holding the holding data.
+    /// -   len :  number of bytes
+    ///
+    /// Returns:
+    /// -  NONE
     fn hal_flash_write(&self, address: usize, data: *const u8, len: usize) {
         let address = address as u32;
         let len = len as u32;
@@ -180,7 +212,7 @@ impl<const MIN: u32, const MAX: u32, const VAL: u32> RefinedUsize<MIN, MAX, VAL>
     }
 }
 
-    /// This method is used to boot the firmware from a particular address
+/// This method is used to boot the firmware from a particular address
     ///
     /// Method arguments:
     /// -   fw_base_address  : address of the firmware

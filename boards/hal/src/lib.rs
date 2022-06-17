@@ -26,7 +26,6 @@ pub trait FlashInterface {
     fn hal_flash_unlock(&self);
     fn hal_flash_lock(&self);
     fn hal_flash_write(&self, addr: usize, data: *const u8, len: usize);
-
     fn hal_flash_erase(&self, addr: usize, len: usize);
 }
 
@@ -41,6 +40,9 @@ pub fn boot_from(fw_base_address: usize) -> ! {
 
     #[cfg(feature = "stm32f446")]
     crate::stm::stm32f446::boot_from(fw_base_address);
+
+    #[cfg(feature = "stm32h723")]
+    crate::stm::stm32h723::boot_from(fw_base_address);
 
     panic!(": unrecognized board")
 }

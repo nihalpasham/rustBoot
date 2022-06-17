@@ -27,11 +27,11 @@ fn main() -> Result<(), anyhow::Error> {
         #[cfg(feature = "mcu")]
         [board, "erase-and-flash-trailer-magic",] => erase_and_flash_trailer_magic(board),
         _ => {
-            println!("USAGE: cargo xtask test rustBoot");
+            println!("USAGE: cargo [board] test rustBoot");
             println!("OR");
-            println!("USAGE: cargo xtask [build|sign|flash] [pkgs-for|signed-pkg] [board]");
+            println!("USAGE: cargo [board] [build|sign|flash] [pkgs-for|signed-pkg]");
             println!("OR");
-            println!("USAGE: cargo xtask [build-sign-flash] [rustBoot] [board]");
+            println!("USAGE: cargo [board] [build-sign-flash] [rustBoot]");
             Ok(())
         }
     }
@@ -63,6 +63,9 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("cargo build --release").run()?;
         }
         &"stm32f446" => {
+            cmd!("cargo build --release").run()?;
+        }
+        &"stm32h723" => {
             cmd!("cargo build --release").run()?;
         }
         _ => {
@@ -117,6 +120,14 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("python3 signer.py").run()?;
             Ok(())
         }
+        "stm32h723" => {
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            //  cmd!("python3 --version").run()?;
+            cmd!("python3 convert2bin.py").run()?;
+            // python script has a linux dependency - `wolfcrypt`
+            cmd!("python3 signer.py").run()?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }
@@ -153,6 +164,17 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("pyocd flash -t stm32f446 --base-address {updt_part_addr} stm32f446_updtfw_v1235_signed.bin").run()?;
             Ok(())
         }
+
+        "stm32h723" => {
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
+            cmd!("pyocd flash --base-address {boot_part_addr} stm32f446_bootfw_v1235_signed.bin")
+                .run()?;
+
+            let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
+            cmd!("pyocd flash -t stm32f446 --base-address {updt_part_addr} stm32f446_updtfw_v1235_signed.bin").run()?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }
@@ -170,6 +192,11 @@ fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f446" => {
+            let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
+            cmd!("cargo flash --chip stm32f446vetx --release").run()?;
+            Ok(())
+        }
+        "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
             cmd!("cargo flash --chip stm32f446vetx --release").run()?;
             Ok(())
@@ -246,7 +273,22 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
                 .run()?;
             Ok(())
         }
+        "stm32h723" => {
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
+            cmd!("pyocd erase -t stm32f446 -s 0x0").run()?;
+            let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t stm32f446 -s {boot_trailer_magic}").run()?;
+            cmd!("pyocd flash -t stm32f446 --base-address {boot_trailer_magic} trailer_magic.bin")
+                .run()?;
 
+            let updt_trailer_magic =
+                format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t stm32f446 -s {updt_trailer_magic}").run()?;
+            cmd!("pyocd flash -t stm32f446 --base-address {updt_trailer_magic} trailer_magic.bin")
+                .run()?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }

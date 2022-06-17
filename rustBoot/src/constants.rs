@@ -13,6 +13,17 @@ pub const SWAP_PARTITION_ADDRESS: usize = 0x57000;
 #[cfg(feature = "nrf52840")]
 pub const UPDATE_PARTITION_ADDRESS: usize = 0x58000;
 
+#[cfg(feature = "stm32f411")]
+pub const SECTOR_SIZE: usize = 0x20000;
+#[cfg(feature = "stm32f411")]
+pub const PARTITION_SIZE: usize = 0x20000;
+#[cfg(feature = "stm32f411")]
+pub const BOOT_PARTITION_ADDRESS: usize = 0x08020000;
+#[cfg(feature = "stm32f411")]
+pub const SWAP_PARTITION_ADDRESS: usize = 0x08060000;
+#[cfg(feature = "stm32f411")]
+pub const UPDATE_PARTITION_ADDRESS: usize = 0x08040000;
+
 #[cfg(feature = "stm32f446")]
 pub const SECTOR_SIZE: usize = 0x20000;
 #[cfg(feature = "stm32f446")]
@@ -24,16 +35,16 @@ pub const SWAP_PARTITION_ADDRESS: usize = 0x08060000;
 #[cfg(feature = "stm32f446")]
 pub const UPDATE_PARTITION_ADDRESS: usize = 0x08040000;
 
-#[cfg(feature = "stm32f411")]
+#[cfg(feature = "stm32h723")]
 pub const SECTOR_SIZE: usize = 0x20000;
-#[cfg(feature = "stm32f411")]
-pub const PARTITION_SIZE: usize = 0x20000;
-#[cfg(feature = "stm32f411")]
+#[cfg(feature = "stm32h723")]
+pub const PARTITION_SIZE: usize = 0x40000;
+#[cfg(feature = "stm32h723")]
 pub const BOOT_PARTITION_ADDRESS: usize = 0x08020000;
-#[cfg(feature = "stm32f411")]
-pub const SWAP_PARTITION_ADDRESS: usize = 0x08060000;
-#[cfg(feature = "stm32f411")]
-pub const UPDATE_PARTITION_ADDRESS: usize = 0x08040000;
+#[cfg(feature = "stm32h723")]
+pub const SWAP_PARTITION_ADDRESS: usize = 0x080A0000;
+#[cfg(feature = "stm32h723")]
+pub const UPDATE_PARTITION_ADDRESS: usize = 0x08060000;
 
 // **** RAM BOOT options for staged OS (update_ram only) ****
 pub const DTS_BOOT_ADDRESS: usize = 0xa0000;
