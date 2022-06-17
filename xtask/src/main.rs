@@ -164,6 +164,7 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("pyocd flash -t stm32f446 --base-address {updt_part_addr} stm32f446_updtfw_v1235_signed.bin").run()?;
             Ok(())
         }
+
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
@@ -288,7 +289,6 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
                 .run()?;
             Ok(())
         }
-
         _ => todo!(),
     }
 }
