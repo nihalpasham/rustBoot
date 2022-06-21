@@ -4,6 +4,7 @@
 
 #[cfg(feature = "mcu")]
 pub mod constants;
+pub mod rbconstants;
 pub mod crypto;
 pub mod dt;
 #[cfg(feature = "mcu")]
