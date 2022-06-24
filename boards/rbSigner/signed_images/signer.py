@@ -6,7 +6,6 @@ key_file = "ecc256.der"
 firmware = ["nrf52840_bootfw.bin", "nrf52840_updtfw.bin", "stm32f411_bootfw.bin", "stm32f411_updtfw.bin", "stm32f446_bootfw.bin", "stm32f446_updtfw.bin", "stm32h723_bootfw.bin", "stm32h723_updtfw.bin","stm32f746_bootfw","stm32f746_updtfw"]
 target_path = "."
 
-
 def sign_image(path):
     for filename in os.listdir(path):
         if key_file not in os.listdir(os.getcwd()):

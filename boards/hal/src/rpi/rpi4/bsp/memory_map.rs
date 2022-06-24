@@ -28,5 +28,3 @@ pub mod map {
         
     }
 }
-
-

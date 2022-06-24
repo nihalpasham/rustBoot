@@ -211,7 +211,7 @@ impl<const MIN: u32, const MAX: u32, const VAL: u32> RefinedUsize<MIN, MAX, VAL>
     }
 }
 
-    /// This method is used to boot the firmware from a particular address
+/// This method is used to boot the firmware from a particular address
     ///
     /// Method arguments:
     /// -   fw_base_address  : address of the firmware
