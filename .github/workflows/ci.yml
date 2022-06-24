@@ -89,6 +89,13 @@ jobs:
           use-cross: false
           command: run
           args: -p xtask --features stm32h723 -- stm32h723 build rustBoot-only
+      - name: stm32f746
+        if: matrix.target == 'thumbv7em-none-eabihf'
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: run
+          args: -p xtask --features stm32f746 -- stm32f746 build rustBoot-only
       - name: rpi4
         if: matrix.target == 'aarch64-unknown-none-softfloat'
         uses: actions-rs/cargo@v1
@@ -96,4 +103,5 @@ jobs:
           use-cross: false
           command: run
           args: -p xtask -- rpi4 build rustBoot-only
+
 
