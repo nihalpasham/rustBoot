@@ -40,6 +40,9 @@ stm32f446-hal = {package = "stm32f4xx-hal", version = "0.9.0", features = ["rt",
 # platform specific dependencies for stm32h7 series
 stm32h7xx-hal = {version = "0.12.2", features = ["stm32h735", "rt"], optional = true}
 
+# platform specific dependencies for stm32h7 series
+stm32f3xx-hal = {version = "0.8.0", features = ["stm32f334x8", "rt"], optional = true}
+
 [features]
 default = []
 log = []
@@ -53,3 +56,4 @@ stm = []
 stm32f411 = ["stm", "stm32f411-hal"]
 stm32f446 = ["stm", "stm32f446-hal"]
 stm32h723 = ["stm", "stm32h7xx-hal"]
+stm32f334 = ["stm", "stm32f3xx-hal"]

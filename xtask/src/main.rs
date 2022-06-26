@@ -68,6 +68,9 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
         &"stm32h723" => {
             cmd!("cargo build --release").run()?;
         }
+        &"stm32f334" => {
+            cmd!("cargo build --release").run()?;
+        }
         _ => {
             println!("board not supported");
         }
@@ -128,6 +131,14 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("python3 signer.py").run()?;
             Ok(())
         }
+        "stm32f334" => {
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            //  cmd!("python3 --version").run()?;
+            cmd!("python3 convert2bin.py").run()?;
+            // python script has a linux dependency - `wolfcrypt`
+            cmd!("python3 signer.py").run()?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }
@@ -168,11 +179,22 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            cmd!("pyocd flash --base-address {boot_part_addr} stm32f446_bootfw_v1235_signed.bin")
+            cmd!("pyocd flash --base-address {boot_part_addr} stm32h723_bootfw_v1235_signed.bin")
                 .run()?;
 
             let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
-            cmd!("pyocd flash -t stm32f446 --base-address {updt_part_addr} stm32f446_updtfw_v1235_signed.bin").run()?;
+            cmd!("pyocd flash -t stm32h723 --base-address {updt_part_addr} stm32f446_updtfw_v1235_signed.bin").run()?;
+            Ok(())
+        }
+
+        "stm32f334" => {
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
+            cmd!("pyocd flash --base-address {boot_part_addr} stm32f334_bootfw_v1235_signed.bin")
+                .run()?;
+
+            let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
+            cmd!("pyocd flash -t stm32f334 --base-address {updt_part_addr} stm32f334_updtfw_v1235_signed.bin").run()?;
             Ok(())
         }
         _ => todo!(),
@@ -199,6 +221,11 @@ fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
             cmd!("cargo flash --chip stm32f446vetx --release").run()?;
+            Ok(())
+        }
+        "stm32f334" => {
+            let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
+            cmd!("cargo flash --chip stm32f334r8tx --release").run()?;
             Ok(())
         }
         _ => todo!(),
@@ -276,16 +303,32 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
-            cmd!("pyocd erase -t stm32f446 -s 0x0").run()?;
+            cmd!("pyocd erase -t stm32h723 -s 0x0").run()?;
             let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
-            cmd!("pyocd erase -t stm32f446 -s {boot_trailer_magic}").run()?;
-            cmd!("pyocd flash -t stm32f446 --base-address {boot_trailer_magic} trailer_magic.bin")
+            cmd!("pyocd erase -t stm32h723 -s {boot_trailer_magic}").run()?;
+            cmd!("pyocd flash -t stm32h723 --base-address {boot_trailer_magic} trailer_magic.bin")
                 .run()?;
 
             let updt_trailer_magic =
                 format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
-            cmd!("pyocd erase -t stm32f446 -s {updt_trailer_magic}").run()?;
-            cmd!("pyocd flash -t stm32f446 --base-address {updt_trailer_magic} trailer_magic.bin")
+            cmd!("pyocd erase -t stm32h723 -s {updt_trailer_magic}").run()?;
+            cmd!("pyocd flash -t stm32h723 --base-address {updt_trailer_magic} trailer_magic.bin")
+                .run()?;
+            Ok(())
+        }
+        "stm32f334" => {
+            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
+            cmd!("pyocd erase -t stm32f334 -s 0x0").run()?;
+            let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t stm32f334 -s {boot_trailer_magic}").run()?;
+            cmd!("pyocd flash -t stm32f334 --base-address {boot_trailer_magic} trailer_magic.bin")
+                .run()?;
+
+            let updt_trailer_magic =
+                format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t stm32f334 -s {updt_trailer_magic}").run()?;
+            cmd!("pyocd flash -t stm32f334 --base-address {updt_trailer_magic} trailer_magic.bin")
                 .run()?;
             Ok(())
         }
