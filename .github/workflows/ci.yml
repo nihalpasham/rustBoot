@@ -34,6 +34,7 @@ jobs:
           cargo +nightly test --package rustBoot --lib --features stm32f411 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32f446 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32h723 -- parser::tests --nocapture
+          cargo +nightly test --package rustBoot --lib --features stm32f334 -- parser::tests --nocapture
 
   builds:
     runs-on: ${{ matrix.os }}
@@ -89,6 +90,13 @@ jobs:
           use-cross: false
           command: run
           args: -p xtask --features stm32h723 -- stm32h723 build rustBoot-only
+      - name: stm32f334
+        if: matrix.target == 'thumbv7em-none-eabihf'
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: run
+          args: -p xtask --features stm32f334 -- stm32f334 build rustBoot-only
       - name: rpi4
         if: matrix.target == 'aarch64-unknown-none-softfloat'
         uses: actions-rs/cargo@v1
