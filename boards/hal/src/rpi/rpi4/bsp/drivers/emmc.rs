@@ -2465,7 +2465,7 @@ impl EMMCController {
         }
 
         #[cfg(feature = "log")]
-        info!( 
+        info!(
             "EMMC: start_block: {:?}, num_blocks: {:?}\n",
             block_address, num_blocks
         );

@@ -45,10 +45,10 @@ fn main() -> ! {
             delay.delay_ms(1000_u16);
             count = count + 1;
         }
-       
+
         let flash_writer = FlashWriterEraser { nvm: flash1 };
         let updater = FlashUpdater::new(flash_writer);
-        
+
         match updater.update_trigger() {
             Ok(_v) => {}
             Err(e) => panic!("couldnt trigger update: {}", e),

@@ -19,7 +19,6 @@ use mcu::stm32;
 use rustBoot_hal::stm::stm32f446::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
 
-
 #[entry]
 fn main() -> ! {
     if let (Some(peri), Some(cortex_peri)) = (stm32::Peripherals::take(), Peripherals::take()) {
@@ -39,10 +38,10 @@ fn main() -> ! {
             delay.delay_ms(500_u16);
             count = count + 1;
         }
-        
+
         let flash_writer = FlashWriterEraser { nvm: flash1 };
         let updater = FlashUpdater::new(flash_writer);
-        
+
         match updater.update_trigger() {
             Ok(_v) => {}
             Err(e) => panic!("couldnt trigger update: {}", e),

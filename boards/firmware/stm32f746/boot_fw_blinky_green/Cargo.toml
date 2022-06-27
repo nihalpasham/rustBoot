@@ -1,0 +1,29 @@
+[package]
+name = "stm32f746_bootfw"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "stm32f746_bootfw"
+bench = false
+doctest = false
+test = false
+
+[dependencies]
+cortex-m-rt = "0.6.15"
+cortex-m = "0.7.4"
+# panic-halt = "0.2.0"
+rustBoot-hal ={path = "../../../hal",default-features = false,features = ["stm32f746"]}
+rustBoot-update = {path = "../../../update", features = ["stm32f746"]}
+defmt = {version = "0.3.1", optional = true}
+defmt-rtt = {version = "0.3.2", optional = true}
+
+# board-specific features
+[dependencies.stm32f7xx-hal]
+version = "0.7.0"
+features = ["stm32f746"]
+
+[features]
+default = ["defmt", "defmt-rtt"]

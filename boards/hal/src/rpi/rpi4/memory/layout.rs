@@ -16,8 +16,8 @@
 
 // mod translation_table;
 
-use core::{fmt, ops::RangeInclusive};
 use super::mmu::Granule512MiB;
+use core::{fmt, ops::RangeInclusive};
 
 //--------------------------------------------------------------------------------------------------
 // Public Definitions
@@ -45,7 +45,7 @@ pub mod interface {
         /// - Changes the HW's global state.
         unsafe fn enable_mmu_and_caching(&self) -> Result<(), MMUEnableError>;
 
-        /// Disables the MMU and `instruction + data` caching. 
+        /// Disables the MMU and `instruction + data` caching.
         unsafe fn disable_mmu_and_caching(&self);
 
         /// Returns true if the MMU is enabled, false otherwise.
@@ -154,8 +154,8 @@ impl<const AS_SIZE: usize> AddressSpace<AS_SIZE> {
         AS_SIZE
     }
 
-     /// Checks for architectural restrictions.
-     pub const fn arch_address_space_size_sanity_check() {
+    /// Checks for architectural restrictions.
+    pub const fn arch_address_space_size_sanity_check() {
         // Size must be at least one full 512 MiB table.
         assert!((AS_SIZE % Granule512MiB::SIZE) == 0);
 

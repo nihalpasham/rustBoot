@@ -2,11 +2,11 @@
 //
 // Copyright (c) 2018-2022 Andre Richter <andre.o.richter@gmail.com>
 
-//! Instantiates the `KernelVirtualLayout` type declared in the `layout` module and provides functions to return a reference 
+//! Instantiates the `KernelVirtualLayout` type declared in the `layout` module and provides functions to return a reference
 //! to the virtual memory layout.
 
-use crate::rpi::rpi4::bsp::memory_map;
 use super::layout::*;
+use crate::rpi::rpi4::bsp::memory_map;
 use core::ops::RangeInclusive;
 
 //--------------------------------------------------------------------------------------------------
@@ -64,7 +64,10 @@ fn remapped_mmio_range_inclusive() -> RangeInclusive<usize> {
 }
 
 fn mmio_range_inclusive() -> RangeInclusive<usize> {
-    RangeInclusive::new(memory_map::map::mmio::START, memory_map::map::mmio::END_INCLUSIVE)
+    RangeInclusive::new(
+        memory_map::map::mmio::START,
+        memory_map::map::mmio::END_INCLUSIVE,
+    )
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -87,7 +90,6 @@ extern "Rust" {
     static __code_start: UnsafeCell<()>;
     static __code_end_exclusive: UnsafeCell<()>;
 }
-
 
 //--------------------------------------------------------------------------------------------------
 // Private Code

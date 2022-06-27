@@ -114,8 +114,7 @@ trait StartAddr {
     fn phys_start_addr_usize(&self) -> usize;
 }
 
-const NUM_LVL2_TABLES: usize =
-    super::vmm::KernelAddrSpace::SIZE >> Granule512MiB::SHIFT;
+const NUM_LVL2_TABLES: usize = super::vmm::KernelAddrSpace::SIZE >> Granule512MiB::SHIFT;
 
 //--------------------------------------------------------------------------------------------------
 // Public Definitions
@@ -266,8 +265,7 @@ impl<const NUM_TABLES: usize> FixedSizeTranslationTable<NUM_TABLES> {
                 let virt_addr = (l2_nr << Granule512MiB::SHIFT) + (l3_nr << Granule64KiB::SHIFT);
 
                 let (phys_output_addr, attribute_fields) =
-                    super::vmm::virt_mem_layout()
-                        .virt_addr_properties(virt_addr)?;
+                    super::vmm::virt_mem_layout().virt_addr_properties(virt_addr)?;
 
                 *l3_entry = PageDescriptor::from_output_addr(phys_output_addr, &attribute_fields);
             }

@@ -1,4 +1,4 @@
-pub mod vmm;
 pub mod layout;
-mod tt;
 pub mod mmu;
+mod tt;
+pub mod vmm;
