@@ -9,3 +9,6 @@ pub mod stm32h723;
 
 #[cfg(feature = "stm32f746")]
 pub mod stm32f746;
+
+#[cfg(feature = "stm32f334")]
+pub mod stm32f334;
