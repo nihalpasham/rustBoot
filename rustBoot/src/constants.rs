@@ -51,11 +51,11 @@ pub const SECTOR_SIZE: usize = 0x1800;
 #[cfg(feature = "stm32f334")]
 pub const PARTITION_SIZE: usize = 0x1800;
 #[cfg(feature = "stm32f334")]
-pub const BOOT_PARTITION_ADDRESS: usize = 0x0800B800;
+pub const BOOT_PARTITION_ADDRESS: usize = 0x0800b800;
 #[cfg(feature = "stm32f334")]
-pub const SWAP_PARTITION_ADDRESS: usize = 0x0800E800;
+pub const SWAP_PARTITION_ADDRESS: usize = 0x0800e800;
 #[cfg(feature = "stm32f334")]
-pub const UPDATE_PARTITION_ADDRESS: usize = 0x0800D000;
+pub const UPDATE_PARTITION_ADDRESS: usize = 0x0800d000;
 
 // **** RAM BOOT options for staged OS (update_ram only) ****
 pub const DTS_BOOT_ADDRESS: usize = 0xa0000;
