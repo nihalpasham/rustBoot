@@ -1,93 +1,37 @@
-#[cfg(feature = "nistp256")]
-use p256::ecdsa::{signature::DigestSigner, Signature, SigningKey};
+use crate::curve::*;
 use sha2::Sha256;
-use signature::Error as SigningError;
+use signature::DigestSigner;
 
 use as_slice::AsSlice;
-use rustBoot::dt::{prepare_img_hash, update_dtb_header, Error as ITBError, Reader};
+use rustBoot::dt::{prepare_img_hash, update_dtb_header, Reader};
 
-#[derive(Debug)]
-pub enum CurveType {
-    #[allow(dead_code)]
-    Secp256k1,
-    #[allow(dead_code)]
-    Ed25519,
-    NistP256,
-    #[allow(dead_code)]
-    NistP384,
-}
-
-#[derive(Debug)]
-pub enum SigningKeyType {
-    #[cfg(feature = "secp256k1")]
-    Secp256k1(SigningKey),
-    #[cfg(feature = "nistp256")]
-    NistP256(SigningKey),
-    #[allow(dead_code)]
-    Ed25519,
-    #[allow(dead_code)]
-    NistP384,
-}
-
-#[derive(Debug)]
-pub enum SignatureType {
-    #[cfg(feature = "secp256k1")]
-    Secp256k1(Signature),
-    #[cfg(feature = "nistp256")]
-    NistP256(Signature),
-    #[allow(dead_code)]
-    Ed25519,
-    #[allow(dead_code)]
-    NistP384,
-}
-
-/// Imports a signing key .
-///
-/// *Note: this function can be extended to add support for HW
-/// secure elements*
-///
-pub fn import_signing_key(curve: CurveType, bytes: &[u8]) -> Result<SigningKeyType> {
-    match curve {
-        #[cfg(feature = "secp256k1")]
-        CurveType::Secp256k1 => {}
-        #[cfg(feature = "nistp256")]
-        CurveType::NistP256 => {
-            let sk = SigningKey::from_bytes(bytes).map_err(|v| RbSignerError::KeyError(v))?;
-            Ok(SigningKeyType::NistP256(sk))
-        }
-        _ => todo!(),
-    }
-}
 /// Retruns a signed fit-image, given a image tree blob, a signing key and the curve type. Only supports `elliptic curve crypto`
 ///
 /// NOTE:
 /// - the image tree blob must be a `rustBoot` compliant fit-image.
 ///
-pub fn sign_fit(curve: CurveType, itb_blob: Vec<u8>, sk_type: SigningKeyType) -> Result<Vec<u8>> {
-    match curve {
-        #[cfg(feature = "secp256k1")]
-        CurveType::Secp256k1 => {}
+pub fn sign_fit(itb_blob: Vec<u8>, sk_type: SigningKeyType) -> Result<Vec<u8>> {
+    let signed_itb_blob = match sk_type {
         #[cfg(feature = "nistp256")]
-        CurveType::NistP256 => {
+        SigningKeyType::NistP256(sk) => {
             let (prehashed_digest, _) = prepare_img_hash::<Sha256, 32, 64, 4>(itb_blob.as_slice())
                 .map_err(|_v| RbSignerError::BadHashValue)?;
-            let signature = match sk_type {
-                SigningKeyType::NistP256(sk) => {
-                    let signature = sk
-                        .try_sign_digest(prehashed_digest)
-                        .map_err(|v| RbSignerError::SignatureError(v))?;
-                    println!("signature: {:?}", signature);
-                    set_config_signature(itb_blob, SignatureType::NistP256(signature), "bootconfig")
-                }
-                _ => return Err(RbSignerError::InvalidKeyType),
-            };
-            signature
+            let signature = sk
+                .try_sign_digest(prehashed_digest)
+                .map_err(|v| RbSignerError::SignatureError(v))?;
+            println!("signature: {:?}", signature);
+            set_config_signature(itb_blob, SignatureType::NistP256(signature), "bootconfig")
         }
-        _ => todo!(),
-    }
+        #[cfg(feature = "ed25519")]
+        SigningKeyType::Ed25519 => {
+            todo!()
+        }
+        _ => return Err(RbSignerError::InvalidKeyType),
+    };
+    signed_itb_blob
 }
 
-pub fn set_config_signature(
+fn set_config_signature(
     mut itb_blob: Vec<u8>,
     signature: SignatureType,
     config_name: &str,
@@ -108,7 +52,7 @@ pub fn set_config_signature(
     match signature {
         SignatureType::NistP256(sig) => {
             let bytes = sig.as_ref();
-            let sig_len: [u8; 4] = (bytes.len() as u32).to_be_bytes();
+            let sig_len: [u8; 4] = (bytes.len() as u32).to_le_bytes();
             // update len field for signature's value property
             let _ = &itb_blob[sig_len_offset..sig_len_offset + 4]
                 .iter_mut()
@@ -134,23 +78,4 @@ pub fn set_config_signature(
             todo!()
         }
     }
-}
-
-/// The result type for rbSigner.
-pub type Result<T> = core::result::Result<T, RbSignerError>;
-
-#[derive(Debug)]
-pub enum RbSignerError {
-    /// Invalid fit-image header
-    BadImageHeader(ITBError),
-    /// The hash output or length is invalid .
-    BadHashValue,
-    /// Signature Error
-    SignatureError(SigningError),
-    /// Key Error
-    KeyError(SigningError),
-    /// An invalid key type was provided
-    InvalidKeyType,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
