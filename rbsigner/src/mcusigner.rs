@@ -15,7 +15,7 @@ mod field {
     // pub type Rest = RangeFrom<usize>;
 
     pub const MAGIC: Field = 0..4;
-    // pub const IMAGE_SIZE: Field = 4..8;
+    pub const IMAGE_SIZE: Field = 4..8;
 
     pub const VERSION_TYPE: Field = 8..10;
     pub const VERSION_LEN: Field = 10..12;
@@ -569,6 +569,23 @@ mod tests {
                 assert_eq!(
                     i64::from_le_bytes(hdr.inner_ref()[TIMESTAMP_VALUE].try_into().unwrap()),
                     mtime.unix_seconds()
+                );
+            }
+            Err(_e) => {}
+        };
+    }
+
+    #[test]
+    fn signature_tag_len_test() {
+        let header = McuImageHeader::new_checked([0; 256]);
+        let _val = match header {
+            Ok(mut hdr) => {
+                let _ = hdr.set_signature_tag_len(65535);
+                println!("signature_tag: {:?}", &hdr.inner_ref()[SIGNATURE_TYPE]);
+                println!("signaure_len: {:?}", &hdr.inner_ref()[SIGNATURE_LEN]);
+                assert_eq!(
+                    &hdr.inner_ref()[SIGNATURE_TYPE.start..SIGNATURE_LEN.end],
+                    &[0x00, 0x00, 0xff, 0xff]
                 );
             }
             Err(_e) => {}
