@@ -15,7 +15,7 @@ mod field {
     // pub type Rest = RangeFrom<usize>;
 
     pub const MAGIC: Field = 0..4;
-    pub const IMAGE_SIZE: Field = 4..8;
+    // pub const IMAGE_SIZE: Field = 4..8;
 
     pub const VERSION_TYPE: Field = 8..10;
     pub const VERSION_LEN: Field = 10..12;
