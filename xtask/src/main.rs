@@ -205,10 +205,10 @@ fn flash_signed_fwimages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Res
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip STM32H723ZGIx stm32h723_bootfw_v{boot_ver}_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip STM32H723ZGTx stm32h723_bootfw_v{boot_ver}_signed.bin").run()?;
 
             let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip STM32H723ZGIx stm32h723_updtfw_v{updt_ver}_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip STM32H723ZGTx stm32h723_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
         "stm32f746" => {
@@ -253,7 +253,7 @@ fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
         }
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
-            cmd!("cargo flash --chip stm32h723ZGTx --release").run()?;
+            cmd!("cargo flash --chip STM32H723ZGTx --release").run()?;
             Ok(())
         }
         "stm32f746" => {
@@ -301,7 +301,7 @@ fn full_image_flash(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(
         "stm32h723" => {
             build_rustBoot(target)?;
             sign_packages(target, boot_ver, updt_ver)?;
-            cmd!("probe-rs-cli erase --chip stm32h723ZGTx").run()?;
+            cmd!("probe-rs-cli erase --chip STM32H723ZGTx").run()?;
             flash_signed_fwimages(target, boot_ver, updt_ver)?;
             flash_rustBoot(target)?;
             Ok(())
