@@ -109,10 +109,10 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
             // // python script has a linux dependency - `wolfcrypt`
             // cmd!("python3 signer.py").run()?;
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/nrf52840_bootfw  -O binary nrf52840_bootfw.bin").run()?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/nrf52840_updtfw  -O binary nrf52840_updtfw.bin").run()?;
-            cmd!("cargo run mcu-image ../rbsigner/nrf52840_bootfw.bin ecc256.der nistp256").run()?;
-            cmd!("cargo run mcu-image ../rbsigner/nrf52840_updtfw.bin ecc256.der nistp256").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/nrf52840_bootfw  -O binary signed_images/nrf52840_bootfw.bin").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/nrf52840_updtfw  -O binary signed_images/nrf52840_updtfw.bin").run()?;
+            cmd!("cargo run mcu-image ../rbsigner/signed_images/nrf52840_bootfw.bin ecc256.der nistp256").run()?;
+            cmd!("cargo run mcu-image ../rbsigner/signed_images/nrf52840_updtfw.bin ecc256.der nistp256").run()?;
             Ok(())
         }
         "stm32f411" => {
@@ -123,10 +123,10 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
             // cmd!("python3 signer.py").run()?;
             // Ok(())
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-             cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f411_bootfw  -O binary stm32f411_bootfw.bin").run()?;
-             cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f411_updtfw  -O binary stm32f411_updtfw.bin").run()?;
-             cmd!("cargo run mcu-image ../rbsigner/stm32f411_bootfw.bin ecc256.der nistp256").run()?;
-             cmd!("cargo run mcu-image ../rbsigner/stm32f411_updtfw.bin ecc256.der nistp256").run()?;
+             cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f411_bootfw  -O binary signed_images/stm32f411_bootfw.bin").run()?;
+             cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f411_updtfw  -O binary signed_images/stm32f411_updtfw.bin").run()?;
+             cmd!("cargo run mcu-image ../rbsigner/signed_images/stm32f411_bootfw.bin ecc256.der nistp256").run()?;
+             cmd!("cargo run mcu-image ../rbsigner/signed_images/stm32f411_updtfw.bin ecc256.der nistp256").run()?;
              Ok(())
         }
         "stm32f446" => {
@@ -136,10 +136,10 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
             // // python script has a linux dependency - `wolfcrypt`
             // cmd!("python3 signer.py").run()?;
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f446_bootfw  -O binary stm32f446_bootfw.bin").run()?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f446_updtfw  -O binary stm32f446_updtfw.bin").run()?;
-            cmd!("cargo run mcu-image ../rbsigner/stm32f446_bootfw.bin ecc256.der nistp256").run()?;
-            cmd!("cargo run mcu-image ../rbsigner/stm32f446_updtfw.bin ecc256.der nistp256").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f446_bootfw  -O binary signed_images/stm32f446_bootfw.bin").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f446_updtfw  -O binary signed_images/stm32f446_updtfw.bin").run()?;
+            cmd!("cargo run mcu-image ../rbsigner/signed_images/stm32f446_bootfw.bin ecc256.der nistp256").run()?;
+            cmd!("cargo run mcu-image ../rbsigner/signed_images/stm32f446_updtfw.bin ecc256.der nistp256").run()?;
             Ok(())
         }
         "stm32h723" => {
@@ -149,10 +149,10 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
             // // python script has a linux dependency - `wolfcrypt`
             // cmd!("python3 signer.py").run()?;
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32h723_bootfw  -O binary stm32h723_bootfw.bin").run()?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32h723_updtfw  -O binary stm32h723_updtfw.bin").run()?;
-            cmd!("cargo run mcu-image ../rbsigner/stm32h723_bootfw.bin ecc256.der nistp256").run()?;
-            cmd!("cargo run mcu-image ../rbsigner/stm32h723_updtfw.bin ecc256.der nistp256").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32h723_bootfw  -O binary signed_images/stm32h723_bootfw.bin").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32h723_updtfw  -O binary signed_images/stm32h723_updtfw.bin").run()?;
+            cmd!("cargo run mcu-image ../rbsigner/signed_images/stm32h723_bootfw.bin ecc256.der nistp256").run()?;
+            cmd!("cargo run mcu-image ../rbsigner/signed_images/stm32h723_updtfw.bin ecc256.der nistp256").run()?;
             Ok(())
         }
         "stm32f746" => {
@@ -162,10 +162,10 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
             // // python script has a linux dependency - `wolfcrypt`
             // cmd!("python3 signer.py").run()?;
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f746_bootfw  -O binary stm32f746_bootfw.bin").run()?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f746_updtfw  -O binary stm32f746_updtfw.bin").run()?;
-            cmd!("cargo run mcu-image ../rbsigner/stm32f746_bootfw.bin ecc256.der nistp256").run()?;
-            cmd!("cargo run mcu-image ../rbsigner/stm32f746_updtfw.bin ecc256.der nistp256").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f746_bootfw  -O binary signed_images/stm32f746_bootfw.bin").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f746_updtfw  -O binary signed_images/stm32f746_updtfw.bin").run()?;
+            cmd!("cargo run mcu-image ../rbsigner/signed_images/stm32f746_bootfw.bin ecc256.der nistp256").run()?;
+            cmd!("cargo run mcu-image ../rbsigner/signed_images/stm32f746_updtfw.bin ecc256.der nistp256").run()?;
             Ok(())
         }
         "stm32f334" => {
@@ -175,10 +175,10 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
             // // python script has a linux dependency - `wolfcrypt`
             // cmd!("python3 signer.py").run()?;
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f334_bootfw  -O binary stm32f334_bootfw.bin").run()?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f334_updtfw  -O binary stm32f334_updtfw.bin").run()?;
-            cmd!("cargo run mcu-image ../rbsigner/stm32f334_bootfw.bin ecc256.der nistp256").run()?;
-            cmd!("cargo run mcu-image ../rbsigner/stm32f334_updtfw.bin ecc256.der nistp256").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f334_bootfw  -O binary signed_images/stm32f334_bootfw.bin").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f334_updtfw  -O binary signed_images/stm32f334_updtfw.bin").run()?;
+            cmd!("cargo run mcu-image ../rbsigner/signed_images/stm32f334_bootfw.bin ecc256.der nistp256").run()?;
+            cmd!("cargo run mcu-image ../rbsigner/signed_images/stm32f334_updtfw.bin ecc256.der nistp256").run()?;
             Ok(())
         }
 
