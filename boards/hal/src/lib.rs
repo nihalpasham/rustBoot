@@ -44,5 +44,12 @@ pub fn boot_from(fw_base_address: usize) -> ! {
     #[cfg(feature = "stm32h723")]
     crate::stm::stm32h723::boot_from(fw_base_address);
 
+    #[cfg(feature = "stm32f746")]
+    crate::stm::stm32f746::boot_from(fw_base_address);
+
+    #[cfg(feature = "stm32f334")]
+    crate::stm::stm32f334::boot_from(fw_base_address);
+
+
     panic!(": unrecognized board")
 }
