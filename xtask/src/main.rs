@@ -163,7 +163,7 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
             // cmd!("python3 signer.py").run()?;
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
             cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f746_bootfw  -O binary stm32f746_bootfw.bin").run()?;
-            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f746_bootfw  -O binary stm32f746_updtfw.bin").run()?;
+            cmd!("rust-objcopy ../boards/target/thumbv7em-none-eabihf/release/stm32f746_updtfw  -O binary stm32f746_updtfw.bin").run()?;
             cmd!("cargo run mcu-image ../rbsigner/stm32f746_bootfw.bin ecc256.der nistp256").run()?;
             cmd!("cargo run mcu-image ../rbsigner/stm32f746_updtfw.bin ecc256.der nistp256").run()?;
             Ok(())
