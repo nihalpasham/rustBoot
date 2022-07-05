@@ -92,7 +92,7 @@ pub fn sign_mcu_image(
             let signature = sk
                 .try_sign_digest(prehashed_digest)
                 .map_err(|v| RbSignerError::SignatureError(v))?;
-            println!("\nsignature: {:?}", signature);
+            //println!("\nsignature: {:?}", signature);
             let hdr_signature_len = (ECC_SIGNATURE_SIZE as u16).to_be_bytes();
             let signature_tag = Tags::Signature.get_id();
             let signature_len = hdr_signature_len.as_ref();
@@ -109,7 +109,7 @@ pub fn sign_mcu_image(
             //set end of header
             header.set_end_of_header(SIGNATURE_VALUE.end);
             // prepend header and return fw_blob
-            println!("\nmcu header {:?}", header.as_slice());
+           // println!("\nmcu header {:?}", header.as_slice());
             let _ = fw_blob.insert_from_slice(0, header.as_slice());
             Ok(fw_blob)
         }
@@ -162,7 +162,7 @@ where
         fs::metadata(path).expect("something's wrong with your file path for your image");
 
     let mtime = FileTime::from_last_modification_time(&metadata);
-    println!("\nimage timestamp: {}", mtime.unix_seconds()); // unix seconds values can be interpreted across platforms
+    //println!("\nimage timestamp: {}", mtime.unix_seconds()); // unix seconds values can be interpreted across platforms
     let atime = FileTime::from_last_access_time(&metadata);
     assert!(mtime < atime);
 
@@ -213,7 +213,7 @@ where
                 });
             header.set_digest_tag_len(u32::from_be_bytes(tag_len));
             header.set_sha256_digest_value(digest.as_slice())?;
-            println!("\nmcu Digest : {:?}", digest.as_slice());
+           // println!("\nmcu Digest : {:?}", digest.as_slice());
         }
         _ => unimplemented!(),
     }

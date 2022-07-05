@@ -72,27 +72,27 @@ fn main() {
          
             let mcu_image = sign_mcu_image(image_blob, args[2], sk);
            // yash
-           let x = args[2].to_string();
-           let d: Vec<_> = x.split(&['/', '.',][..]).collect();
-           let val = d.len();
-           let mut str  = d[val-2].to_string();
+           let firmware_path = args[2].to_string();
+           let file_name: Vec<_> = firmware_path.split(&['/', '.',][..]).collect();
+           let val = file_name.len();
+           let mut str  = file_name[val-2].to_string();
            if str.contains("boot")
            {
-              let footer = String::from("_v1234_signed.bin");
-              str = str + &footer;
+              let str2 = String::from("_v1234_signed.bin");
+              str = str + &str2;
               println!("{}",str);
            }
            else
            {
-             let footer = String::from("_v1235_signed.bin");
-              str = str + &footer;
-              println!("{}",str);
+             let str2 = String::from("_v1235_signed.bin");
+              str = str + &str2;
+             // println!("{}",str);
            }
             // yash
             match mcu_image {
                 Ok(val) => {
                     let file =
-                        File::create("../boards/rbSigner/signed_images/".to_owned()+&str);
+                        File::create("../rbsigner/signed_images/".to_owned()+&str);
                     match file {
                         Ok(mut file) => {
                             let bytes_written = file.write(val.as_slice());

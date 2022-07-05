@@ -190,7 +190,7 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
 fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("rbsigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
             cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip nRF52840_xxAA nrf52840_bootfw_v1234_signed.bin").run()?;
 
@@ -199,7 +199,7 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f411" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("rbsigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
             cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f411vetx stm32f411_bootfw_v1234_signed.bin").run()?;
 
@@ -208,7 +208,7 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f446" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("rbsigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
             cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f446retx stm32f446_bootfw_v1234_signed.bin").run()?;
 
@@ -217,7 +217,7 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32h723" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("rbsigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
             cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip STM32H723ZGIx stm32h723_bootfw_v1234_signed.bin").run()?;
 
@@ -226,7 +226,7 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f746" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("rbsigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
             cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f746zgtx stm32f746_bootfw_v1234_signed.bin").run()?;
 
@@ -235,7 +235,7 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f334" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("rbsigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
             cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f334r8tx stm32f334r8tx_bootfw_v1234_signed.bin").run()?;
 
