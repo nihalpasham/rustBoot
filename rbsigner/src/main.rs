@@ -17,13 +17,13 @@ fn main() {
     let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
 
     //String concatenation
-    let s1 = String::from(args[5]);
+    let image_version_args = String::from(args[5]);
     #[rustfmt::skip]
-    let s2 = String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]);
-    let s3 = s2 + "_v" + &s1 + "_signed";
+    let input_image_args = String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]);
+    let output_image_args = input_image_args + "_v" + &image_version_args + "_signed";
     //firmware version
-    let s5: u32 = args[5].parse().unwrap();
-    let version: [u8; 4] = s5.to_le_bytes();
+    let image_version_value: u32 = args[5].parse().unwrap();
+    let version: [u8; 4] = image_version_value.to_le_bytes();
 
     let mut key_file = Vec::new();
     let mut kf = fs::File::open(args[4]).expect("Need path to key_file as argument");
@@ -37,7 +37,7 @@ fn main() {
     #[rustfmt::skip]
     println!("Public key        :{}.der", String::from(args[4].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
     println!("Image version     :{}", args[5]);
-    println!("Output image      :{}.bin", s3);
+    println!("Output image      :{}.bin", output_image_args);
 
     match args[3] {
         "nistp256" => {
@@ -89,7 +89,7 @@ fn main() {
             match mcu_image {
                 Ok(val) => {
                     let file = File::create(
-                        "../boards/rbSigner/signed_images/{s3}.bin".replace("{s3}", &s3),
+                        "../boards/rbSigner/signed_images/{output_image_args}.bin".replace("{output_image_args}", &output_image_args),
                     );
                     match file {
                         Ok(mut file) => {
