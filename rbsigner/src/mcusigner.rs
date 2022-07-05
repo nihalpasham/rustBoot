@@ -575,20 +575,5 @@ mod tests {
         };
     }
 
-    #[test]
-    fn signature_tag_len_test() {
-        let header = McuImageHeader::new_checked([0; 256]);
-        let _val = match header {
-            Ok(mut hdr) => {
-                let _ = hdr.set_signature_tag_len(65535);
-                println!("signature_tag: {:?}", &hdr.inner_ref()[SIGNATURE_TYPE]);
-                println!("signaure_len: {:?}", &hdr.inner_ref()[SIGNATURE_LEN]);
-                assert_eq!(
-                    &hdr.inner_ref()[SIGNATURE_TYPE.start..SIGNATURE_LEN.end],
-                    &[0x00, 0x00, 0xff, 0xff]
-                );
-            }
-            Err(_e) => {}
-        };
-    }
+
 }
