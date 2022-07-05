@@ -1,4 +1,4 @@
 /target
 Cargo.lock
-# /signing_tools/signed_images/*signed.bin
+/rbSigner/signed_images/*.bin
 
