@@ -23,6 +23,7 @@ fn main() {
     let sk: SigningKeyType;
 
     match args[4] {
+
         "nistp256" => {
             let signing_key = &key_file.as_slice()[0x40..];
             if signing_key.len() != 32 {
@@ -39,6 +40,7 @@ fn main() {
     match args[1] {
         "fit-image" => {
             let mut itb = fs::File::open(args[2]).expect("Need path to itb_blob as argument");
+
             itb.read_to_end(&mut image_blob).unwrap();
 
             let signed_fit = sign_fit(image_blob, sk);
