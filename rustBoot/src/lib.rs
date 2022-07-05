@@ -4,7 +4,6 @@
 
 #[cfg(feature = "mcu")]
 pub mod constants;
-pub mod rbconstants;
 pub mod crypto;
 pub mod dt;
 #[cfg(feature = "mcu")]
@@ -14,6 +13,7 @@ pub mod fs;
 pub mod image;
 #[cfg(feature = "mcu")]
 pub mod parser;
+pub mod rbconstants;
 
 use core::fmt;
 

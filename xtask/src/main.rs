@@ -13,25 +13,25 @@ use xshell::cmd;
 fn main() -> Result<(), anyhow::Error> {
     let args = env::args().skip(1).collect::<Vec<_>>();
     let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
-    
+
     match &args[..] {
         ["test", "rustBoot"] => test_rustBoot(),
         [board, "build", "pkgs-for",]    => build_rustBoot(board),
-        [board, "sign" , "pkgs-for",]    => sign_packages(board),
+        [board, "sign" , boot_ver, updt_ver, "pkgs-for",]    => sign_packages(board, boot_ver, updt_ver),
         #[cfg(feature = "mcu")]
-        [board, "flash", "signed-pkg",]  => flash_signed_fwimages(board),
+        [board, "flash", boot_ver, updt_ver, "signed-pkg",]  => flash_signed_fwimages(board, boot_ver, updt_ver),
         [board, "flash", "rustBoot",]    => flash_rustBoot(board),
         [board, "build", "rustBoot-only",] => build_rustBoot_only(board),
         #[cfg(feature = "mcu")]
-        [board, "build-sign-flash", "rustBoot",] => full_image_flash(board),
+        [board, "build-sign-flash", boot_ver, updt_ver, "rustBoot",] => full_image_flash(board, boot_ver, updt_ver),
         #[cfg(feature = "mcu")]
         [board, "erase-and-flash-trailer-magic",] => erase_and_flash_trailer_magic(board),
         _ => {
             println!("USAGE: cargo [board] test rustBoot");
             println!("OR");
-            println!("USAGE: cargo [board] [build|sign|flash] [pkgs-for|signed-pkg]");
+            println!("USAGE: cargo [board] [build|sign [boot-ver] [updt-ver] |flash] [pkgs-for]|signed-pkg]");
             println!("OR");
-            println!("USAGE: cargo [board] [build-sign-flash] [rustBoot]");
+            println!("USAGE: cargo [board] [build-sign-flash] [boot-ver] [updt-ver] [rustBoot]");
             Ok(())
         }
     }
@@ -101,53 +101,69 @@ fn build_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
+fn sign_packages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(), anyhow::Error> {
+    // let boot_ver = target[3].to_string();
+    // let updt_ver = target[4].to_string();
+
     match *target {
         "nrf52840" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
-            cmd!("python3 convert2bin.py").run()?;
-            // python script has a linux dependency - `wolfcrypt`
-            cmd!("python3 signer.py").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/nrf52840_bootfw -O binary nrf52840_bootfw.bin").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/nrf52840_updtfw -O binary nrf52840_updtfw.bin").run()?;
+
+            let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/nrf52840_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1234").run()?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/nrf52840_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1235").run()?;
             Ok(())
         }
         "stm32f411" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
-            //  cmd!("python3 --version").run()?;
-            cmd!("python3 convert2bin.py").run()?;
-            // python script has a linux dependency - `wolfcrypt`
-            cmd!("python3 signer.py").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f411_bootfw -O binary stm32f411_bootfw.bin").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f411_updtfw -O binary stm32f411_updtfw.bin").run()?;
+
+            let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f411_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1234").run()?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f411_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1235").run()?;
             Ok(())
         }
         "stm32f446" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
-            //  cmd!("python3 --version").run()?;
-            cmd!("python3 convert2bin.py").run()?;
-            // python script has a linux dependency - `wolfcrypt`
-            cmd!("python3 signer.py").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f446_bootfw -O binary stm32f446_bootfw.bin").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f446_updtfw -O binary stm32f446_updtfw.bin").run()?;
+
+            let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f446_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1234").run()?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f446_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1235").run()?;
             Ok(())
         }
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
-            //  cmd!("python3 --version").run()?;
-            cmd!("python3 convert2bin.py").run()?;
-            // python script has a linux dependency - `wolfcrypt`
-            cmd!("python3 signer.py").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32h723_bootfw -O binary stm32h723_bootfw.bin").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32h723_updtfw -O binary stm32h723_updtfw.bin").run()?;
+
+            let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32h723_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32h723_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
         "stm32f746" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
-            //  cmd!("python3 --version").run()?;
-            cmd!("python3 convert2bin.py").run()?;
-            // python script has a linux dependency - `wolfcrypt`
-            cmd!("python3 signer.py").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f746_bootfw -O binary stm32f746_bootfw.bin").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f746_updtfw -O binary stm32f746_updtfw.bin").run()?;
+
+            let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f746_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f746_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
         "stm32f334" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
-            //  cmd!("python3 --version").run()?;
-            cmd!("python3 convert2bin.py").run()?;
-            // python script has a linux dependency - `wolfcrypt`
-            cmd!("python3 signer.py").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f334_bootfw -O binary stm32f334_bootfw.bin").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f334_updtfw -O binary stm32f334_updtfw.bin").run()?;
+
+            let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f334_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f334_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
 
@@ -156,7 +172,8 @@ fn sign_packages(target: &&str) -> Result<(), anyhow::Error> {
 }
 
 #[cfg(feature = "mcu")]
-fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
+#[rustfmt::skip]
+fn flash_signed_fwimages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
@@ -188,10 +205,10 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip STM32H723ZGIx stm32h723_bootfw_v1234_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip STM32H723ZGIx stm32h723_bootfw_v{boot_ver}_signed.bin").run()?;
 
             let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip STM32H723ZGIx stm32h723_updtfw_v1235_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip STM32H723ZGIx stm32h723_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
         "stm32f746" => {
@@ -206,12 +223,13 @@ fn flash_signed_fwimages(target: &&str) -> Result<(), anyhow::Error> {
         "stm32f334" => {
             let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f334r8tx stm32f334r8tx_bootfw_v1234_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f334r8tx stm32f334_bootfw_v1234_signed.bin").run()?;
 
             let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
             cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f334r8tx stm32f334_updtfw_v1235_signed.bin").run()?;
             Ok(())
         }
+
         _ => todo!(),
     }
 }
@@ -254,56 +272,57 @@ fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
 }
 
 #[cfg(feature = "mcu")]
-fn full_image_flash(target: &&str) -> Result<(), anyhow::Error> {
+fn full_image_flash(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
             build_rustBoot(target)?;
-            sign_packages(target)?;
+            sign_packages(target, boot_ver, updt_ver)?;
             cmd!("probe-rs-cli erase --chip nRF52840_xxAA").run()?;
-            flash_signed_fwimages(target)?;
+            flash_signed_fwimages(target, boot_ver, updt_ver)?;
             flash_rustBoot(target)?;
             Ok(())
         }
         "stm32f411" => {
             build_rustBoot(target)?;
-            sign_packages(target)?;
+            sign_packages(target, boot_ver, updt_ver)?;
             cmd!("probe-rs-cli erase --chip stm32f411vetx").run()?;
-            flash_signed_fwimages(target)?;
+            flash_signed_fwimages(target, boot_ver, updt_ver)?;
             flash_rustBoot(target)?;
             Ok(())
         }
         "stm32f446" => {
             build_rustBoot(target)?;
-            sign_packages(target)?;
+            sign_packages(target, boot_ver, updt_ver)?;
             cmd!("probe-rs-cli erase --chip stm32f446retx").run()?;
-            flash_signed_fwimages(target)?;
+            flash_signed_fwimages(target, boot_ver, updt_ver)?;
             flash_rustBoot(target)?;
             Ok(())
         }
         "stm32h723" => {
             build_rustBoot(target)?;
-            sign_packages(target)?;
+            sign_packages(target, boot_ver, updt_ver)?;
             cmd!("probe-rs-cli erase --chip stm32h723ZGTx").run()?;
-            flash_signed_fwimages(target)?;
+            flash_signed_fwimages(target, boot_ver, updt_ver)?;
             flash_rustBoot(target)?;
             Ok(())
         }
         "stm32f746" => {
             build_rustBoot(target)?;
-            sign_packages(target)?;
+            sign_packages(target, boot_ver, updt_ver)?;
             cmd!("probe-rs-cli erase --chip stm32f746zgtx").run()?;
-            flash_signed_fwimages(target)?;
+            flash_signed_fwimages(target, boot_ver, updt_ver)?;
             flash_rustBoot(target)?;
             Ok(())
         }
         "stm32f334" => {
             build_rustBoot(target)?;
-            sign_packages(target)?;
+            sign_packages(target, boot_ver, updt_ver)?;
             cmd!("probe-rs-cli erase --chip stm32f334r8tx").run()?;
-            flash_signed_fwimages(target)?;
+            flash_signed_fwimages(target, boot_ver, updt_ver)?;
             flash_rustBoot(target)?;
             Ok(())
         }
+
         _ => todo!(),
     }
 }
@@ -414,6 +433,7 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
                 .run()?;
             Ok(())
         }
+
         _ => todo!(),
     }
 }

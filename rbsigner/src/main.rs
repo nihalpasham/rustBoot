@@ -16,10 +16,28 @@ fn main() {
     let args = env::args().collect::<Vec<_>>();
     let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
 
+    //String concatenation
+    let s1 = String::from(args[5]);
+    #[rustfmt::skip]
+    let s2 = String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]);
+    let s3 = s2 + "_v" + &s1 + "_signed";
+    //firmware version
+    let s5: u32 = args[5].parse().unwrap();
+    let version: [u8; 4] = s5.to_le_bytes();
+
     let mut key_file = Vec::new();
-    let mut kf = fs::File::open(args[2]).expect("Need path to key_file as argument");
+    let mut kf = fs::File::open(args[4]).expect("Need path to key_file as argument");
     kf.read_to_end(&mut key_file).unwrap();
     let sk: SigningKeyType;
+
+    println!("\nUpdate type       :Firmware");
+    println!("Curve type        :{}", args[3]);
+    #[rustfmt::skip]
+    println!("Input image       :{}.bin", String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
+    #[rustfmt::skip]
+    println!("Public key        :{}.der", String::from(args[4].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
+    println!("Image version     :{}", args[5]);
+    println!("Output image      :{}.bin", s3);
 
     match args[3] {
         "nistp256" => {
@@ -35,9 +53,9 @@ fn main() {
     }
 
     let mut image_blob = Vec::new();
-    match args[0] {
+    match args[1] {
         "fit-image" => {
-            let mut itb = fs::File::open(args[1]).expect("Need path to itb_blob as argument");
+            let mut itb = fs::File::open(args[2]).expect("Need path to itb_blob as argument");
             itb.read_to_end(&mut image_blob).unwrap();
 
             let signed_fit = sign_fit(image_blob, sk);
@@ -64,19 +82,20 @@ fn main() {
         }
         "mcu-image" => {
             let mut mcu_image =
-                fs::File::open(args[1]).expect("Need path to mcu_image binary as argument");
+                fs::File::open(args[2]).expect("Need path to mcu_image binary as argument");
             mcu_image.read_to_end(&mut image_blob).unwrap();
 
-            let mcu_image = sign_mcu_image(image_blob, args[1], sk);
+            let mcu_image = sign_mcu_image(image_blob, args[2], sk, version);
             match mcu_image {
                 Ok(val) => {
-                    let file =
-                        File::create("../boards/rbSigner/signed_images/signed-xyz-name");
+                    let file = File::create(
+                        "../boards/rbSigner/signed_images/{s3}.bin".replace("{s3}", &s3),
+                    );
                     match file {
                         Ok(mut file) => {
                             let bytes_written = file.write(val.as_slice());
                             if let Ok(val) = bytes_written {
-                                println!("bytes_written: {:?}", val);
+                                println!("Output image successfully created with {} bytes.\n", val);
                             }
                         }
                         Err(e) => panic!("error: {:?}", e),
