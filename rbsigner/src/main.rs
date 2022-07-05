@@ -92,7 +92,7 @@ fn main() {
             match mcu_image {
                 Ok(val) => {
                     let file =
-                        File::create("../rbsigner/signed_images/".to_owned()+&str);
+                        File::create("../boards/sign_images/signed_images/".to_owned()+&str);
                     match file {
                         Ok(mut file) => {
                             let bytes_written = file.write(val.as_slice());
