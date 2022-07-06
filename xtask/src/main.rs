@@ -107,63 +107,63 @@ fn sign_packages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(), 
 
     match *target {
         "nrf52840" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/nrf52840_bootfw -O binary nrf52840_bootfw.bin").run()?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/nrf52840_updtfw -O binary nrf52840_updtfw.bin").run()?;
 
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/nrf52840_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1234").run()?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/nrf52840_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1235").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/nrf52840_bootfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/nrf52840_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
         "stm32f411" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f411_bootfw -O binary stm32f411_bootfw.bin").run()?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f411_updtfw -O binary stm32f411_updtfw.bin").run()?;
 
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f411_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1234").run()?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f411_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1235").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f411_bootfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f411_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
         "stm32f446" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f446_bootfw -O binary stm32f446_bootfw.bin").run()?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f446_updtfw -O binary stm32f446_updtfw.bin").run()?;
 
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f446_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1234").run()?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f446_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der 1235").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f446_bootfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f446_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
         "stm32h723" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32h723_bootfw -O binary stm32h723_bootfw.bin").run()?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32h723_updtfw -O binary stm32h723_updtfw.bin").run()?;
 
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32h723_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {boot_ver}").run()?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32h723_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {updt_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32h723_bootfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32h723_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
         "stm32f746" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f746_bootfw -O binary stm32f746_bootfw.bin").run()?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f746_updtfw -O binary stm32f746_updtfw.bin").run()?;
 
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f746_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {boot_ver}").run()?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f746_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {updt_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f746_bootfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f746_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
         "stm32f334" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f334_bootfw -O binary stm32f334_bootfw.bin").run()?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f334_updtfw -O binary stm32f334_updtfw.bin").run()?;
 
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f334_bootfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {boot_ver}").run()?;
-            cmd!("cargo run mcu-image ../boards/rbSigner/signed_images/stm32f334_updtfw.bin nistp256 ../boards/rbSigner/keygen/ecc256.der {updt_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f334_bootfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f334_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
 
@@ -176,34 +176,34 @@ fn sign_packages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(), 
 fn flash_signed_fwimages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip nRF52840_xxAA nrf52840_bootfw_v1234_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip nRF52840_xxAA nrf52840_bootfw_v{boot_ver}_signed.bin").run()?;
 
             let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip nRF52840_xxAA nrf52840_updtfw_v1235_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip nRF52840_xxAA nrf52840_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
         "stm32f411" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f411vetx stm32f411_bootfw_v1234_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f411vetx stm32f411_bootfw_v{boot_ver}_signed.bin").run()?;
 
             let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f411vetx stm32f411_updtfw_v1235_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f411vetx stm32f411_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
         "stm32f446" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f446retx stm32f446_bootfw_v1234_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f446retx stm32f446_bootfw_v{boot_ver}_signed.bin").run()?;
 
             let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f446retx stm32f446_updtfw_v1235_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f446retx stm32f446_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
         "stm32h723" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
             cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip STM32H723ZGTx stm32h723_bootfw_v{boot_ver}_signed.bin").run()?;
 
@@ -212,21 +212,21 @@ fn flash_signed_fwimages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Res
             Ok(())
         }
         "stm32f746" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f746zgtx stm32f746_bootfw_v1234_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f746zgtx stm32f746_bootfw_v{boot_ver}_signed.bin").run()?;
 
             let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f746zgtx stm32f746_updtfw_v1235_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f746zgtx stm32f746_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
         "stm32f334" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f334r8tx stm32f334_bootfw_v1234_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip stm32f334r8tx stm32f334_bootfw_v{boot_ver}_signed.bin").run()?;
 
             let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f334r8tx stm32f334_updtfw_v1235_signed.bin").run()?;
+            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f334r8tx stm32f334_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
 
@@ -338,7 +338,7 @@ fn root_dir() -> PathBuf {
 fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
     match *target {
         "nrf52840" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
             cmd!("pyocd erase -t nrf52840 -s 0x0").run()?;
             let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
@@ -354,7 +354,7 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f411" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
             cmd!("pyocd erase -t stm32f411 -s 0x0").run()?;
             let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
@@ -370,7 +370,7 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f446" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
             cmd!("pyocd erase -t stm32f446 -s 0x0").run()?;
             let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
@@ -386,7 +386,7 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32h723" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
             cmd!("pyocd erase -t stm32h723 -s 0x0").run()?;
             let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
@@ -402,7 +402,7 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f746" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
             cmd!("pyocd erase -t stm32f746 -s 0x0").run()?;
             let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
@@ -418,7 +418,7 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
             Ok(())
         }
         "stm32f334" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
             cmd!("pyocd erase -t stm32f334 -s 0x0").run()?;
             let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
