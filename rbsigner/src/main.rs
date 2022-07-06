@@ -89,7 +89,8 @@ fn main() {
             match mcu_image {
                 Ok(val) => {
                     let file = File::create(
-                        "../boards/rbSigner/signed_images/{output_image_args}.bin".replace("{output_image_args}", &output_image_args),
+                        "../boards/rbSigner/signed_images/{output_image_args}.bin"
+                            .replace("{output_image_args}", &output_image_args),
                     );
                     match file {
                         Ok(mut file) => {
