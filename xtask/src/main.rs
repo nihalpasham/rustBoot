@@ -17,21 +17,21 @@ fn main() -> Result<(), anyhow::Error> {
     match &args[..] {
         ["test", "rustBoot"] => test_rustBoot(),
         [board, "build", "pkgs-for",]    => build_rustBoot(board),
-        [board, "sign" , boot_ver, updt_ver, "pkgs-for",]    => sign_packages(board, boot_ver, updt_ver),
+        [board, "sign" , "pkgs-for", boot_ver, updt_ver]    => sign_packages(board, boot_ver, updt_ver),
         #[cfg(feature = "mcu")]
-        [board, "flash", boot_ver, updt_ver, "signed-pkg",]  => flash_signed_fwimages(board, boot_ver, updt_ver),
+        [board, "flash", "signed-pkg", boot_ver, updt_ver]  => flash_signed_fwimages(board, boot_ver, updt_ver),
         [board, "flash", "rustBoot",]    => flash_rustBoot(board),
         [board, "build", "rustBoot-only",] => build_rustBoot_only(board),
         #[cfg(feature = "mcu")]
-        [board, "build-sign-flash", boot_ver, updt_ver, "rustBoot",] => full_image_flash(board, boot_ver, updt_ver),
+        [board, "build-sign-flash", "rustBoot", boot_ver, updt_ver] => full_image_flash(board, boot_ver, updt_ver),
         #[cfg(feature = "mcu")]
         [board, "erase-and-flash-trailer-magic",] => erase_and_flash_trailer_magic(board),
         _ => {
             println!("USAGE: cargo [board] test rustBoot");
             println!("OR");
-            println!("USAGE: cargo [board] [build|sign [boot-ver] [updt-ver] |flash] [pkgs-for]|signed-pkg]");
+            println!("USAGE: cargo [board] [build|sign|flash] [pkgs-for]|signed-pkg] [boot-ver] [updt-ver]");
             println!("OR");
-            println!("USAGE: cargo [board] [build-sign-flash] [boot-ver] [updt-ver] [rustBoot]");
+            println!("USAGE: cargo [board] [build-sign-flash] [rustBoot] [boot-ver] [updt-ver]");
             Ok(())
         }
     }
