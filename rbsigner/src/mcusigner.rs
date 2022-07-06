@@ -40,8 +40,6 @@ mod field {
     pub const SIGNATURE_TYPE: Field = 116..118;
     pub const SIGNATURE_LEN: Field = 118..120;
     pub const SIGNATURE_VALUE: Field = 120..184;
-
-    pub const END_OF_HEADER: Field = 254..256;
 }
 
 pub trait VecExt<T>: AsMut<Vec<T>> {
@@ -111,7 +109,7 @@ pub fn sign_mcu_image(
             header.set_signatue_value(signature.as_ref())?;
 
             //set end of header
-            header.set_end_of_header(END_OF_HEADER.start);
+            header.set_end_of_header(SIGNATURE_VALUE.end);
             // prepend header and return fw_blob
             let _ = fw_blob.insert_from_slice(0, header.as_slice());
             Ok(fw_blob)
@@ -624,10 +622,10 @@ mod tests {
         let header = McuImageHeader::new_checked([0; 256]);
         let _val = match header {
             Ok(mut hdr) => {
-                let _ = hdr.set_end_of_header(0x0000);
-                println!("end_of_header: {:?}", &hdr.inner_ref()[END_OF_HEADER]);
+                let _ = hdr.set_end_of_header(SIGNATURE_VALUE.end);
+                println!("end_of_header: {:?}", &hdr.inner_ref()[SIGNATURE_VALUE.end]);
                 assert_eq!(
-                    &hdr.inner_ref()[END_OF_HEADER.start..END_OF_HEADER.end],
+                    &hdr.inner_ref()[SIGNATURE_VALUE.end..=SIGNATURE_VALUE.end + 1],
                     &[0x00, 0x00]
                 );
             }

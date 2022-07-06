@@ -56,7 +56,7 @@ pub fn import_signing_key(curve: CurveType, bytes: &[u8]) -> Result<SigningKeyTy
     }
 }
 
-/// The result type for rbSigner.
+/// The result type for sign_images.
 pub type Result<T> = core::result::Result<T, RbSignerError>;
 
 #[derive(Debug)]
