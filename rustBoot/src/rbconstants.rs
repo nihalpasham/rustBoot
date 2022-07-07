@@ -1,4 +1,3 @@
-
 // **** rustBoot constants ****
 pub const IMAGE_HEADER_SIZE: usize = 0x100;
 pub const IMAGE_HEADER_OFFSET: usize = 0x8;

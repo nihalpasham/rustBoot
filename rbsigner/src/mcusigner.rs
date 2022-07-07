@@ -62,19 +62,20 @@ pub fn sign_mcu_image(
     mut fw_blob: Vec<u8>,
     path: &str,
     sk_type: SigningKeyType,
+    ver: [u8; 4],
 ) -> Result<Vec<u8>> {
     match sk_type {
         #[cfg(feature = "nistp256")]
         SigningKeyType::NistP256(sk) => {
             let (mut header, prehashed_digest) =
-                construct_img_header::<Sha256, 32>(fw_blob.as_slice(), path)
+                construct_img_header::<Sha256, 32>(fw_blob.as_slice(), path, ver)
                     .map_err(|_v| RbSignerError::BadHashValue)?;
             let derived_pk = sk.verifying_key().to_encoded_point(false);
             let mut tag_len = [0u8; 4]; // tag and len each take up 2 bytes.
 
             // set pubkey digest type, len and value
             let pubkey_digest = Sha256::digest(&derived_pk.as_bytes()[1..]);
-            let hdr_pubkey_digest_len = (PUBKEY_DIGEST_SIZE as u16).to_le_bytes();
+            let hdr_pubkey_digest_len = (PUBKEY_DIGEST_SIZE as u16).to_be_bytes();
             let pubkey_digest_tag = Tags::PubkeyDigest.get_id();
             let pubkey_digest_len = hdr_pubkey_digest_len.as_ref();
             pubkey_digest_tag
@@ -84,15 +85,17 @@ pub fn sign_mcu_image(
                 .for_each(|(idx, byte)| {
                     tag_len[idx] = *byte;
                 });
-            header.set_pubkey_tag_len(u32::from_le_bytes(tag_len));
+            header.set_pubkey_tag_len(u32::from_be_bytes(tag_len));
             header.set_pubkey_digest_value(pubkey_digest.as_slice())?;
 
             // set signature type, len and value
             let signature = sk
                 .try_sign_digest(prehashed_digest)
                 .map_err(|v| RbSignerError::SignatureError(v))?;
-            println!("signature: {:?}", signature);
-            let hdr_signature_len = (ECC_SIGNATURE_SIZE as u16).to_le_bytes();
+            println!("Signing the firmware...");
+            // println!("signature:\t{:?}", signature);
+            println!("Done.");
+            let hdr_signature_len = (ECC_SIGNATURE_SIZE as u16).to_be_bytes();
             let signature_tag = Tags::Signature.get_id();
             let signature_len = hdr_signature_len.as_ref();
             signature_tag
@@ -102,7 +105,7 @@ pub fn sign_mcu_image(
                 .for_each(|(idx, byte)| {
                     tag_len[idx] = *byte;
                 });
-            header.set_signature_tag_len(u32::from_le_bytes(tag_len));
+            header.set_signature_tag_len(u32::from_be_bytes(tag_len));
             header.set_signatue_value(signature.as_ref())?;
 
             //set end of header
@@ -122,6 +125,7 @@ pub fn sign_mcu_image(
 fn construct_img_header<'a, D, const H: usize>(
     fw_blob: &'a [u8],
     path: &str,
+    version: [u8; 4],
 ) -> Result<(McuImageHeader<[u8; 256]>, D)>
 where
     D: Digest + Clone,
@@ -135,7 +139,7 @@ where
     header.set_image_size(fw_blob.len() as u32);
 
     // set version type, len and value
-    let hdr_version_len = (HDR_VERSION_LEN as u16).to_le_bytes();
+    let hdr_version_len = (HDR_VERSION_LEN as u16).to_be_bytes();
     let version_tag = Tags::Version.get_id();
     let version_len = hdr_version_len.as_ref();
     version_tag
@@ -145,19 +149,19 @@ where
         .for_each(|(idx, byte)| {
             tag_len[idx] = *byte;
         });
-    header.set_version_tag_len(u32::from_le_bytes(tag_len));
-    header.set_version_value(&[0x01, 0x02, 0x03, 0x04])?;
+    header.set_version_tag_len(u32::from_be_bytes(tag_len));
+    header.set_version_value(&version)?;
 
     // set timestamp type, len and value
     let metadata =
         fs::metadata(path).expect("something's wrong with your file path for your image");
 
     let mtime = FileTime::from_last_modification_time(&metadata);
-    println!("image timestamp: {}", mtime.unix_seconds()); // unix seconds values can be interpreted across platforms
+    // println!("\nimage timestamp: {}", mtime.unix_seconds()); // unix seconds values can be interpreted across platforms
     let atime = FileTime::from_last_access_time(&metadata);
     assert!(mtime < atime);
 
-    let hdr_timestamp_len = (HDR_TIMESTAMP_LEN as u16).to_le_bytes();
+    let hdr_timestamp_len = (HDR_TIMESTAMP_LEN as u16).to_be_bytes();
     let timestamp_tag = Tags::TimeStamp.get_id();
     let timestamp_len = hdr_timestamp_len.as_ref();
     timestamp_tag
@@ -167,11 +171,11 @@ where
         .for_each(|(idx, byte)| {
             tag_len[idx] = *byte;
         });
-    header.set_timestamp_tag_len(u32::from_le_bytes(tag_len));
-    header.set_timestamp_value(&mtime.unix_seconds().to_be_bytes())?;
+    header.set_timestamp_tag_len(u32::from_be_bytes(tag_len));
+    header.set_timestamp_value(&mtime.unix_seconds().to_le_bytes())?;
 
     // set image type, len and value
-    let hdr_img_tag_len = (HDR_IMG_TYPE_LEN as u16).to_le_bytes();
+    let hdr_img_tag_len = (HDR_IMG_TYPE_LEN as u16).to_be_bytes();
     let img_tag = Tags::ImgType.get_id();
     let img_len = hdr_img_tag_len.as_ref();
     img_tag
@@ -181,11 +185,11 @@ where
         .for_each(|(idx, byte)| {
             tag_len[idx] = *byte;
         });
-    header.set_image_tag_len(u32::from_le_bytes(tag_len));
-    header.set_image_value(&[0x02, 0x00])?;
+    header.set_image_tag_len(u32::from_be_bytes(tag_len));
+    header.set_image_value(&[0x01, 0x02])?;
 
     let mut hasher = D::new();
-    hasher.update(&header.inner_ref()[..IMAGE_VALUE.end]);
+    hasher.update(&header.inner_ref()[..DIGEST_TYPE.start]);
     hasher.update(fw_blob);
     let digest = hasher.clone().finalize();
 
@@ -202,7 +206,8 @@ where
                 .for_each(|(idx, byte)| {
                     tag_len[idx] = *byte;
                 });
-            header.set_digest_tag_len(u32::from_le_bytes(tag_len));
+            println!("Calculating sha256 digest...");
+            header.set_digest_tag_len(u32::from_be_bytes(tag_len));
             header.set_sha256_digest_value(digest.as_slice())?;
         }
         _ => unimplemented!(),
@@ -271,7 +276,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     pub fn set_version_tag_len(&mut self, value: u32) {
         let header = self.buffer.as_mut();
         header[VERSION_TYPE]
-            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_le_bytes().as_ref());
+            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_be_bytes().as_ref());
         header[VERSION_LEN].copy_from_slice(((value & 0xFFFF) as u16).to_le_bytes().as_ref());
     }
 
@@ -308,7 +313,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     pub fn set_timestamp_tag_len(&mut self, value: u32) {
         let header = self.buffer.as_mut();
         header[TIMESTAMP_TYPE]
-            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_le_bytes().as_ref());
+            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_be_bytes().as_ref());
         header[TIMESTAMP_LEN].copy_from_slice(((value & 0xFFFF) as u16).to_le_bytes().as_ref());
     }
 
@@ -328,7 +333,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     pub fn set_image_tag_len(&mut self, value: u32) {
         let header = self.buffer.as_mut();
         header[IMAGE_TYPE]
-            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_le_bytes().as_ref());
+            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_be_bytes().as_ref());
         header[IMAGE_LEN].copy_from_slice(((value & 0xFFFF) as u16).to_le_bytes().as_ref());
     }
 
@@ -367,8 +372,8 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     pub fn set_digest_tag_len(&mut self, value: u32) {
         let header = self.buffer.as_mut();
         header[DIGEST_TYPE]
-            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_le_bytes().as_ref());
-        header[DIGEST_LEN].copy_from_slice(((value & 0xFFFF) as u16).to_le_bytes().as_ref());
+            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_be_bytes().as_ref());
+        header[DIGEST_LEN].copy_from_slice(((value & 0xFFFF) as u16).to_be_bytes().as_ref());
     }
 
     /// Set the image-digest value.
@@ -386,7 +391,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     pub fn set_pubkey_tag_len(&mut self, value: u32) {
         let header = self.buffer.as_mut();
         header[PUBKEY_TYPE]
-            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_le_bytes().as_ref());
+            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_be_bytes().as_ref());
         header[PUBKEY_LEN].copy_from_slice(((value & 0xFFFF) as u16).to_le_bytes().as_ref());
     }
 
@@ -405,7 +410,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     pub fn set_signature_tag_len(&mut self, value: u32) {
         let header = self.buffer.as_mut();
         header[SIGNATURE_TYPE]
-            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_le_bytes().as_ref());
+            .copy_from_slice((((value >> 16) & 0xFFFF) as u16).to_be_bytes().as_ref());
         header[SIGNATURE_LEN].copy_from_slice(((value & 0xFFFF) as u16).to_le_bytes().as_ref());
     }
 
@@ -542,10 +547,7 @@ mod tests {
         use filetime::FileTime;
         use std::fs;
 
-        let metadata = fs::metadata(
-            "/Users/nihal.pasham/devspace/rust/projects/prod/rustBoot/rbsigner/src/mcusigner.rs",
-        )
-        .unwrap();
+        let metadata = fs::metadata("../").unwrap();
         let mtime = FileTime::from_last_modification_time(&metadata);
         println!("image timestamp {}", mtime.unix_seconds()); // unix seconds values can be interpreted across platforms
         let atime = FileTime::from_last_access_time(&metadata);
@@ -560,6 +562,71 @@ mod tests {
                 assert_eq!(
                     i64::from_le_bytes(hdr.inner_ref()[TIMESTAMP_VALUE].try_into().unwrap()),
                     mtime.unix_seconds()
+                );
+            }
+            Err(_e) => {}
+        };
+    }
+
+    #[test]
+    fn pubkey_digest_value_test() {
+        let pubkey_digest_bytes: [u8; 32] = [
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+            0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
+            0x1d, 0x1e, 0x1f, 0x20,
+        ];
+
+        let header = McuImageHeader::new_checked([0; 256]);
+        let _val = match header {
+            Ok(mut hdr) => {
+                let _ = hdr.set_pubkey_digest_value(&pubkey_digest_bytes);
+                println!(
+                    "pubkey_digest_value: {:?}",
+                    &hdr.inner_ref()[PUBKEY_DIGEST_VALUE]
+                );
+                assert_eq!(
+                    &hdr.inner_ref()[PUBKEY_DIGEST_VALUE.start..PUBKEY_DIGEST_VALUE.end],
+                    &pubkey_digest_bytes
+                );
+            }
+            Err(_e) => {}
+        };
+    }
+
+    #[test]
+    fn signatue_value_test() {
+        let signature_value_bytes: [u8; 64] = [
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+            0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
+            0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a,
+            0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+            0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x40,
+        ];
+
+        let header = McuImageHeader::new_checked([0; 256]);
+        let _val = match header {
+            Ok(mut hdr) => {
+                let _ = hdr.set_signatue_value(&signature_value_bytes);
+                println!("signatue_value: {:?}", &hdr.inner_ref()[SIGNATURE_VALUE]);
+                assert_eq!(
+                    &hdr.inner_ref()[SIGNATURE_VALUE.start..SIGNATURE_VALUE.end],
+                    &signature_value_bytes
+                );
+            }
+            Err(_e) => {}
+        };
+    }
+
+    #[test]
+    fn end_of_header_test() {
+        let header = McuImageHeader::new_checked([0; 256]);
+        let _val = match header {
+            Ok(mut hdr) => {
+                let _ = hdr.set_end_of_header(SIGNATURE_VALUE.end);
+                println!("end_of_header: {:?}", &hdr.inner_ref()[SIGNATURE_VALUE.end]);
+                assert_eq!(
+                    &hdr.inner_ref()[SIGNATURE_VALUE.end..=SIGNATURE_VALUE.end + 1],
+                    &[0x00, 0x00]
                 );
             }
             Err(_e) => {}

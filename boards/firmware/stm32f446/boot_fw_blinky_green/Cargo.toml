@@ -10,8 +10,8 @@ doctest = false
 test = false
 
 [dependencies]
-defmt = {version = "0.3.1", optional = true}
-defmt-rtt = {version = "0.3.2", optional = true}
+# defmt = {version = "0.3.1", optional = true}
+# defmt-rtt = {version = "0.3.2", optional = true}
 cortex-m = "0.7.4"
 cortex-m-rt = "0.6.15"
 rustBoot-hal ={path = "../../../hal",default-features = false,features = ["stm32f446"]}
