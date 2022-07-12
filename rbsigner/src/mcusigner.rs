@@ -632,4 +632,21 @@ mod tests {
             Err(_e) => {}
         };
     }
+
+    #[test]
+    fn digest_tag_len_test(){
+        let header = McuImageHeader::new_checked([0; 256]);
+        let _val = match header {
+            Ok(mut hdr) => {
+                let _ = hdr.set_digest_tag_len(65540);
+                println!("digest_tag: {:?}", &hdr.inner_ref()[DIGEST_TYPE]);
+                println!("digest_len: {:?}", &hdr.inner_ref()[DIGEST_LEN]);
+                assert_eq!(
+                    &hdr.inner_ref()[DIGEST_TYPE.start..DIGEST_LEN.end],
+                    &[0x00, 0x01, 0x00, 0x04,]
+                );
+            }
+            Err(_e) => {}
+        };
+    }
 }
