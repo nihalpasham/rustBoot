@@ -592,6 +592,7 @@ mod tests {
             Err(_e) => {}
         };
     }
+    
     #[test]
     fn pubkey_digest_value_test() {
         let pubkey_digest_bytes: [u8; 32] = [
