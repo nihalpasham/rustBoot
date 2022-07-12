@@ -11,7 +11,6 @@ use cortex_m::asm;
 
 use embedded_hal::digital::v2::OutputPin;
 use rp2040_hal as hal;
-use rp2040_pac;
 
 use rustBoot_hal::pico::rp2040::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
@@ -30,11 +29,11 @@ fn main() -> ! {
     let mut led_pin = pins.gpio25.into_push_pull_output();
 
     let mut count = 0u8;
-    while count < 10 {
+    while count < 5 {
         led_pin.set_high().unwrap();
-        asm::delay(640000);
+        asm::delay(32_00_000);      // 1 Sec
         led_pin.set_low().unwrap();
-        asm::delay(320000);
+        asm::delay(32_00_000);      // 1 Sec
         count += 1;
     }
 
@@ -45,7 +44,8 @@ fn main() -> ! {
         Ok(_v) => {}
         Err(e) => panic!("couldnt trigger update: {}", e),
     }
-    rp2040_pac::SCB::sys_reset()
+
+    hal::pac::SCB::sys_reset()
 }
 
 #[panic_handler] // panicking behavior

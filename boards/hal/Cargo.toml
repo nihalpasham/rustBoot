@@ -45,7 +45,6 @@ stm32f7xx-hal = {version = "0.7.0", features = ["stm32f746", "rt"],optional = tr
 stm32f3xx-hal = {version = "0.8.0", features = ["stm32f334x8", "rt"],optional = true}
 # platform specific dependencies for rp-pico
 rp2040-hal = {version = "0.4.0", optional = true}
-rp2040-pac = {version = "0.3.0", optional = true}
 
 [features]
 default = []
@@ -63,4 +62,4 @@ stm32h723 = ["stm", "stm32h7xx-hal"]
 stm32f746 = ["stm", "stm32f7xx-hal"]
 stm32f334 = ["stm", "stm32f3xx-hal"]
 pico = []
-rp2040 = ["pico", "rp2040-hal", "rp2040-pac"]
+rp2040 = ["pico", "rp2040-hal"]

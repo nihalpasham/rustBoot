@@ -20,7 +20,7 @@ fn main() -> ! {
 
     let mut pac = hal::pac::Peripherals::take().unwrap();
     let sio = hal::Sio::new(pac.SIO);
-    let pins = hal::gpio::Pins::new(
+    let pins = hal::gpio::Pins::new (
         pac.IO_BANK0,
         pac.PADS_BANK0,
         sio.gpio_bank0,
@@ -38,9 +38,9 @@ fn main() -> ! {
 
     loop {
         led_pin.set_high().unwrap();
-        asm::delay(320000);
+        asm::delay(4_00_000);       // 125 mSec
         led_pin.set_low().unwrap();
-        asm::delay(160000);
+        asm::delay(4_00_000);       // 125 mSec
     }
 }
 

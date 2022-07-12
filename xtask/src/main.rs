@@ -329,7 +329,7 @@ fn full_image_flash(target: &&str) -> Result<(), anyhow::Error> {
         "rp2040" => {
             build_rustBoot(target)?;
             sign_packages(target)?;
-            cmd!("probe-rs-cli erase --chip RP2040").run()?;
+            //cmd!("probe-rs-cli erase --chip RP2040").run()?;
             flash_signed_fwimages(target)?;
             flash_rustBoot(target)?;
             Ok(())

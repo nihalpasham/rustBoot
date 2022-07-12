@@ -2,7 +2,7 @@ import os
 
 firmware = ["nrf52840_bootfw", "nrf52840_updtfw", "stm32f411_bootfw", "stm32f411_updtfw", "stm32f446_bootfw", "stm32f446_updtfw", "stm32h723_bootfw", "stm32h723_updtfw","stm32f746_updtfw","stm32f746_bootfw", "stm32f334_bootfw", "stm32f334_updtfw","rp2040_bootfw", "rp2040_updtfw"]
 target_path = "../../target/thumbv7em-none-eabihf/release/"
-# target_path = "../../target/thumbv6m-none-eabi/release/"      # Use this path for building RP2040 Board
+# target_path = "../../target/thumbv6m-none-eabi/release/"      # Use this path for RP2040 Board
 
 def convert_to_bin(path):
 
