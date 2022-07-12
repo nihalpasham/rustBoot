@@ -13,6 +13,7 @@ pub mod fs;
 pub mod image;
 #[cfg(feature = "mcu")]
 pub mod parser;
+pub mod rbconstants;
 
 use core::fmt;
 

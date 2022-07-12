@@ -1,8 +1,7 @@
 #[cfg(feature = "nistp256")]
 use p256::ecdsa::{Signature, SigningKey};
-use signature::Error as SigningError;
 use rustBoot::dt::Error as ITBError;
-
+use signature::Error as SigningError;
 
 #[derive(Debug)]
 pub enum CurveType {
