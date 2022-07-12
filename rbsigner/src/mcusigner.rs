@@ -543,6 +543,23 @@ mod tests {
     }
 
     #[test]
+    fn timestamp_tag_len_test() {
+        let header = McuImageHeader::new_checked([0; 256]);
+        let _val = match header {
+            Ok(mut hdr) => {
+                let _ = hdr.set_timestamp_tag_len(65535);
+                println!("timestamp_type: {:?}", &hdr.inner_ref()[TIMESTAMP_TYPE]);
+                println!("timestamp_len: {:?}", &hdr.inner_ref()[TIMESTAMP_LEN]);
+                assert_eq!(
+                    &hdr.inner_ref()[TIMESTAMP_TYPE.start..TIMESTAMP_LEN.end],
+                    &[0x00, 0x00, 0xFF, 0xFF]
+                );
+            }
+            Err(_e) => {}
+        };
+    }
+
+    #[test]
     fn set_timestamp_value_test() {
         use filetime::FileTime;
         use std::fs;
