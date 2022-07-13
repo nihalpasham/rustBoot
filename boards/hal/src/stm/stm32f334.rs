@@ -49,48 +49,16 @@ impl FlashInterface for FlashWriterEraser {
     /// -  NONE
     fn hal_flash_erase(&self, addr: usize, len: usize) {
         let mut flag: bool = true;
-        let mut address = (addr & 0x0800_F800) as u32;
+        let mut address = (addr & 0x0800_F800) as u32; // Finding base address of the page from the given address 
         let remaing_bytes  = len%FLASH_PAGE_SIZE as usize;
         let mut num_pages = len/FLASH_PAGE_SIZE as usize;
         if remaing_bytes != 0
         {
            num_pages = num_pages + 1; 
         }
-    
         while num_pages > 0 {
             match address {
-                (0x0800_0000..=0x0800_07FF) => flag = true,
-                (0x0800_0800..=0x0800_0FFF) => flag = true,
-                (0x0800_1000..=0x0800_17FF) => flag = true,
-                (0x0800_1800..=0x0800_1FFF) => flag = true,
-                (0x0800_2000..=0x0800_27FF) => flag = true,
-                (0x0800_2800..=0x0800_2FFF) => flag = true,
-                (0x0800_3000..=0x0800_37FF) => flag = true,
-                (0x0800_3800..=0x0800_3FFF) => flag = true,
-                (0x0800_4000..=0x0800_47FF) => flag = true,
-                (0x0800_4800..=0x0800_4FFF) => flag = true,
-                (0x0800_5000..=0x0800_57FF) => flag = true,
-                (0x0800_5800..=0x0800_5FFF) => flag = true,
-                (0x0800_6000..=0x0800_67FF) => flag = true,
-                (0x0800_6800..=0x0800_6FFF) => flag = true,
-                (0x0800_7000..=0x0800_77FF) => flag = true,
-                (0x0800_7800..=0x0800_7FFF) => flag = true,
-                (0x0800_8000..=0x0800_87FF) => flag = true,
-                (0x0800_8800..=0x0800_8FFF) => flag = true,
-                (0x0800_9000..=0x0800_97FF) => flag = true,
-                (0x0800_9800..=0x0800_9FFF) => flag = true,
-                (0x0800_A000..=0x0800_A7FF) => flag = true,
-                (0x0800_A800..=0x0800_AFFF) => flag = true, 
-                (0x0800_B000..=0x0800_B7FF) => flag = true,
-                (0x0800_B800..=0x0800_BFFF) => flag = true,
-                (0x0800_C000..=0x0800_C7FF) => flag = true,
-                (0x0800_C800..=0x0800_CFFF) => flag = true,
-                (0x0800_D000..=0x0800_D7FF) => flag = true,
-                (0x0800_D800..=0x0800_DFFF) => flag = true,
-                (0x0800_E000..=0x0800_E7FF) => flag = true,
-                (0x0800_E800..=0x0800_EFFF) => flag = true,
-                (0x0800_F000..=0x0800_F7FF) => flag = true,
-                (0x0800_F800..=0x0800_FFFF) => flag = true,
+                (0x0800_0000..=0x0800_FFFF) => flag = true,
                 _ => flag = false,
             }
             if flag {
@@ -178,29 +146,29 @@ impl FlashInterface for FlashWriterEraser {
                 let  src1 = src as *mut u8;
                 let mut data1 = 0; 
                 let mut add = 0u16;
-                let mut c = 0usize;                            
+                let mut half_words_count = 0usize;                            
                 unsafe { 
                     data1 = *src1
                 }
                 if len == 1
                 {          
                     let base_addr = 0x0800_0000;
-                    let mut buffer : [u8; 2048] = [0; 2048];
+                    let mut buffer : [u8; 2048] = [0; 2048];// Taken a buffer of one page size 2048
                     let  val = address - base_addr;
                     let  sector = val/0x800;
                     let  offset = (val % 0x800) as usize;
                     let mut addr = (base_addr + (sector * 0x800)) as *mut u8;
                     let mut dst_addr = addr as *mut u16;
                     let temp = addr as u32;
-                    for i in 0..2048
+                    for byte_count in 0..2048
                     {
-                        unsafe { buffer[i]= *addr };
+                        unsafe { buffer[byte_count]= *addr };
                         addr = ((addr as u32) + 1) as *mut u8;
-                        asm::delay(1);
+                        asm::delay(1);              //One clock cycle delay of main clock 
                     }
                     buffer[offset] = data1;
                     self.hal_flash_erase(dst_addr as usize,1);
-                    for i in 0..1024
+                    for half_words in 0..1024
                     { 
                         while self.nvm.sr.read().bsy().bit_is_set() {}
                         if self.nvm.cr.read().lock().bit_is_set() {
@@ -214,7 +182,7 @@ impl FlashInterface for FlashWriterEraser {
                             w
                             .far().bits(temp)
                         });
-                        add = ((buffer[c+1] as u16)<<8 as u16) | buffer[c]  as u16;
+                        add = ((buffer[half_words_count+1] as u16)<<8 as u16) | buffer[half_words_count]  as u16;
                         unsafe{
                             unsafe{*dst_addr = add}
                         } 
@@ -228,7 +196,7 @@ impl FlashInterface for FlashWriterEraser {
                             .pg().clear_bit()
                         });
                         dst_addr = ((dst_addr as u32) + 2) as *mut u16;
-                        c = c + 2;                       
+                        half_words_count = half_words_count + 2;                       
                     }
                     idx = idx +1
                 }
@@ -261,8 +229,8 @@ impl FlashInterface for FlashWriterEraser {
                         w
                         .pg().clear_bit()
                     }); 
-                    src = ((src as u32) + 1) as *mut u16; // increment pointer by 2
-                    dst = ((dst as u32) + 1) as *mut u16; // increment pointer by 2     
+                    src = ((src as u32) + 1) as *mut u16; // increment pointer by 1 byte address
+                    dst = ((dst as u32) + 1) as *mut u16; // increment pointer by 1 byte address
                     idx = idx+1;
                 }
             }
