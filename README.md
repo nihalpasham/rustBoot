@@ -30,7 +30,7 @@ rustBoot aims to offer an OS and micro-architecture agnostic (i.e. highly portab
 
 ## Documentation:
 
-You can read the book for [`free online`](https://nihalpasham.github.io/rustBoot-book/index.html). 
+You can read the book for <a href="https://nihalpasham.github.io/rustBoot-book/index.html" target="_blank">`free online`.</a>. 
 
 > Note: `rustBoot` and the `book` are still in development (i.e. a work in progress).
 
