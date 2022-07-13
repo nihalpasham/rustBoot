@@ -9,7 +9,7 @@ use rustBoot_hal::pico::rp2040::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
 
 
-/// This is Second-Stage Bootloader.RP2040 is a stateless device, 
+/// This is the second-Stage bootloader. RP2040 is a stateless device, 
 /// with support for cached execute-in-place from external QSPI memory.   
 /// This will put 256 byte header right at the start of the eventual program binary, 
 /// required to configure external QSPI flash memory (W25Q080) for high speed, efficient, code access.
