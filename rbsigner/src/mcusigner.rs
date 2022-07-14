@@ -568,6 +568,7 @@ mod tests {
         let mtime = FileTime::from_last_modification_time(&metadata);
         println!("image timestamp {}", mtime.unix_seconds()); // unix seconds values can be interpreted across platforms
         let atime = FileTime::from_last_access_time(&metadata);
+        println!("image timestamp {}", atime.unix_seconds());
         assert!(mtime < atime);
 
         let timestamp_bytes = mtime.unix_seconds().to_le_bytes();
