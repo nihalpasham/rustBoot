@@ -487,7 +487,7 @@ mod tests {
                 println!("version_len: {:?}", &hdr.inner_ref()[VERSION_LEN]);
                 assert_eq!(
                     &hdr.inner_ref()[VERSION_TYPE.start..VERSION_LEN.end],
-                    &[0x01, 0x00, 0x04, 0x00]
+                    &[0x00, 0x01, 0x04, 0x00]
                 );
             }
             Err(_e) => {}
@@ -597,10 +597,7 @@ mod tests {
         let _val = match header {
             Ok(mut hdr) => {
                 let _ = hdr.set_sha256_digest_value(&sha256_digest_bytes);
-                println!(
-                    "sha256_digest_value: {:?}",
-                    &hdr.inner_ref()[SHA256_DIGEST]
-                );
+                println!("sha256_digest_value: {:?}", &hdr.inner_ref()[SHA256_DIGEST]);
                 assert_eq!(
                     &hdr.inner_ref()[SHA256_DIGEST.start..SHA256_DIGEST.end],
                     &sha256_digest_bytes
@@ -609,7 +606,7 @@ mod tests {
             Err(_e) => {}
         };
     }
-    
+
     #[test]
     fn pubkey_digest_value_test() {
         let pubkey_digest_bytes: [u8; 32] = [
@@ -676,7 +673,7 @@ mod tests {
     }
 
     #[test]
-    fn digest_tag_len_test(){
+    fn digest_tag_len_test() {
         let header = McuImageHeader::new_checked([0; 256]);
         let _val = match header {
             Ok(mut hdr) => {
@@ -691,7 +688,7 @@ mod tests {
             Err(_e) => {}
         };
     }
-    
+
     #[test]
     fn signature_tag_len_test() {
         let header = McuImageHeader::new_checked([0; 256]);
