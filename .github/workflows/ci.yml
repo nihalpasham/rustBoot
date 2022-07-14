@@ -39,7 +39,7 @@ jobs:
       - name: mcusigner - unit tests
         run: |
           rustup install nightly
-          cargo test --package rbsigner --bin rbsigner -- mcusigner::tests --nocapture
+          cargo +nightly test --package rbsigner --bin rbsigner -- mcusigner::tests --nocapture
 
   builds:
     runs-on: ${{ matrix.os }}
