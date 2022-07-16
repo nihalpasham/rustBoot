@@ -1,44 +1,39 @@
 #![no_main]
 #![no_std]
 
-extern crate cortex_m;
-extern crate cortex_m_rt;
+#[cfg(feature = "defmt")]
+use defmt_rtt as _; // global logger
 
-extern crate stm32f4xx_hal as mcu;
-
-use cortex_m::peripheral::Peripherals;
 use cortex_m_rt::entry;
-use mcu::delay::Delay;
-use mcu::gpio;
-use mcu::gpio::gpiod::PD14;
-use mcu::prelude::*;
-use mcu::stm32;
-// use panic_probe as _;
+use stm32f4xx_hal as hal;
+
+use crate::hal::{pac, prelude::*};
 
 use rustBoot_hal::stm::stm32f411::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
 
-struct Leds {
-    red: PD14<gpio::Output<gpio::PushPull>>,
-}
-
 #[entry]
 fn main() -> ! {
-    if let (Some(peri), Some(cortex_peri)) = (stm32::Peripherals::take(), Peripherals::take()) {
-        let rcc = peri.RCC.constrain();
-        let clocks1 = rcc.cfgr.sysclk(84.mhz()).freeze();
-        let mut delay = Delay::new(cortex_peri.SYST, &clocks1);
+    if let (Some(dp), Some(cp)) = (
+        pac::Peripherals::take(),
+        cortex_m::peripheral::Peripherals::take(),
+    ) {
+        // Set up the LED.
+        let gpiod = dp.GPIOD.split();
+        let mut led = gpiod.pd14.into_push_pull_output();
 
-        // GPIO Initialization
-        let gpiod = peri.GPIOD.split();
-        let mut leds = Leds {
-            red: gpiod.pd14.into_push_pull_output(),
-        };
-        let flash1 = peri.FLASH;
+        // Set up the system clock. We want to run at 48MHz for this one.
+        let rcc = dp.RCC.constrain();
+        let clocks = rcc.cfgr.sysclk(48.MHz()).freeze();
 
+        // Create a delay abstraction based on SysTick
+        let mut delay = cp.SYST.delay(&clocks);
+
+        let flash1 = dp.FLASH;
         let mut count = 0;
+
         while count < 6 {
-            leds.red.toggle();
+            led.toggle();
             delay.delay_ms(1000_u16);
             count = count + 1;
         }
@@ -51,7 +46,7 @@ fn main() -> ! {
         }
 
         loop {
-            leds.red.toggle();
+            led.toggle();
             delay.delay_ms(1000_u16);
         }
     }

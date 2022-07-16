@@ -4,7 +4,6 @@
 
 #[cfg(feature = "defmt")]
 use defmt_rtt as _; // global logger
-use panic_probe as _; // global logger
 
 use stm32h7xx_hal::{pac, prelude::*};
 
@@ -56,4 +55,11 @@ fn main() -> ! {
     }
 
     stm32h7xx_hal::pac::SCB::sys_reset();
+}
+
+#[panic_handler] // panicking behavior
+fn panic(_: &core::panic::PanicInfo) -> ! {
+    loop {
+        cortex_m::asm::bkpt();
+    }
 }

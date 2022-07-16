@@ -1,36 +1,36 @@
 #![no_main]
 #![no_std]
 
-extern crate cortex_m;
-extern crate cortex_m_rt;
-
-extern crate stm32f4xx_hal as mcu;
-
 #[cfg(feature = "defmt")]
 use defmt_rtt as _; // global logger
 
-use cortex_m::peripheral::Peripherals;
 use cortex_m_rt::entry;
-use mcu::delay::Delay;
-use mcu::prelude::*;
-use mcu::stm32;
-// use panic_probe as _;
+use stm32f4xx_hal as hal;
+
+use crate::hal::{pac, prelude::*};
 
 use rustBoot_hal::stm::stm32f446::FlashWriterEraser;
 use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
 
 #[entry]
 fn main() -> ! {
-    if let (Some(peri), Some(cortex_peri)) = (stm32::Peripherals::take(), Peripherals::take()) {
-        let gpio = peri.GPIOA.split();
-        let mut led = gpio.pa5.into_push_pull_output();
+    if let (Some(dp), Some(cp)) = (
+        pac::Peripherals::take(),
+        cortex_m::peripheral::Peripherals::take(),
+    ) {
+        // Set up the LED.
+        let gpiod = dp.GPIOD.split();
+        let mut led = gpiod.pd12.into_push_pull_output();
 
-        let rcc = peri.RCC.constrain();
-        let clocks1 = rcc.cfgr.sysclk(84.mhz()).freeze();
-        let mut delay = Delay::new(cortex_peri.SYST, &clocks1);
+        // Set up the system clock. We want to run at 48MHz for this one.
+        let rcc = dp.RCC.constrain();
+        let clocks = rcc.cfgr.sysclk(48.MHz()).freeze();
+
+        // Create a delay abstraction based on SysTick
+        let mut delay = cp.SYST.delay(&clocks);
 
         // GPIO Initialization
-        let flash1 = peri.FLASH;
+        let flash1 = dp.FLASH;
         let mut count = 0;
 
         while count < 6 {
@@ -48,7 +48,7 @@ fn main() -> ! {
         }
     }
     //nvic_systemreset();
-    mcu::pac::SCB::sys_reset()
+    hal::pac::SCB::sys_reset()
 }
 
 #[panic_handler] // panicking behavior

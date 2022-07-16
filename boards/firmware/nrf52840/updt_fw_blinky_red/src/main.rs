@@ -2,7 +2,8 @@
 #![no_std]
 #![allow(non_snake_case)]
 
-// use defmt_rtt as _;
+#[cfg(feature = "defmt")]
+use defmt_rtt as _; // global logger
 use cortex_m_rt::entry;
 use nrf52840_hal as hal;
 use panic_probe as _;

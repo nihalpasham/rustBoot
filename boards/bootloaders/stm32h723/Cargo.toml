@@ -14,8 +14,8 @@ test = false
 
 [dependencies]
 cortex-m = "0.7.5"
-cortex-m-rt = "0.6.15"
-defmt = {version = "0.3.1", optional = true}
+cortex-m-rt = "0.7.1"
+defmt = {version = "0.3.2", optional = true}
 defmt-rtt = {version = "0.3.2", optional = true}
 rustBoot-hal = {path = "../../hal", default-features = false, features = ["stm32h723"]}
 rustBoot-update = {path = "../../update", features = ["stm32h723"]}
