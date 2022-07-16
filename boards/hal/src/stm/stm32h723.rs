@@ -98,7 +98,8 @@ impl FlashInterface for FlashWriterEraser {
                 self.nvm.bank1().cr.modify(|_, w| unsafe {
                     w.psize().bits(PSIZE_X8).pg().set_bit().fw().set_bit()
                 });
-
+                cortex_m::asm::isb();
+                cortex_m::asm::dsb();
                 for ii in 0..8 {
                     unsafe {
                         *dst = *src;
@@ -106,6 +107,8 @@ impl FlashInterface for FlashWriterEraser {
                         dst = ((dst as u32) + 4) as *mut u32; // increment pointer by 4
                     }
                 }
+                cortex_m::asm::isb();
+                cortex_m::asm::dsb();
                 i += 32;
             } else {
                 let mut off = ((addr as u32) + i) - ((((addr as u32) + i) >> 5) << 5);

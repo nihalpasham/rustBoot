@@ -31,7 +31,7 @@ fn main() {
     kf.read_to_end(&mut key_file).unwrap();
     let sk: SigningKeyType;
 
-    println!("\nUpdate type:    Firmware");
+    println!("\nUpdate type:      Firmware");
     println!("Curve type:       {}", args[3]);
     #[rustfmt::skip]
     println!("Input image:      {}.bin", String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));

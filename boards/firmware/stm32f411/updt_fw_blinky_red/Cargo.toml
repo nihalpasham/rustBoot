@@ -2,6 +2,7 @@
 name = "stm32f411_updtfw"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [[bin]]
 name = "stm32f411_updtfw"
@@ -10,12 +11,17 @@ doctest = false
 test = false
 
 [dependencies]
-cortex-m = "0.7.1"
-cortex-m-rt = "0.6.15"
+cortex-m = "0.7.5"
+cortex-m-rt = "0.7.1"
+defmt = {version = "0.3.2", optional = true}
+defmt-rtt = {version = "0.3.2", optional = true}
 rustBoot-hal ={path = "../../../hal",default-features = false,features = ["stm32f411"]}
 rustBoot-update = {path = "../../../update", features = ["stm32f411"]}
 
 # board-specific features
 [dependencies.stm32f4xx-hal]
-version = "0.10.1"
+version = "0.13.2"
 features = ["rt", "stm32f411"]
+
+[features]
+default = ["defmt", "defmt-rtt"]

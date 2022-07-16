@@ -2,7 +2,7 @@ use stm32f411_hal as hal;
 
 use crate::FlashInterface;
 use core::ptr::write_volatile;
-use hal::stm32::{Peripherals, FLASH};
+use hal::pac::{Peripherals, FLASH};
 use stm32f411rc_constants::*;
 #[rustfmt::skip]
 mod stm32f411rc_constants {

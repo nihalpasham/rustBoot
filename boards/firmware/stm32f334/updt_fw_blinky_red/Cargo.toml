@@ -2,6 +2,7 @@
 name = "stm32f334_updtfw"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [[bin]]
 name = "stm32f334_updtfw"
@@ -10,18 +11,17 @@ doctest = false
 test = false
 
 [dependencies]
-#defmt = {version = "0.3.1", optional = true}
-#defmt-rtt = {version = "0.3.2", optional = true}
-cortex-m = "0.7.4"
-cortex-m-rt = "0.6.15"
+cortex-m = "0.7.5"
+cortex-m-rt = "0.7.1"
+defmt = {version = "0.3.1", optional = true}
+defmt-rtt = {version = "0.3.2", optional = true}
 rustBoot-hal ={path = "../../../hal",default-features = false,features = ["stm32f334"]}
-panic-probe = { version = "0.3.0" }
 rustBoot-update = {path = "../../../update", features = ["stm32f334"]}
 
 # board-specific features
 [dependencies.stm32f3xx-hal]
-version = "0.8.0"
+version = "0.9.0"
 features = ["stm32f334x8"]
 
 [features]
-default = []
+default = ["defmt", "defmt-rtt"]

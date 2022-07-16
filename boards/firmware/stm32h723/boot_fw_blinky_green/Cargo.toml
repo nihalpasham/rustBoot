@@ -2,6 +2,7 @@
 name = "stm32h723_bootfw"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,10 +13,9 @@ doctest = false
 test = false
 
 [dependencies]
-cortex-m = "0.7.1"
-cortex-m-rt = "0.6.15"
-panic-probe = "0.3.0"
-defmt = {version = "0.3.1", optional = true}
+cortex-m = "0.7.5"
+cortex-m-rt = "0.7.1"
+defmt = {version = "0.3.2", optional = true}
 defmt-rtt = {version = "0.3.2", optional = true}
 rustBoot-hal ={path = "../../../hal",default-features = false,features = ["stm32h723"]}
 rustBoot-update = {path = "../../../update", features = ["stm32h723"]}

@@ -4,7 +4,6 @@
 
 #[cfg(feature = "defmt")]
 use defmt_rtt as _; // global logger
-use panic_probe as _;
 
 use stm32h7xx_hal::{pac, prelude::*};
 
@@ -58,5 +57,12 @@ fn main() -> ! {
     loop {
         led2.toggle();
         delay.delay_ms(500_u16);
+    }
+}
+
+#[panic_handler] // panicking behavior
+fn panic(_: &core::panic::PanicInfo) -> ! {
+    loop {
+        cortex_m::asm::bkpt();
     }
 }
