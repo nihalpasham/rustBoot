@@ -36,6 +36,7 @@ jobs:
           cargo +nightly test --package rustBoot --lib --features stm32h723 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32f746 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32f334 -- parser::tests --nocapture
+          cargo +nightly test --package rustBoot --lib --features rp2040 -- parser::tests --nocapture
       - name: mcusigner - unit tests
         run: |
           cargo +nightly test --package rbsigner --bin rbsigner -- mcusigner::tests --nocapture
