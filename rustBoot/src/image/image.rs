@@ -20,8 +20,8 @@ use sha2::Sha256;
 use sha2::Sha384;
 // use sha2::digest::{Digest};
 
-use core::convert::TryInto;
 use core::cell::OnceCell;
+use core::convert::TryInto;
 
 /// Singleton to ensure we only ever have one instance of the `BOOT` partition
 static mut BOOT: OnceCell<PartDescriptor<Boot>> = OnceCell::new();
