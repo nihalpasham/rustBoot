@@ -17,5 +17,6 @@ stm32f446 = ["mcu", "rustBoot/stm32f446"]
 stm32h723 = ["mcu", "rustBoot/stm32h723"]
 stm32f746 = ["mcu", "rustBoot/stm32f746"]
 stm32f334 = ["mcu", "rustBoot/stm32f334"]
+rp2040 = ["mcu", "rustBoot/rp2040"]
 
 mcu = []
