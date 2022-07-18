@@ -13,7 +13,8 @@ pub mod nrf;
 pub mod rpi;
 #[cfg(feature = "stm")]
 pub mod stm;
-
+#[cfg(feature = "pico")]
+pub mod pico;
 /// This is the trait that abstracts out the necessary hardware-specific flash operations
 /// such as
 ///
@@ -50,6 +51,8 @@ pub fn boot_from(fw_base_address: usize) -> ! {
     #[cfg(feature = "stm32f334")]
     crate::stm::stm32f334::boot_from(fw_base_address);
 
-
+    #[cfg(feature = "rp2040")]
+    crate::pico::rp2040::boot_from(fw_base_address);
+    
     panic!(": unrecognized board")
 }
