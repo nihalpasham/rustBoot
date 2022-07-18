@@ -20,7 +20,7 @@ use sha2::Sha256;
 use sha2::Sha384;
 // use sha2::digest::{Digest};
 
-use core::lazy::OnceCell;
+use core::cell::OnceCell;
 use core::convert::TryInto;
 
 /// Singleton to ensure we only ever have one instance of the `BOOT` partition
