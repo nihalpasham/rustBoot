@@ -74,6 +74,9 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
         &"stm32f334" => {
             cmd!("cargo build --release").run()?;
         }
+        &"rp2040" => {
+            cmd!("cargo build --release").run()?;
+        }
         _ => {
             println!("board not supported");
         }
@@ -166,7 +169,16 @@ fn sign_packages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(), 
             cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f334_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
+        "rp2040" => {
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv6m-none-eabi/release/rp2040_bootfw -O binary rp2040_bootfw.bin").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv6m-none-eabi/release/rp2040_updtfw -O binary rp2040_updtfw.bin").run()?;
 
+            let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/rp2040_bootfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/rp2040_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }
@@ -229,7 +241,15 @@ fn flash_signed_fwimages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Res
             cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f334r8tx stm32f334_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
+        "rp2040" => {
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
+            let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip RP2040 rp2040_bootfw_v{boot_ver}_signed.bin").run()?;
 
+            let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
+            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip RP2040 rp2040_updtfw_v{updt_ver}_signed.bin").run()?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }
@@ -266,7 +286,11 @@ fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("cargo flash --chip stm32f334r8tx --release").run()?;
             Ok(())
         }
-
+        "rp2040" => {
+            let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
+            cmd!("cargo flash --chip RP2040 --release").run()?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }
@@ -322,7 +346,14 @@ fn full_image_flash(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(
             flash_rustBoot(target)?;
             Ok(())
         }
-
+        "rp2040" => {
+            build_rustBoot(target)?;
+            sign_packages(target, boot_ver, updt_ver)?;
+            //cmd!("probe-rs-cli erase --chip RP2040").run()?;
+            flash_signed_fwimages(target, boot_ver, updt_ver)?;
+            flash_rustBoot(target)?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }
@@ -433,7 +464,22 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
                 .run()?;
             Ok(())
         }
+        "rp2040" => {
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
+            // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
+            cmd!("pyocd erase -t rp2040 -s 0x0").run()?;
+            let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t rp2040 -s {boot_trailer_magic}").run()?;
+            cmd!("pyocd flash -t rp2040 --base-address {boot_trailer_magic} trailer_magic.bin")
+                .run()?;
 
+            let updt_trailer_magic =
+                format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t rp2040 -s {updt_trailer_magic}").run()?;
+            cmd!("pyocd flash -t rp2040 --base-address {updt_trailer_magic} trailer_magic.bin")
+                .run()?;
+            Ok(())
+        }
         _ => todo!(),
     }
 }

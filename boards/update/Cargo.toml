@@ -36,4 +36,4 @@ stm32f446 = ["rustBoot/stm32f446"]
 stm32h723 = ["rustBoot/stm32h723"]
 stm32f746 = ["rustBoot/stm32f746"]
 stm32f334 = ["rustBoot/stm32f334"]
-
+rp2040 = ["rustBoot/rp2040"]
