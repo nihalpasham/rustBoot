@@ -16,29 +16,10 @@ fn main() {
     let args = env::args().collect::<Vec<_>>();
     let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
 
-    //String concatenation
-    let image_version_args = String::from(args[5]);
-    #[rustfmt::skip]
-    let input_image_args = String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]);
-    let output_image = input_image_args + "_v" + &image_version_args + "_signed";
-
-    //firmware version
-    let image_version_value: u32 = args[5].parse().unwrap();
-    let version: [u8; 4] = image_version_value.to_le_bytes();
-
     let mut key_file = Vec::new();
     let mut kf = fs::File::open(args[4]).expect("Need path to key_file as argument");
     kf.read_to_end(&mut key_file).unwrap();
     let sk: SigningKeyType;
-
-    println!("\nUpdate type:    Firmware");
-    println!("Curve type:       {}", args[3]);
-    #[rustfmt::skip]
-    println!("Input image:      {}.bin", String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
-    #[rustfmt::skip]
-    println!("Public key:       {}.der", String::from(args[4].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
-    println!("Image version:    {}", args[5]);
-    println!("Output image:     {}.bin", output_image);
 
     match args[3] {
         "nistp256" => {
@@ -59,6 +40,14 @@ fn main() {
             let mut itb = fs::File::open(args[2]).expect("Need path to itb_blob as argument");
             itb.read_to_end(&mut image_blob).unwrap();
 
+            println!("\nImage type:       fit-image");
+            println!("Curve type:       {}", args[3]);
+            #[rustfmt::skip]
+            println!("Input image:      {}.bin", String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
+            #[rustfmt::skip]
+            println!("Public key:       {}.der", String::from(args[4].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
+            println!("Output image:     signed-rpi4-apertis.itb");
+
             let signed_fit = sign_fit(image_blob, sk);
             match signed_fit {
                 Ok(val) => {
@@ -72,7 +61,7 @@ fn main() {
                         Ok(mut file) => {
                             let bytes_written = file.write(val.as_slice());
                             if let Ok(val) = bytes_written {
-                                println!("bytes_written: {:?}", val);
+                                println!("\nbytes_written: {:?}", val);
                             }
                         }
                         Err(e) => panic!("error: {:?}", e),
@@ -82,6 +71,25 @@ fn main() {
             }
         }
         "mcu-image" => {
+            //String concatenation
+            let image_version_args = String::from(args[5]);
+            #[rustfmt::skip]
+            let input_image_args = String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]);
+            let output_image = input_image_args + "_v" + &image_version_args + "_signed";
+
+            println!("\nImage type:       mcu-image");
+            println!("Curve type:       {}", args[3]);
+            #[rustfmt::skip]
+            println!("Input image:      {}.bin", String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
+            #[rustfmt::skip]
+            println!("Public key:       {}.der", String::from(args[4].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
+            println!("Image version:    {}", args[5]);
+            println!("Output image:     {}.bin", output_image);
+
+            //firmware version
+            let image_version_value: u32 = args[5].parse().unwrap();
+            let version: [u8; 4] = image_version_value.to_le_bytes();
+
             let mut mcu_image =
                 fs::File::open(args[2]).expect("Need path to mcu_image binary as argument");
             mcu_image.read_to_end(&mut image_blob).unwrap();
