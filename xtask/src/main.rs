@@ -18,6 +18,7 @@ fn main() -> Result<(), anyhow::Error> {
         ["test", "rustBoot"] => test_rustBoot(),
         [board, "build", "pkgs-for",]    => build_rustBoot(board),
         [board, "sign" , "pkgs-for", boot_ver, updt_ver]    => sign_packages(board, boot_ver, updt_ver),
+        [_board, "sign" , "fit-image",]    => sign_fit_image(),
         #[cfg(feature = "mcu")]
         [board, "flash", "signed-pkg", boot_ver, updt_ver]  => flash_signed_fwimages(board, boot_ver, updt_ver),
         [board, "flash", "rustBoot",]    => flash_rustBoot(board),
@@ -29,7 +30,9 @@ fn main() -> Result<(), anyhow::Error> {
         _ => {
             println!("USAGE: cargo [board] test rustBoot");
             println!("OR");
-            println!("USAGE: cargo [board] [build|sign|flash] [pkgs-for]|signed-pkg] [boot-ver] [updt-ver]");
+            println!("USAGE: cargo [board] [build|sign|flash] [pkgs-for|signed-pkg] [boot-ver] [updt-ver]");
+            println!("OR");
+            println!("USAGE: cargo [board] [sign] [fit-image]");
             println!("OR");
             println!("USAGE: cargo [board] [build-sign-flash] [rustBoot] [boot-ver] [updt-ver]");
             Ok(())
@@ -101,6 +104,15 @@ fn build_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
     )?;
     cmd!("cargo build --release").run()?;
     build_rustBoot_only(target)?;
+    Ok(())
+}
+
+fn sign_fit_image() -> Result<(), anyhow::Error> {
+    let _p = xshell::pushd(root_dir().join("boards/bootloaders/rpi4/apertis"))?;
+    cmd!("mkimage -f rpi4-apertis.its rpi4-apertis.itb").run()?;
+    let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+    cmd!("cargo run fit-image ../boards/bootloaders/rpi4/apertis/rpi4-apertis.itb nistp256 ../boards/sign_images/keygen/ecc256.der").run()?;
+
     Ok(())
 }
 
