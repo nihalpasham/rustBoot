@@ -32,9 +32,7 @@ mod stm32h723zg_constants {
     pub const UNLOCKKEY1  : u32 = 0x45670123;
     pub const UNLOCKKEY2  : u32 = 0xCDEF89AB;
     pub const PSIZE_X8    : u8 = 0b00;
-    pub const PSIZE_X16   : u8 = 0b01;
     pub const PSIZE_X32   : u8 = 0b10;
-    pub const PSIZE_X64   : u8  = 0b11;
     pub const KB          : u32 = 1024;
 }
 
@@ -99,6 +97,9 @@ impl FlashInterface for FlashWriterEraser {
                     w.psize().bits(PSIZE_X8).pg().set_bit().fw().set_bit()
                 });
 
+                cortex_m::asm::isb();
+                cortex_m::asm::dsb();
+                
                 for ii in 0..8 {
                     unsafe {
                         *dst = *src;
@@ -106,6 +107,9 @@ impl FlashInterface for FlashWriterEraser {
                         dst = ((dst as u32) + 4) as *mut u32; // increment pointer by 4
                     }
                 }
+
+                cortex_m::asm::isb();
+                cortex_m::asm::dsb();
                 i += 32;
             } else {
                 let mut off = ((addr as u32) + i) - ((((addr as u32) + i) >> 5) << 5);

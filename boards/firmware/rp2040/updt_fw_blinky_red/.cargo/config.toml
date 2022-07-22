@@ -1,6 +1,6 @@
 
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-# runner = "probe-run --chip RP2040"
+runner = "probe-run --chip RP2040"
 # runner = "elf2uf2-rs -d"
 # runner = "arm-none-eabi-gdb -q -x openocd.gdb"
 

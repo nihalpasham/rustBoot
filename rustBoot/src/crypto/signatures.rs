@@ -116,7 +116,7 @@ where
     }
 }
 
-enum PubkeyTypes {
+pub enum PubkeyTypes {
     #[allow(dead_code)]
     Secp256k1,
     #[allow(dead_code)]
@@ -126,7 +126,7 @@ enum PubkeyTypes {
     NistP384,
 }
 
-enum VerifyingKeyTypes {
+pub enum VerifyingKeyTypes {
     #[cfg(feature = "secp256k1")]
     VKey256k1(VerifyingKey),
     #[cfg(feature = "nistp256")]
@@ -141,7 +141,7 @@ enum VerifyingKeyTypes {
 ///
 /// *Note: this function can be extended to add support for HW
 /// secure elements*
-fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
+pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
     match pk {
         #[cfg(feature = "secp256k1")]
         PubkeyTypes::Secp256k1 => {
