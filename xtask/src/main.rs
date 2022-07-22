@@ -262,14 +262,6 @@ fn flash_signed_fwimages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Res
             cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip RP2040 rp2040_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
-        "rp2040" => {
-            let _p = xshell::pushd(root_dir().join("boards/rbSigner/signed_images"))?;
-            let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip RP2040 rp2040_bootfw_v1234_signed.bin").run()?;
-            let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
-            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip RP2040 rp2040_updtfw_v1235_signed.bin").run()?;
-            Ok(())
-        }
         _ => todo!(),
     }
 }
@@ -374,14 +366,7 @@ fn full_image_flash(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(
             flash_rustBoot(target)?;
             Ok(())
         }
-        "rp2040" => {
-            build_rustBoot(target)?;
-            sign_packages(target)?;
-            //cmd!("probe-rs-cli erase --chip RP2040").run()?;
-            flash_signed_fwimages(target)?;
-            flash_rustBoot(target)?;
-            Ok(())
-        }
+
         _ => todo!(),
     }
 }
