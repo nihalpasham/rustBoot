@@ -54,6 +54,5 @@ pub fn boot_from(fw_base_address: usize) -> ! {
 
     #[cfg(feature = "rp2040")]
     crate::pico::rp2040::boot_from(fw_base_address);
-
     panic!(": unrecognized board")
 }
