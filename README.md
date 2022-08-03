@@ -20,10 +20,10 @@ rustBoot aims to offer an OS and micro-architecture agnostic (i.e. highly portab
 - [x] anti-rollback protection via version numbering.
 - [x] a fully memory safe core-bootloader implementation with safe parsers and firmware-update logic.
 - [x] power-interruptible firmware updates along with the assurance of fall-back availability.
+- [x] a `signing utility` to sign bare-metal firmware and fit-image(s), written in pure rust.
 
 ## Features planned:
 
-- [ ] switch to `rust-based signing tools` for manifest-header creation, key-generation and firmware signing to improve scalability and security (currently examples use a python implementation for this). 
 - [ ] support for external flash devices (ex: SPI flash) and serial/console logging interfaces.
 - [ ] support for `ARM TrustZone-M and A` and certified `secure hardware elements` - microchip ATECC608a, NXP SE050, STSAFE-100
 - [ ] support for a highly secure and efficient `firmware transport` method over end-end mutually authenticated and encrypted channels via [ockam-networking-libraries](https://github.com/ockam-network/ockam/tree/develop/documentation/use-cases/end-to-end-encryption-with-rust#readme).
