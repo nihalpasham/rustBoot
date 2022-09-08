@@ -33,6 +33,7 @@ jobs:
           cargo +nightly test --package rustBoot --lib --features nrf52840 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32f411 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32f446 -- parser::tests --nocapture
+          cargo +nightly test --package rustBoot --lib --features stm32f469 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32h723 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32f746 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32f334 -- parser::tests --nocapture
@@ -85,6 +86,13 @@ jobs:
           use-cross: false
           command: run
           args: -p xtask --features stm32f446 -- stm32f446 build rustBoot-only
+      - name: stm32f469
+        if: matrix.target == 'thumbv7em-none-eabihf'
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: run
+          args: -p xtask --features stm32f469 -- stm32f469 build rustBoot-only
       - name: stm32h723
         if: matrix.target == 'thumbv7em-none-eabihf'
         uses: actions-rs/cargo@v1

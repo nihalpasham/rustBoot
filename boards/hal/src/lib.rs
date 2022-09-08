@@ -43,6 +43,9 @@ pub fn boot_from(fw_base_address: usize) -> ! {
     #[cfg(feature = "stm32f446")]
     crate::stm::stm32f446::boot_from(fw_base_address);
 
+    #[cfg(feature = "stm32f469")]
+    crate::stm::stm32f469::boot_from(fw_base_address);
+
     #[cfg(feature = "stm32h723")]
     crate::stm::stm32h723::boot_from(fw_base_address);
 

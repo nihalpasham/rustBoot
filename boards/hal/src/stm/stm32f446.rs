@@ -47,7 +47,7 @@ impl FlashInterface for FlashWriterEraser {
 
     /// This method is used to erase data on flash
     ///
-    /// In STM32F411 only sector erase is available. whatever be the length of bytes we pass to this function will erase
+    /// In STM32F446 only sector erase is available. whatever be the length of bytes we pass to this function will erase
     /// the whole sector, whichever the sector the address belong to.
     ///
     /// Method arguments:

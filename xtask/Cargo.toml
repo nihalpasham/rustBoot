@@ -14,6 +14,7 @@ xshell = "0.1.9"
 nrf52840 = ["mcu", "rustBoot/nrf52840"]
 stm32f411 = ["mcu", "rustBoot/stm32f411"]
 stm32f446 = ["mcu", "rustBoot/stm32f446"]
+stm32f469 = ["mcu", "rustBoot/stm32f469"]
 stm32h723 = ["mcu", "rustBoot/stm32h723"]
 stm32f746 = ["mcu", "rustBoot/stm32f746"]
 stm32f334 = ["mcu", "rustBoot/stm32f334"]
