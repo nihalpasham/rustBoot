@@ -68,6 +68,9 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
         &"stm32f446" => {
             cmd!("cargo build --release").run()?;
         }
+        &"stm32f469" => {
+            cmd!("cargo build --release").run()?;
+        }
         &"stm32h723" => {
             cmd!("cargo build --release").run()?;
         }
@@ -151,6 +154,16 @@ fn sign_packages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(), 
             cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f446_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
+        "stm32f469" => {
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f469_bootfw -O binary stm32f469_bootfw.bin").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32f469_updtfw -O binary stm32f469_updtfw.bin").run()?;
+
+            let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f469_bootfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/stm32f469_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
+            Ok(())
+        }
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv7em-none-eabihf/release/stm32h723_bootfw -O binary stm32h723_bootfw.bin").run()?;
@@ -226,6 +239,15 @@ fn flash_signed_fwimages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Res
             cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip stm32f446retx stm32f446_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
+        "stm32f469" => {
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
+            let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip STM32F469NIHx stm32f469_bootfw_v{boot_ver}_signed.bin").run()?;
+
+            let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
+            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip STM32F469NIHx stm32f469_updtfw_v{updt_ver}_signed.bin").run()?;
+            Ok(())
+        }
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
@@ -283,6 +305,11 @@ fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("cargo flash --chip stm32f446vetx --release").run()?;
             Ok(())
         }
+        "stm32f469" => {
+            let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
+            cmd!("cargo flash --chip STM32F469NIHx --release").run()?;
+            Ok(())
+        }
         "stm32h723" => {
             let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
             cmd!("cargo flash --chip STM32H723ZGTx --release").run()?;
@@ -330,6 +357,14 @@ fn full_image_flash(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(
             build_rustBoot(target)?;
             sign_packages(target, boot_ver, updt_ver)?;
             cmd!("probe-rs-cli erase --chip stm32f446retx").run()?;
+            flash_signed_fwimages(target, boot_ver, updt_ver)?;
+            flash_rustBoot(target)?;
+            Ok(())
+        }
+        "stm32f469" => {
+            build_rustBoot(target)?;
+            sign_packages(target, boot_ver, updt_ver)?;
+            cmd!("probe-rs-cli erase --chip STM32F469NIHx").run()?;
             flash_signed_fwimages(target, boot_ver, updt_ver)?;
             flash_rustBoot(target)?;
             Ok(())
@@ -426,6 +461,22 @@ fn erase_and_flash_trailer_magic(target: &&str) -> Result<(), anyhow::Error> {
                 format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
             cmd!("pyocd erase -t stm32f446 -s {updt_trailer_magic}").run()?;
             cmd!("pyocd flash -t stm32f446 --base-address {updt_trailer_magic} trailer_magic.bin")
+                .run()?;
+            Ok(())
+        }
+        "stm32f4696" => {
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
+            // just to ensure that an existing bootloader doesnt start to boot automatically - during a test
+            cmd!("pyocd erase -t stm32f469 -s 0x0").run()?;
+            let boot_trailer_magic = format!("0x{:x}", BOOT_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t stm32f469 -s {boot_trailer_magic}").run()?;
+            cmd!("pyocd flash -t stm32f469 --base-address {boot_trailer_magic} trailer_magic.bin")
+                .run()?;
+
+            let updt_trailer_magic =
+                format!("0x{:x}", UPDATE_PARTITION_ADDRESS + PARTITION_SIZE - 4);
+            cmd!("pyocd erase -t stm32f469 -s {updt_trailer_magic}").run()?;
+            cmd!("pyocd flash -t stm32f469 --base-address {updt_trailer_magic} trailer_magic.bin")
                 .run()?;
             Ok(())
         }

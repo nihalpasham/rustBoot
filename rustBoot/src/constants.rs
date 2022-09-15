@@ -35,6 +35,17 @@ pub const SWAP_PARTITION_ADDRESS: usize = 0x08060000;
 #[cfg(feature = "stm32f446")]
 pub const UPDATE_PARTITION_ADDRESS: usize = 0x08040000;
 
+#[cfg(feature = "stm32f469")]
+pub const SECTOR_SIZE: usize = 0x20000; // 128kb max sector size
+#[cfg(feature = "stm32f469")]
+pub const PARTITION_SIZE: usize = 0x60000; // 3 sectors per partition (boot or swap)
+#[cfg(feature = "stm32f469")]
+pub const BOOT_PARTITION_ADDRESS: usize = 0x08020000; // 3 sectors (128k) large, ends at 0x08080000-1
+#[cfg(feature = "stm32f469")]
+pub const UPDATE_PARTITION_ADDRESS: usize = 0x08080000; // 3 sectors (128k) large, ends at 0x080e0000-1
+#[cfg(feature = "stm32f469")]
+pub const SWAP_PARTITION_ADDRESS: usize = 0x080e0000;
+
 #[cfg(feature = "stm32h723")]
 pub const SECTOR_SIZE: usize = 0x20000;
 #[cfg(feature = "stm32h723")]
