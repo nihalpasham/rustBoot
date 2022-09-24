@@ -15,8 +15,9 @@ pub fn sign_fit(itb_blob: Vec<u8>, itb_version: u32, sk_type: SigningKeyType) ->
     let signed_itb_blob = match sk_type {
         #[cfg(feature = "nistp256")]
         SigningKeyType::NistP256(sk) => {
-            let (prehashed_digest, _) = prepare_img_hash::<Sha256, 32, 64, 4>(itb_blob.as_slice(), itb_version)
-                .map_err(|_v| RbSignerError::BadHashValue)?;
+            let (prehashed_digest, _) =
+                prepare_img_hash::<Sha256, 32, 64, 4>(itb_blob.as_slice(), itb_version)
+                    .map_err(|_v| RbSignerError::BadHashValue)?;
             let signature = sk
                 .try_sign_digest(prehashed_digest)
                 .map_err(|v| RbSignerError::SignatureError(v))?;
@@ -48,10 +49,10 @@ fn set_config_signature(
         Reader::get_header(itb_blob.as_slice()).map_err(|e| RbSignerError::BadImageHeader(e))?;
     let struct_offset = header.struct_offset as usize;
     let offset = node_iter.get_offset() + struct_offset;
-    // the len component of the signature node's `value` property is located at this offset 
+    // the len component of the signature node's `value` property is located at this offset
     let sig_len_offset = offset - 12;
     info!("offset: {:?}", offset);
-    info!("string_value offset: {:?}", header.strings_offset);  
+    info!("string_value offset: {:?}", header.strings_offset);
 
     match signature {
         SignatureType::NistP256(sig) => {
@@ -64,7 +65,7 @@ fn set_config_signature(
                 .enumerate()
                 .for_each(|(idx, byte)| *byte = sig_len[idx]);
 
-            // set the signature bytes i.e. the signature node's value property is set. 
+            // set the signature bytes i.e. the signature node's value property is set.
             let remaining = itb_blob.split_off(offset);
             let _ = itb_blob.split_off(offset - 4);
             itb_blob.extend_from_slice(bytes);

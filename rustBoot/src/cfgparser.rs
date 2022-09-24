@@ -192,7 +192,7 @@ fn passive_config(input: &str) -> IResult<&str, PassiveConf> {
 /// passive components. The passive componets may contain optional fields such `image_name`,
 /// `image_version` and `update_status`
 ///
-/// **note:** for an example of what constitutes a `valid config file`, please see the `updt.txt` 
+/// **note:** for an example of what constitutes a `valid config file`, please see the `updt.txt`
 /// in the rpi4 example.
 pub fn parse_config(input: &str) -> IResult<&str, (ActiveConf, PassiveConf)> {
     tuple((active_config, passive_config))(input)
@@ -431,7 +431,7 @@ mod tests {
             ),
             Ok((
                 "image_name=
-                image_version=ver_34488735
+                image_version=ts_34488735
                 update_status=updating",
                 (
                     ActiveConf {

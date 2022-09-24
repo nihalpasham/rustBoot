@@ -62,7 +62,7 @@ pub struct DirEntry {
 #[derive(Debug, PartialEq, Eq)]
 pub struct LongFileName {
     pub(crate) contents: [char; 0xff],
-    /// offset into `LongFileName::contents`, represents end of file name. 
+    /// offset into `LongFileName::contents`, represents end of file name.
     pub(crate) end_offset: u8,
 }
 /// An MS-DOS 8.3 filename. 7-bit ASCII only. All lower-case is converted to
@@ -277,8 +277,8 @@ impl DirEntry {
 impl LongFileName {
     /// Allowable charactes for the file name are
     /// 0～9 A～Z ! # $ % & ' ( ) - @ ^ _ ` { } ~
-    /// in ASCII characters and extended characters (\x80 - \xFF). 
-    /// 
+    /// in ASCII characters and extended characters (\x80 - \xFF).
+    ///
     /// *note:* extended character set can cause compatibility issues in different systems
     /// `rustBoot` does not support the extended character set.
     pub fn create_from_str(name: &str) -> Self {
@@ -303,9 +303,9 @@ impl LongFileName {
         }
     }
 
-    /// Returns the length of a long-file name. 
-    /// 
-    /// **note:** according to the fat spec, long file names can have at most 256 characters. 
+    /// Returns the length of a long-file name.
+    ///
+    /// **note:** according to the fat spec, long file names can have at most 256 characters.
     pub fn len(&self) -> u8 {
         self.end_offset
     }
@@ -805,12 +805,13 @@ mod tests {
     fn test_lfn_contains() {
         let lfn = LongFileName::create_from_str("signed-v1663342128.itb");
         let test_slice_1 = [' '; 13];
-        let test_slice_2 = ['s', 'i', 'g', 'n', 'e', 'd', '-', 'v', '1', '6', '6', '3', '3',];
+        let test_slice_2 = [
+            's', 'i', 'g', 'n', 'e', 'd', '-', 'v', '1', '6', '6', '3', '3',
+        ];
 
         let res1 = lfn.contains(&test_slice_1);
         let res2 = lfn.contains(&test_slice_2);
         assert_eq!(res1, false);
         assert_eq!(res2, true)
-
     }
 }

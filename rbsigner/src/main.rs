@@ -52,7 +52,7 @@ fn main() {
                 Some(ts) => u32::from_be_bytes(ts.try_into().unwrap()),
                 None => panic!("bad itb file, doesnt contain a timestamp"),
             };
-            
+
             let version_string = timestamp.to_string();
             let version = timestamp;
             let output_itb_name = String::from(format!("signed-v{version_string}.itb").as_str());

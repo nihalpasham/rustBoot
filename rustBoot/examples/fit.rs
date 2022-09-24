@@ -2,19 +2,16 @@ use rustBoot::dt::{parse_fit, prepare_img_hash, verify_fit, Reader};
 use sha2::{Digest, Sha256};
 
 use std::convert::TryInto;
+use std::env;
 use std::fs;
 use std::io::Read;
-use std::env;
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
     let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
 
     let mut buf = Vec::new();
-    let mut file = fs::File::open(
-        args[1]
-    )
-    .expect("Need path to itb_blob as argument");
+    let mut file = fs::File::open(args[1]).expect("Need path to itb_blob as argument");
     file.read_to_end(&mut buf).unwrap();
     let version = args[2].parse().expect("bad version: unable to parse");
 

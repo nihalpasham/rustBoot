@@ -23,8 +23,8 @@ pub enum Error {
     BadValueStr,
     /// DTB format version is less than last compatible version.
     BadVersion,
-    /// Special case: Timestamp in the supplied fit-image does 
-    /// not match the `updt.txt` version. 
+    /// Special case: Timestamp in the supplied fit-image does
+    /// not match the `updt.txt` version.
     FitVersionMismatch,
     /// The supplied buffer was exhausted.
     BufferExhausted,

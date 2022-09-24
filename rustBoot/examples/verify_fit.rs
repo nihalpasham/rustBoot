@@ -8,7 +8,7 @@ pub fn verify_authenticity(itb_blob: &[u8], itb_version: u32) -> bool {
     info!("\x1b[5m\x1b[31mauthenticating fit-image...\x1b[0m");
     let header = Reader::get_header(itb_blob).unwrap();
     let total_size = header.total_size;
-    let val = match verify_fit::<32, 64, 4>( &itb_blob[..total_size as usize], itb_version) {
+    let val = match verify_fit::<32, 64, 4>(&itb_blob[..total_size as usize], itb_version) {
         Ok(val) => {
             print!(
                 "######## \x1b[33mecdsa signature\x1b[0m checks out, \

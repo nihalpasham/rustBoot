@@ -401,7 +401,8 @@ where
                 unsafe {
                     match IS_PASSIVE_SELECTED.get() {
                         Some(_val) => {
-                            let _ = FALLBACK_TO_ACTIVE_IMG.get_or_init(|| true); // fallback only for passive version mismatches
+                            let _ = FALLBACK_TO_ACTIVE_IMG.get_or_init(|| true);
+                            // fallback only for passive version mismatches
                         }
                         None => {} // active version mismatches just passthrough. we should just panic at some later point.
                     }
