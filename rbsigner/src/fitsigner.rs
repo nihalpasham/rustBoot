@@ -1,4 +1,5 @@
 use crate::curve::*;
+use log::info;
 use sha2::Sha256;
 use signature::DigestSigner;
 
@@ -10,11 +11,11 @@ use rustBoot::dt::{prepare_img_hash, update_dtb_header, Reader};
 /// NOTE:
 /// - the image tree blob must be a `rustBoot` compliant fit-image.
 ///
-pub fn sign_fit(itb_blob: Vec<u8>, sk_type: SigningKeyType) -> Result<Vec<u8>> {
+pub fn sign_fit(itb_blob: Vec<u8>, itb_version: u32, sk_type: SigningKeyType) -> Result<Vec<u8>> {
     let signed_itb_blob = match sk_type {
         #[cfg(feature = "nistp256")]
         SigningKeyType::NistP256(sk) => {
-            let (prehashed_digest, _) = prepare_img_hash::<Sha256, 32, 64, 4>(itb_blob.as_slice())
+            let (prehashed_digest, _) = prepare_img_hash::<Sha256, 32, 64, 4>(itb_blob.as_slice(), itb_version)
                 .map_err(|_v| RbSignerError::BadHashValue)?;
             let signature = sk
                 .try_sign_digest(prehashed_digest)
@@ -47,18 +48,23 @@ fn set_config_signature(
         Reader::get_header(itb_blob.as_slice()).map_err(|e| RbSignerError::BadImageHeader(e))?;
     let struct_offset = header.struct_offset as usize;
     let offset = node_iter.get_offset() + struct_offset;
+    // the len component of the signature node's `value` property is located at this offset 
     let sig_len_offset = offset - 12;
+    info!("offset: {:?}", offset);
+    info!("string_value offset: {:?}", header.strings_offset);  
 
     match signature {
         SignatureType::NistP256(sig) => {
             let bytes = sig.as_ref();
-            let sig_len: [u8; 4] = (bytes.len() as u32).to_le_bytes();
+            // as per DTS spec, all `length fields` are 4 bytes in size
+            let sig_len: [u8; 4] = (bytes.len() as u32).to_be_bytes();
             // update len field for signature's value property
             let _ = &itb_blob[sig_len_offset..sig_len_offset + 4]
                 .iter_mut()
                 .enumerate()
                 .for_each(|(idx, byte)| *byte = sig_len[idx]);
 
+            // set the signature bytes i.e. the signature node's value property is set. 
             let remaining = itb_blob.split_off(offset);
             let _ = itb_blob.split_off(offset - 4);
             itb_blob.extend_from_slice(bytes);

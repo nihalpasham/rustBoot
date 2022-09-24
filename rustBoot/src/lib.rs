@@ -1,7 +1,8 @@
 #![cfg_attr(not(test), no_std)]
 #![allow(non_snake_case)]
-#![feature(once_cell, is_sorted, slice_as_chunks)]
+#![feature(once_cell, is_sorted, slice_as_chunks, bigint_helper_methods)]
 
+pub mod cfgparser;
 #[cfg(feature = "mcu")]
 pub mod constants;
 pub mod crypto;
@@ -37,11 +38,15 @@ pub enum RustbootError {
     FieldNotSet,
     /// Error while performing an `EC Crypto operation`
     ECCError,
-    /// The image in a given partition is malformed. Ex:`magic` field or `trailer magic`
-    /// has an invalid value.
+    /// The image is malformed. Ex: for mcu(s) this could be an invalid
+    /// `magic` field or `trailer magic`
     InvalidImage,
     /// Something's wrong with the signature stored in the header.
     BadSignature,
+    /// The version number of the img is invalid. For fit-images, this
+    /// could be a case where the timestamp in the supplied fit-image does
+    /// not match the `updt.txt` version.
+    BadVersion,
     /// The value associated with the requested TLV is too large i.e. invalid.
     InvalidHdrFieldLength,
     /// Suppose to be unreachable
@@ -76,6 +81,7 @@ impl fmt::Display for RustbootError {
             &RustbootError::ECCError                 => write!(f, "EC Crypto operation failed"),
             &RustbootError::InvalidImage             => write!(f, "The image is not a valid RUSTBOOT image"),
             &RustbootError::BadSignature             => write!(f, "Bad signature"),
+            &RustbootError::BadVersion               => write!(f, "Bad image version of fit-image version mismatch"),
             &RustbootError::InvalidHdrFieldLength    => write!(f, "The length of the requested field is invalid"),
             &RustbootError::Unreachable              => write!(f, "An unreachable state was reached."),
             &RustbootError::NullValue                => write!(f, "got a NULL value"),

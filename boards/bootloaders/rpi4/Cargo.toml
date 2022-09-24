@@ -15,3 +15,4 @@ log = {version = "0.4.16", default-features = false}
 rustBoot = {path = "../../../rustBoot", default-features = true}
 rustBoot-hal = {path = "../../hal", default-features = false, features = ["rpi", "rpi4"]}
 tock-registers = {version = "0.7.x", default-features = false, features = ["register_types"]}
+zeroize = {version = "1.5.7", default-features = false, features = ["zeroize_derive"]}

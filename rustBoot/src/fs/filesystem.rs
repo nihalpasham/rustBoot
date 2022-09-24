@@ -57,6 +57,14 @@ pub struct DirEntry {
     pub entry_offset: u32,
 }
 
+/// The long filename system allows a maximum length of 255
+/// UCS-2 characters including spaces and non-alphanumeric characters.
+#[derive(Debug, PartialEq, Eq)]
+pub struct LongFileName {
+    pub(crate) contents: [char; 0xff],
+    /// offset into `LongFileName::contents`, represents end of file name. 
+    pub(crate) end_offset: u8,
+}
 /// An MS-DOS 8.3 filename. 7-bit ASCII only. All lower-case is converted to
 /// upper-case by default.
 #[derive(PartialEq, Eq, Clone)]
@@ -132,7 +140,7 @@ pub enum Mode {
 }
 
 /// Various filename related errors that can occur.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FilenameError {
     /// Tried to create a file with an invalid character.
     InvalidCharacter,
@@ -263,6 +271,43 @@ impl DirEntry {
             entry_block,
             entry_offset,
         }
+    }
+}
+
+impl LongFileName {
+    /// Allowable charactes for the file name are
+    /// 0～9 A～Z ! # $ % & ' ( ) - @ ^ _ ` { } ~
+    /// in ASCII characters and extended characters (\x80 - \xFF). 
+    /// 
+    /// *note:* extended character set can cause compatibility issues in different systems
+    /// `rustBoot` does not support the extended character set.
+    pub fn create_from_str(name: &str) -> Self {
+        let mut lfn = LongFileName {
+            contents: [' '; 0xff],
+            end_offset: 0,
+        };
+        let _ = name
+            .chars()
+            .enumerate()
+            .for_each(|(i, c)| (lfn.contents[i], lfn.end_offset) = (c, i as u8));
+        lfn
+    }
+
+    /// Checks whether `Self` contains the supplied characters.
+    pub fn contains(&self, slice: &[char; 13]) -> bool {
+        let first_part = &self.contents[..13];
+        if first_part == &slice[..] {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Returns the length of a long-file name. 
+    /// 
+    /// **note:** according to the fat spec, long file names can have at most 256 characters. 
+    pub fn len(&self) -> u8 {
+        self.end_offset
     }
 }
 
@@ -725,3 +770,47 @@ impl FilenameError {}
 // End Of File
 //
 // ****************************************************************************
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fs::filesystem;
+
+    #[test]
+    fn test_sfn_create_from_str() {
+        if let Ok(val) = ShortFileName::create_from_str("signed") {
+            assert_eq!("SIGNED", format!("{}", val));
+        };
+        if let Ok(val) = ShortFileName::create_from_str("SIGNED~1") {
+            assert_eq!("SIGNED~1", format!("{}", val));
+        };
+        if let Err(e) = ShortFileName::create_from_str("signed-v1663342128.itb") {
+            assert_eq!(filesystem::FilenameError::NameTooLong, e);
+        };
+    }
+
+    #[test]
+    fn test_lfn_create_from_str() {
+        let name = LongFileName::create_from_str("signed-v1663342128.itb");
+        assert_eq!(
+            [
+                's', 'i', 'g', 'n', 'e', 'd', '-', 'v', '1', '6', '6', '3', '3', '4', '2', '1',
+                '2', '8', '.', 'i', 't', 'b'
+            ],
+            &name.contents[..(name.end_offset + 1) as usize]
+        )
+    }
+
+    #[test]
+    fn test_lfn_contains() {
+        let lfn = LongFileName::create_from_str("signed-v1663342128.itb");
+        let test_slice_1 = [' '; 13];
+        let test_slice_2 = ['s', 'i', 'g', 'n', 'e', 'd', '-', 'v', '1', '6', '6', '3', '3',];
+
+        let res1 = lfn.contains(&test_slice_1);
+        let res2 = lfn.contains(&test_slice_2);
+        assert_eq!(res1, false);
+        assert_eq!(res2, true)
+
+    }
+}

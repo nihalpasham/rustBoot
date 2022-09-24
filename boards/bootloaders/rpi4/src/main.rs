@@ -8,10 +8,14 @@ mod dtb;
 mod fit;
 mod log;
 
-use boot::{boot_kernel, DTB_LOAD_ADDR, KERNEL_LOAD_ADDR};
+use boot::{boot_kernel, DTB_LOAD_ADDR, ITB_LOAD_ADDR, KERNEL_LOAD_ADDR};
 use fit::{load_fit, relocate_and_patch, verify_authenticity};
 
-use rustBoot::fs::controller::{Controller, TestClock, VolumeIdx, FAT_CACHE};
+use rustBoot::{
+    dt::FALLBACK_TO_ACTIVE_IMG,
+    fs::controller::{Controller, TestClock, VolumeIdx},
+    RustbootError,
+};
 use rustBoot_hal::rpi::rpi4::bsp::{
     drivers::{common::interface::DriverManager, driver_manager::driver_manager},
     global,
@@ -26,6 +30,7 @@ use rustBoot_hal::rpi::rpi4::{
     memory::{layout::interface::MMU, mmu::mmu, vmm},
 };
 use rustBoot_hal::{info, println};
+use zeroize::Zeroize;
 
 /// Early init code.
 ///
@@ -59,6 +64,9 @@ fn init_logger() {
 }
 
 /// The main function running after the early init.
+///
+/// active_fitimage=true,image_name=xx.itb,image_version=xxx
+/// is_update_available=true,image_name=xx.itb,image_version=xxx,update_status=updating
 fn kernel_main() -> ! {
     info!(
         "{} version {}",
@@ -96,23 +104,58 @@ fn kernel_main() -> ! {
 
     let mut ctrlr = Controller::new(&EMMC_CONT, TestClock);
     let volume = ctrlr.get_volume(VolumeIdx(0));
-    if let Ok(mut volume) = volume {
-        let _fat_cache = match ctrlr.populate_fat_cache(&volume) {
-            Ok(val) => {
-                info!("fat cache populated ...")
-            }
-            Err(e) => {
-                panic!("error populating fat_cache, {:?}", e)
-            }
-        };
-        let itb_blob = load_fit(&mut volume, &mut ctrlr);
-        let res = verify_authenticity();
+    match volume {
+        Ok(mut volume) => {
+            let _fat_cache = match ctrlr.populate_fat_cache(&volume) {
+                Ok(_val) => {
+                    info!("fat cache populated ...")
+                }
+                Err(e) => {
+                    panic!("error populating fat_cache, {:?}", e)
+                }
+            };
+            let (itb_blob, version) = load_fit(&mut volume, &mut ctrlr);
+            let res = verify_authenticity(version);
 
-        // relocate kernel, ramdisk and patch dtb
-        if res.eq(&true) {
-            let _ = relocate_and_patch(itb_blob);
+            match res {
+                Ok(val) => match val {
+                    true => {
+                        let _ = relocate_and_patch(itb_blob); // relocate kernel, ramdisk and patch dtb
+                    }
+                    false => panic!("signature verification result: {}", val),
+                },
+                Err(e)
+                    if (e == RustbootError::BadVersion
+                        && unsafe { *FALLBACK_TO_ACTIVE_IMG.get().unwrap_or(&false) }) =>
+                {
+                    // passive image version check failed
+                    // falling back to active
+                    // FALLBACK_TO_ACTIVE_IMG is set to true.
+                    {
+                        let _ = unsafe { &mut ITB_LOAD_ADDR.0.zeroize() };
+                        let (itb_blob, version) = load_fit(&mut volume, &mut ctrlr);
+                        let res = verify_authenticity(version);
+                        match res {
+                            Ok(val) => match val {
+                                true => {
+                                    let _ = relocate_and_patch(itb_blob); // relocate kernel, ramdisk and patch dtb
+                                }
+                                false => unreachable!(), // an active_img should always pass signature verification.
+                            },
+                            // by definition, this shouldn't be possible. An active image must have been
+                            // successfully verified and booted at least once.
+                            Err(e) => unreachable!(),
+                        }
+                    }
+                }
+                Err(e) => panic!("error: image verification failed, {}", e),
+            }
         }
-    };
+        Err(e) => {
+            panic!("failed to open fat32 volume/partition, {:?}", e)
+        }
+    }
+
     println!(
         "\x1b[5m\x1b[34m*************** \
             Starting kernel \

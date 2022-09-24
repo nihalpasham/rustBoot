@@ -1,19 +1,22 @@
-#![allow(warnings)]
-use rustBoot::dt::{parse_fit, prepare_img_hash, verify_fit, Reader, Result};
+use rustBoot::dt::{parse_fit, prepare_img_hash, verify_fit, Reader};
 use sha2::{Digest, Sha256};
 
+use std::convert::TryInto;
 use std::fs;
 use std::io::Read;
+use std::env;
 
 fn main() {
+    let args = env::args().collect::<Vec<_>>();
+    let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
+
     let mut buf = Vec::new();
     let mut file = fs::File::open(
-        std::env::args()
-            .nth(1)
-            .expect("Need path to FIT Blob file as argument"),
+        args[1]
     )
-    .unwrap();
+    .expect("Need path to itb_blob as argument");
     file.read_to_end(&mut buf).unwrap();
+    let version = args[2].parse().expect("bad version: unable to parse");
 
     log_init();
 
@@ -27,9 +30,9 @@ fn main() {
         Err(e) => panic!("error: {:?}", e),
     }
 
-    let fit = prepare_img_hash::<Sha256, 32, 64, 4>(buf.as_slice());
+    let fit = prepare_img_hash::<Sha256, 32, 64, 4>(buf.as_slice(), version);
     match fit {
-        Ok((fit_hash, signature)) => {
+        Ok((fit_hash, _signature)) => {
             println!("\nfit_sha: {:x}\n", fit_hash.finalize());
         }
         Err(e) => panic!("error: {:?}", e),
@@ -38,7 +41,7 @@ fn main() {
     let header = Reader::get_header(buf.as_slice()).unwrap();
     println!("header: {:?}\n", header);
 
-    let verified_fit = match verify_fit::<32, 64, 4>(buf.as_slice()) {
+    let _verified_fit = match verify_fit::<32, 64, 4>(buf.as_slice(), version) {
         Ok(val) => {
             print!("\n*********** \x1b[5m\x1b[33mecdsa signature\x1b[0m checks out, \x1b[92mimage is authentic\x1b[0m ***********\n");
             val

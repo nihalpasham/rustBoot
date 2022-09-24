@@ -6,6 +6,7 @@ use curve::SigningKeyType;
 use curve::{import_signing_key, CurveType};
 use fitsigner::sign_fit;
 use mcusigner::sign_mcu_image;
+use rustBoot::dt::Reader;
 
 use std::env;
 use std::fs;
@@ -13,6 +14,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 
 fn main() {
+    // let _ = log_init();
+
     let args = env::args().collect::<Vec<_>>();
     let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
 
@@ -40,31 +43,53 @@ fn main() {
             let mut itb = fs::File::open(args[2]).expect("Need path to itb_blob as argument");
             itb.read_to_end(&mut image_blob).unwrap();
 
+            // get the timestamp
+            let reader = Reader::read(&image_blob.as_slice()).unwrap();
+            let root = &reader.struct_items();
+            let (_, node_iter) = root.path_struct_items("/").next().unwrap();
+
+            let timestamp = match node_iter.get_node_property("timestamp") {
+                Some(ts) => u32::from_be_bytes(ts.try_into().unwrap()),
+                None => panic!("bad itb file, doesnt contain a timestamp"),
+            };
+            
+            let version_string = timestamp.to_string();
+            let version = timestamp;
+            let output_itb_name = String::from(format!("signed-v{version_string}.itb").as_str());
+
             println!("\nImage type:       fit-image");
             println!("Curve type:       {}", args[3]);
             #[rustfmt::skip]
-            println!("Input image:      {}.bin", String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
+            println!("Input image:      {}.itb", String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
+            println!("fit version:      {:?}", version);
             #[rustfmt::skip]
             println!("Public key:       {}.der", String::from(args[4].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
-            println!("Output image:     signed-rpi4-apertis.itb");
+            println!("Output image:     {}", output_itb_name);
 
-            let signed_fit = sign_fit(image_blob, sk);
+            let signed_fit = sign_fit(image_blob, version, sk);
             match signed_fit {
                 Ok(val) => {
                     // println!(
                     //     "signed_fit: {:?}",
                     //     &val.as_slice()[(val.len() - 1071)..(val.len() - 800)]
                     // );
-                    let file =
-                        File::create("../boards/bootloaders/rpi4/apertis/signed-rpi4-apertis.itb");
-                    match file {
-                        Ok(mut file) => {
-                            let bytes_written = file.write(val.as_slice());
-                            if let Ok(val) = bytes_written {
-                                println!("\nbytes_written: {:?}", val);
+                    let out_file = args[2].rsplit_once('/');
+                    match out_file {
+                        Some((f, _)) => {
+                            let file = File::create(format!("{f}/{output_itb_name}").as_str());
+                            match file {
+                                Ok(mut file) => {
+                                    let bytes_written = file.write(val.as_slice());
+                                    if let Ok(val) = bytes_written {
+                                        println!("\nbytes_written: {:?}", val);
+                                    }
+                                }
+                                Err(e) => panic!("error: {:?}", e),
                             }
                         }
-                        Err(e) => panic!("error: {:?}", e),
+                        None => {
+                            panic!("something's wrong with your file_path to itb_blob ")
+                        }
                     }
                 }
                 Err(_e) => {}
@@ -116,4 +141,37 @@ fn main() {
         }
         _ => {}
     }
+}
+
+use log::{Level, Metadata, Record};
+use log::{LevelFilter, SetLoggerError};
+
+struct SimpleLogger;
+
+impl log::Log for SimpleLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Info
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            println!("\x1b[93m[{}]\x1b[0m  {}", record.level(), record.args());
+            match (record.module_path(), record.line()) {
+                (Some(file), Some(line)) => {
+                    println!("\t \u{2a3d} {} @ line:{}", file, line);
+                }
+                (Some(file), None) => println!("\t  \u{2a3d} @ {}", file),
+                (_, None) => {
+                    println!("... ")
+                }
+                (_, Some(line)) => println!("\t  \u{2a3d} {} @ line:{}", record.target(), line),
+            }
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+pub fn log_init() -> core::result::Result<(), SetLoggerError> {
+    log::set_boxed_logger(Box::new(SimpleLogger)).map(|()| log::set_max_level(LevelFilter::Info))
 }

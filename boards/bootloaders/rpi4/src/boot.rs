@@ -7,6 +7,7 @@
 use core::arch::global_asm;
 use cortex_a::{asm, registers::*};
 use tock_registers::interfaces::Writeable;
+use zeroize::Zeroize;
 
 // Assembly counterpart to this file.
 global_asm!(include_str!("boot.s"));
@@ -81,12 +82,20 @@ const MAX_KERNEL_SIZE: usize = 14624 * 4 * 512;
 pub(crate) const MAX_DTB_SIZE: usize = 100 * 512;
 const MAX_ITB_SIZE: usize = 32000 * 4 * 512;
 
+/// A statically determined region of memory for the initial ramdisk i.e.
+/// serves as the ramdisk's entry point.
 pub struct InitRamfsEntry(pub [u8; MAX_INITRAMFS_SIZE]);
 #[repr(align(2097152))]
+/// A statically determined region of memory for the kernel i.e.
+/// serves as the kernel's entry point.
 pub struct KernelEntry(pub [u8; MAX_KERNEL_SIZE]);
 #[repr(align(2097152))]
+/// A statically determined region of memory for the device-tree blob i.e.
+/// serves as the dtb's entry point
 pub struct DtbEntry(pub [u8; MAX_DTB_SIZE]);
-
+#[derive(Zeroize)]
+/// A statically determined region of memory for the image-tree (or fit-image) blob i.e.
+/// serves as the fit-image's entry point. 
 pub struct ImageTreeEntry(pub [u8; MAX_ITB_SIZE]);
 
 impl ImageTreeEntry {
@@ -133,7 +142,9 @@ type EntryPoint = unsafe extern "C" fn(dtb: usize, rsv0: usize, rsv1: usize, rsv
 
 #[no_mangle]
 #[inline(never)]
-/// Jump to kernel. I like this method better as it has a safe abstraction around the `unsafe jump`
+/// Jump to kernel. 
+/// 
+/// **note:** this method is better as it has a safe abstraction around the `unsafe jump`
 pub fn boot_kernel(kernel_entry: usize, dtb_addr: usize) -> ! {
     unsafe {
         let f = core::mem::transmute::<usize, EntryPoint>(kernel_entry);

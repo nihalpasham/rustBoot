@@ -1,0 +1,9 @@
+[active]
+image_name=signed-rpi4-apertis.itb
+image_version=ts_1654328925
+
+[passive]
+ready_for_update_flag=true
+image_name=signed-v1663342128.itb
+image_version=ts_1663342128
+update_status=updating

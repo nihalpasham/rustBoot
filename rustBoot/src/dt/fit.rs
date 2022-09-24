@@ -1,6 +1,8 @@
-use super::{Concat, Error, Reader, Result};
+use core::cell::OnceCell;
 use core::convert::TryInto;
 use core::ops::Add;
+
+use super::{Concat, Error, Reader, Result};
 use log::info;
 use nom::AsBytes;
 use p256::ecdsa::signature::digest::Digest;
@@ -9,6 +11,8 @@ use sha2::Sha256;
 
 use crate::crypto::signatures::{verify_ecc256_signature, HDR_IMG_TYPE_AUTH};
 
+pub static mut FALLBACK_TO_ACTIVE_IMG: OnceCell<bool> = OnceCell::new();
+pub static mut IS_PASSIVE_SELECTED: OnceCell<bool> = OnceCell::new();
 #[derive(Debug)]
 #[repr(C)]
 pub struct Config<'a, const S: usize> {
@@ -123,6 +127,7 @@ where
         let config = config.as_str()?;
         #[cfg(feature = "defmt")]
         defmt::info!("config: {:?}", config);
+        // info!("config: {:?}", config);
 
         let (_, node_iter) = root.path_struct_items(config).next().unwrap();
         let config_properties = [
@@ -190,6 +195,21 @@ where
             _ => {}
         });
 
+        // info!(
+        //     "desc: {:?}\n kernel: {:?}\n fdt: {:?}\n ramdisk: {:?}\n \
+        //         rbconfig: {:?}\n algo: {:?}\n, key_hint: {:?}\n signed_images: {:?}\n \
+        //         signature: {:?}",
+        //     description,
+        //     kernel,
+        //     fdt,
+        //     ramdisk,
+        //     rbconfig,
+        //     signature_algo,
+        //     key_hint,
+        //     signed_images,
+        //     signature
+        // );
+
         let signature = match signature {
             Some(val) => {
                 if val == &[0x00] {
@@ -199,7 +219,9 @@ where
                     signature
                 }
             }
-            None => return Err(Error::BadPropertyName),
+            None => {
+                return Err(Error::BadPropertyName);
+            }
         };
 
         let signature: Signature<S> = Signature {
@@ -220,6 +242,7 @@ where
         configuration = config;
         #[cfg(feature = "defmt")]
         defmt::info!("Config: {:?}\n", configuration);
+        // info!("Config: {:?}\n", configuration);
 
         let conf_properties = ["kernel", "fdt", "ramdisk", "rbconfig"];
         for (idx, prop) in conf_properties.iter().enumerate() {
@@ -355,6 +378,7 @@ where
 
 pub fn prepare_img_hash<'a, D, const H: usize, const S: usize, const N: usize>(
     itb_blob: &'a [u8],
+    itb_version: u32,
 ) -> Result<(D, [u8; S])>
 where
     D: Digest,
@@ -365,6 +389,31 @@ where
 
     let mut hasher = D::new();
     let timestamp = node_iter.get_node_property("timestamp");
+    // check to see if the timestamp matches the supplied version (from updt.txt)
+    match timestamp {
+        Some(version) => {
+            let retrieved_version = u32::from_be_bytes(version.try_into().unwrap()); // mkimage always sets a 4-byte timestamp
+            if retrieved_version != itb_version {
+                info!(
+                    "retrieved_version: {:?}, itb_version: {:?}",
+                    retrieved_version, itb_version
+                );
+                unsafe {
+                    match IS_PASSIVE_SELECTED.get() {
+                        Some(_val) => {
+                            let _ = FALLBACK_TO_ACTIVE_IMG.get_or_init(|| true); // fallback only for passive version mismatches
+                        }
+                        None => {} // active version mismatches just passthrough. we should just panic at some later point.
+                    }
+                };
+                return Err(Error::FitVersionMismatch);
+            }
+        }
+        None => {
+            // mkimage always sets a timestamp
+            unreachable!()
+        }
+    }
     hasher.update(timestamp.unwrap());
 
     let (config, images) = parse_fit::<Sha256, H, S, N>(reader)?;
@@ -418,6 +467,7 @@ pub fn flatten<'a, const H: usize, const N: usize>(img_hash: [[u8; H]; N]) -> [u
 ///
 pub fn verify_fit<const H: usize, const S: usize, const N: usize>(
     itb_blob: &[u8],
+    itb_version: u32,
 ) -> crate::Result<bool> {
     let algo = parse_algo(itb_blob);
     match algo {
@@ -425,8 +475,19 @@ pub fn verify_fit<const H: usize, const S: usize, const N: usize>(
         Ok(CurveType::Secp256k1) => {}
         #[cfg(feature = "nistp256")]
         Ok(CurveType::NistP256) => {
-            let (prehashed_digest, signature) = prepare_img_hash::<Sha256, 32, 64, 4>(itb_blob)
-                .map_err(|_v| crate::RustbootError::BadHashValue)?;
+            info!("test verify_fit");
+            let (prehashed_digest, signature) =
+                match prepare_img_hash::<Sha256, 32, 64, 4>(itb_blob, itb_version) {
+                    Ok((digest, signature)) => (digest, signature),
+                    Err(e) => match e {
+                        // `passive` fit-image version supplied does not match `cfg` version.
+                        Error::FitVersionMismatch => return Err(crate::RustbootError::BadVersion),
+                        _ => {
+                            info!("something went wrong while parsing supplied fit-image ");
+                            return Err(crate::RustbootError::__Nonexhaustive);
+                        }
+                    },
+                };
             let res = verify_ecc256_signature::<Sha256, HDR_IMG_TYPE_AUTH>(
                 prehashed_digest,
                 signature.as_ref(),

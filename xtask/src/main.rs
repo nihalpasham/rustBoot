@@ -9,24 +9,27 @@ use std::{env, path::PathBuf};
 
 use xshell::cmd;
 
-#[rustfmt::skip]
 fn main() -> Result<(), anyhow::Error> {
     let args = env::args().skip(1).collect::<Vec<_>>();
     let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
 
     match &args[..] {
         ["test", "rustBoot"] => test_rustBoot(),
-        [board, "build", "pkgs-for",]    => build_rustBoot(board),
-        [board, "sign" , "pkgs-for", boot_ver, updt_ver]    => sign_packages(board, boot_ver, updt_ver),
-        [_board, "sign" , "fit-image",]    => sign_fit_image(),
+        [board, "build", "pkgs-for"] => build_rustBoot(board),
+        [board, "sign", "pkgs-for", boot_ver, updt_ver] => sign_packages(board, boot_ver, updt_ver),
+        [board, "sign", "fit-image", its_name] => sign_fit_image(board, its_name),
         #[cfg(feature = "mcu")]
-        [board, "flash", "signed-pkg", boot_ver, updt_ver]  => flash_signed_fwimages(board, boot_ver, updt_ver),
-        [board, "flash", "rustBoot",]    => flash_rustBoot(board),
-        [board, "build", "rustBoot-only",] => build_rustBoot_only(board),
+        [board, "flash", "signed-pkg", boot_ver, updt_ver] => {
+            flash_signed_fwimages(board, boot_ver, updt_ver)
+        }
+        [board, "flash", "rustBoot"] => flash_rustBoot(board),
+        [board, "build", "rustBoot-only"] => build_rustBoot_only(board),
         #[cfg(feature = "mcu")]
-        [board, "build-sign-flash", "rustBoot", boot_ver, updt_ver] => full_image_flash(board, boot_ver, updt_ver),
+        [board, "build-sign-flash", "rustBoot", boot_ver, updt_ver] => {
+            full_image_flash(board, boot_ver, updt_ver)
+        }
         #[cfg(feature = "mcu")]
-        [board, "erase-and-flash-trailer-magic",] => erase_and_flash_trailer_magic(board),
+        [board, "erase-and-flash-trailer-magic"] => erase_and_flash_trailer_magic(board),
         _ => {
             println!("USAGE: cargo [board] test rustBoot");
             println!("OR");
@@ -110,13 +113,27 @@ fn build_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn sign_fit_image() -> Result<(), anyhow::Error> {
-    let _p = xshell::pushd(root_dir().join("boards/bootloaders/rpi4/apertis"))?;
-    cmd!("mkimage -f rpi4-apertis.its rpi4-apertis.itb").run()?;
-    let _p = xshell::pushd(root_dir().join("rbsigner"))?;
-    cmd!("cargo run fit-image ../boards/bootloaders/rpi4/apertis/rpi4-apertis.itb nistp256 ../boards/sign_images/keygen/ecc256.der").run()?;
+fn sign_fit_image(target: &&str, its_filename: &str) -> Result<(), anyhow::Error> {
+    match *target {
+        "rpi4" => {
+            let tmp_itb_filename = "unsigned-rpi4-apertis.itb";
+            let kf_path = "../boards/sign_images/keygen/ecc256.der";
 
-    Ok(())
+            let _p = xshell::pushd(root_dir().join("boards/bootloaders/rpi4/apertis"))?;
+            cmd!("mkimage -f {its_filename} {tmp_itb_filename}").run()?;
+            let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+            cmd!("cargo run fit-image ../boards/bootloaders/rpi4/apertis/{tmp_itb_filename} nistp256 {kf_path}").run()?;
+
+            // cleanup
+            #[cfg(feature = "windows")]
+            cmd!("powershell -command \"del kernel8.img\"").run()?;
+            #[cfg(not(feature = "windows"))]
+            cmd!("rm -rf ../boards/bootloaders/rpi4/apertis/{tmp_itb_filename}").run()?;
+
+            Ok(())
+        }
+        _ => unimplemented!(),
+    }
 }
 
 fn sign_packages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(), anyhow::Error> {

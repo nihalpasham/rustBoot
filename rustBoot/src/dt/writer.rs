@@ -12,6 +12,7 @@ pub const MAX_BOOTARGS_LEN: usize = 200;
 pub const MAX_STRINGS_BLOCK_LEN: usize = 5000;
 
 /// A vector with a fixed capacity of `M` elements allocated on the stack.
+#[derive(Clone, Copy)]
 pub struct SerializedBuffer<const M: usize> {
     buffer: [u8; M],
     len: usize,
@@ -32,6 +33,12 @@ impl<const M: usize> SerializedBuffer<M> {
             .map_err(|val| Error::BadStrEncoding(val))?
             .strip_suffix("\u{0}");
         Ok(val.unwrap())
+    }
+
+    pub fn as_str_no_suffix<'a>(&'a self) -> Result<&'a str> {
+        let val =
+            core::str::from_utf8(self.as_slice()).map_err(|val| Error::BadStrEncoding(val))?;
+        Ok(val)
     }
 }
 

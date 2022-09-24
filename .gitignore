@@ -3,6 +3,7 @@
 /rustBoot/examples/fit2.rs
 /rustBoot/examples/patch2.rs
 /rustBoot/examples/test.rs
+/rustBoot/src/disk.img
 /target
 Cargo.lock
 .gdb_history
@@ -15,4 +16,5 @@ test.md
 /boards/bootloaders/rpi4/testdump.s
 /boards/bootloaders/rpi4/output.txt
 /boards/bootloaders/rpi4/kernel8.img
+/boards/bootloaders/rpi4/apertis/signed-v*
 dts
