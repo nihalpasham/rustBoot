@@ -14,6 +14,7 @@ use fit::{load_fit, relocate_and_patch, verify_authenticity};
 use rustBoot::{
     dt::FALLBACK_TO_ACTIVE_IMG,
     fs::controller::{Controller, TestClock, VolumeIdx},
+    fs::filesystem::Directory,
     RustbootError,
 };
 use rustBoot_hal::rpi::rpi4::bsp::{
@@ -132,6 +133,7 @@ fn kernel_main() -> ! {
                     // falling back to active
                     // FALLBACK_TO_ACTIVE_IMG is set to true.
                     {
+                        info!("### passive-image version check failed, falling back to active...###");
                         let _ = unsafe { &mut ITB_LOAD_ADDR.0.zeroize() };
                         let (itb_blob, version) = load_fit(&mut volume, &mut ctrlr);
                         let res = verify_authenticity(version);
@@ -140,11 +142,11 @@ fn kernel_main() -> ! {
                                 true => {
                                     let _ = relocate_and_patch(itb_blob); // relocate kernel, ramdisk and patch dtb
                                 }
-                                false => unreachable!(), // an active_img should always pass signature verification.
+                                false => unreachable!("this should be unreachable"), 
                             },
                             // by definition, this shouldn't be possible. An active image must have been
                             // successfully verified and booted at least once.
-                            Err(e) => unreachable!(),
+                            Err(e) => unreachable!("active-image boot failed, {}", e),
                         }
                     }
                 }

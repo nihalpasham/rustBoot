@@ -753,7 +753,15 @@ impl File {
     }
 }
 
-impl Directory {}
+impl Directory {
+    // Creates a root directory instance
+    pub fn root_dir() -> Self {
+        Directory {
+            cluster: Cluster::ROOT_DIR,
+            entry: None,
+        }
+    }
+}
 
 impl FilenameError {}
 

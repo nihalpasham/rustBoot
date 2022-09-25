@@ -19,7 +19,7 @@ fn main() {
 
     let timestamp = node_iter.get_node_property("timestamp");
     println!(
-        "\nFitImage timestamp: {:?}",
+        "\nfitImage timestamp: {:?}",
         u32::from_be_bytes(timestamp.unwrap().try_into().unwrap())
     );
 }

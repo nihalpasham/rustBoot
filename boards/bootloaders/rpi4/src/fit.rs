@@ -19,7 +19,7 @@ use crate::dtb::patch_dtb;
 /// Loads a fit-image. Returns a tuple contianing the image-tree blob and its version number
 /// 
 /// **note:** this function expects a valid `updt.txt` file to be present in the FAT partition's root directory. 
-/// If it doesnt find one or isnt valid update config. It will panic.
+/// If it doesnt find one or if it isn't a valid `updt.txt` config, it will panic.
 pub fn load_fit<'a, D, T>(volume: &mut Volume, ctrlr: &mut Controller<D, T>) -> (&'a [u8], u32)
 where
     D: BlockDevice,
@@ -43,11 +43,13 @@ where
         .unwrap();
     while !updt_cfg.eof() {
         num_read = ctrlr.read(&volume, &mut updt_cfg, &mut cfg).unwrap();
-        info!(
-            "loading `updt.txt` cfg: {:?} bytes, starting at addr: {:p}",
-            num_read, &cfg,
-        );
     }
+    info!(
+        "loaded `updt.txt` cfg: {:?} bytes, starting at addr: {:p}",
+        num_read, &cfg,
+    );
+    ctrlr.close_file(&volume, updt_cfg).unwrap();
+
     // parse `updt.txt` cfg
     if let Ok((_, (active_conf, passive_conf))) = cfgparser::parse_config(
         core::str::from_utf8(&cfg).expect("an invalid update cfg was provided"),
@@ -125,9 +127,9 @@ where
         .unwrap();
 
     if updt_triggered {
-        info!("update triggered ...");
+        info!("update triggered...");
     } else {
-        info!("booting active image")
+        info!("booting active image...")
     }
     // Load itb
     match (fit_to_load, version_to_load) {
