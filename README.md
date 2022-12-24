@@ -1,4 +1,4 @@
-![GitHub](https://img.shields.io/github/license/nihalpasham/rustBoot) ![GitHub Workflow Status (event)](https://img.shields.io/github/workflow/status/nihalpasham/rustBoot/ci) [![chat](https://img.shields.io/badge/chat-rustBoot%3Amatrix.org-brightgreen)](https://matrix.to/#/#rustBoot:matrix.org)
+![GitHub](https://img.shields.io/github/license/nihalpasham/rustBoot) [![ci](https://github.com/nihalpasham/rustBoot/actions/workflows/ci.yml/badge.svg)](https://github.com/nihalpasham/rustBoot/actions/workflows/ci.yml) [![chat](https://img.shields.io/badge/chat-rustBoot%3Amatrix.org-brightgreen)](https://matrix.to/#/#rustBoot:matrix.org)
 # rustBoot 
 rustBoot is a standalone bootloader, written entirely in `Rust`, designed to run on anything from a microcontroller to a system on chip. It can be used to boot into bare-metal firmware or Linux.
 
