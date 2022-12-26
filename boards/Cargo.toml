@@ -7,8 +7,6 @@ members = ["update",
            "bootloaders/*"
            ]
 
-exclude = ["firmware/rpi4"]
-
 [profile.dev]
 incremental = false
 codegen-units = 1

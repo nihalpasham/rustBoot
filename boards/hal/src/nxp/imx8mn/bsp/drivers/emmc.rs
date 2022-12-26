@@ -4,7 +4,7 @@
 
 #![allow(warnings)]
 
-use crate::rpi::rpi4::bsp::global::EMMC_CONT;
+use crate::nxp::imx8mn::bsp::global::EMMC_CONT;
 use core::{convert::TryInto, fmt::Debug};
 
 use super::common::MMIODerefWrapper;
@@ -1468,7 +1468,7 @@ pub const DTO: u32 = 14; // data timeout exponent (guesswork)
 /// This is controlled by bit 1 of 0x7e2000d0 - 0=EMMC2, 1=legacy EMMC.
 /// In my case - I didnt need this.
 // static mut MMIO_LEGACY_EMMC_CONF: u32 = 0x7e2000d0;
-use crate::rpi::rpi4::arch::time::*;
+use crate::nxp::imx8mn::arch::time::*;
 use core::time::Duration;
 
 /// Waits for the `delay` specified number of microseconds

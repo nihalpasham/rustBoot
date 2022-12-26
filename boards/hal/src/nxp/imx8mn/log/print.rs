@@ -21,7 +21,7 @@ pub fn _print(args: fmt::Arguments) {
 /// Carbon copy from <https://doc.rust-lang.org/src/std/macros.rs.html>
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::rpi::rpi4::log::print::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::nxp::imx8mn::log::print::_print(format_args!($($arg)*)));
 }
 
 /// Prints with a newline.
@@ -31,7 +31,7 @@ macro_rules! print {
 macro_rules! println {
     () => ($crate::print!("\n"));
     ($($arg:tt)*) => ({
-        $crate::rpi::rpi4::log::print::_print(format_args_nl!($($arg)*));
+        $crate::nxp::imx8mn::log::print::_print(format_args_nl!($($arg)*));
     })
 }
 
@@ -40,12 +40,12 @@ macro_rules! println {
 macro_rules! info {
     ($string:expr) => ({
         #[allow(unused_imports)]
-        use $crate::rpi::rpi4::arch::time::*;
+        use $crate::nxp::imx8mn::arch::time::*;
 
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
 
-        $crate::rpi::rpi4::log::print::_print(format_args_nl!(
+        $crate::nxp::imx8mn::log::print::_print(format_args_nl!(
             concat!("[  {:>3}.{:03}{:03}] ", $string),
             timestamp.as_secs(),
             timestamp_subsec_us / 1_000,
@@ -54,12 +54,12 @@ macro_rules! info {
     });
     ($format_string:expr, $($arg:tt)*) => ({
         #[allow(unused_imports)]
-        use $crate::rpi::rpi4::arch::time::*;
+        use $crate::nxp::imx8mn::arch::time::*;
 
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
 
-        $crate::rpi::rpi4::log::print::_print(format_args_nl!(
+        $crate::nxp::imx8mn::log::print::_print(format_args_nl!(
             concat!("[  {:>3}.{:03}{:03}] ", $format_string),
             timestamp.as_secs(),
             timestamp_subsec_us / 1_000,
@@ -74,12 +74,12 @@ macro_rules! info {
 macro_rules! warn {
     ($string:expr) => ({
         #[allow(unused_imports)]
-        use $crate::rpi::rpi4::arch::time::*;
+        use $crate::nxp::imx8mn::arch::time::*;
 
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
 
-        $crate::rpi::rpi4::log::print::_print(format_args_nl!(
+        $crate::nxp::imx8mn::log::print::_print(format_args_nl!(
             concat!("[W {:>3}.{:03}{:03}] ", $string),
             timestamp.as_secs(),
             timestamp_subsec_us / 1_000,
@@ -88,12 +88,12 @@ macro_rules! warn {
     });
     ($format_string:expr, $($arg:tt)*) => ({
         #[allow(unused_imports)]
-        use $crate::rpi::rpi4::arch::time::*;
+        use $crate::nxp::imx8mn::arch::time::*;
 
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
 
-        $crate::rpi::rpi4::log::print::_print(format_args_nl!(
+        $crate::nxp::imx8mn::log::print::_print(format_args_nl!(
             concat!("[W {:>3}.{:03}{:03}] ", $format_string),
             timestamp.as_secs(),
             timestamp_subsec_us / 1_000,
