@@ -11,6 +11,8 @@
 pub mod nrf;
 #[cfg(feature = "rpi")]
 pub mod rpi;
+#[cfg(feature = "nxp")]
+pub mod nxp;
 #[cfg(feature = "stm")]
 pub mod stm;
 #[cfg(feature = "pico")]
