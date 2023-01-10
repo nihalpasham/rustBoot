@@ -5,8 +5,9 @@
 [build]
 target = "thumbv7em-none-eabihf"
 
-# [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-# runner = "probe-run --chip stm32f446retx" # runner specific to nrf52840. Replace this with probe-run option for your board.
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+runner = "probe-run --chip stm32f446retx" # runner specific to nrf52840. Replace this with probe-run option for your board.
+
 rustflags = [
   "-C", "linker=flip-link",
   "-C", "link-arg=-Tlink.x",
