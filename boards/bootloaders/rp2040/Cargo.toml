@@ -5,9 +5,9 @@ version = "0.1.0"
 resolver = "2"
 
 [dependencies]
-cortex-m = "0.7.3"
-cortex-m-rt = "0.6.15"
-rp2040-boot2 = "0.2.0"
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7"
+rp2040-boot2 = "0.2.1"
 rustBoot-hal = { path = "../../hal", default-features = false, features = ["rp2040"] }
 rustBoot-update = { path = "../../update", features = ["rp2040"] }
 
