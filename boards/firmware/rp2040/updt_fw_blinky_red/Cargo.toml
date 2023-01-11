@@ -11,7 +11,7 @@ doctest = false
 test = false
 
 [dependencies]
-cortex-m = "0.7.3"
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
 embedded-hal = { version = "0.2.7", features = ["unproven"] }
 rp2040-hal = "0.7.0"

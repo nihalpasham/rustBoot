@@ -10,7 +10,7 @@ doctest = false
 test = false
 
 [dependencies]
-cortex-m = "0.7.1"
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
 rustBoot-hal ={path = "../../../hal",default-features = false,features = ["stm32f411"]}
 rustBoot-update = {path = "../../../update", features = ["stm32f411"]}
