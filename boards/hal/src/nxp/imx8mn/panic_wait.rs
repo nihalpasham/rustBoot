@@ -1,7 +1,3 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-//
-// Copyright (c) 2018-2021 Andre Richter <andre.o.richter@gmail.com>
-
 //! A panic handler that infinitely waits.
 
 use crate::nxp::imx8mn::arch::cpu_core;
@@ -55,23 +51,19 @@ fn panic_prevent_reenter() {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    use crate::nxp::imx8mn::arch::time::TimeManager;
 
     // Protect against panic infinite loops if any of the following code panics itself.
     panic_prevent_reenter();
 
-    let timestamp = crate::nxp::imx8mn::arch::time::time_manager().uptime();
     let (location, line, column) = match info.location() {
         Some(loc) => (loc.file(), loc.line(), loc.column()),
         _ => ("???", 0, 0),
     };
 
     panic_println!(
-        "[  {:>3}.{:06}] Kernel panic!\n\n\
+        "Kernel panic!\n\n\
         Panic location:\n      File '{}', line {}, column {}\n\n\
         {}",
-        timestamp.as_secs(),
-        timestamp.subsec_micros(),
         location,
         line,
         column,

@@ -49,6 +49,11 @@ pub enum NodeItems<'a> {
     None,
 }
 
+/// Given a node-path (a string literal), this function takes a reader, `dtb_blob` and outputs all of its properties, including
+/// any nested nodes.
+/// 
+/// the output is of the following form
+/// - (&str, NodeItems, usize): (name of the property, )
 pub fn parse_raw_node<'a, const N: usize>(
     reader: &Reader<'a>,
     node_path: &str,
@@ -61,6 +66,7 @@ pub fn parse_raw_node<'a, const N: usize>(
     let header = Reader::get_header(dtb_blob)?;
     let struct_offset = header.struct_offset as usize;
     let mut offset = node_iter.get_offset() + struct_offset;
+    let mut node_depth = 0usize;
 
     for (idx, item) in node_iter.enumerate() {
         match item {
@@ -100,8 +106,15 @@ pub fn parse_raw_node<'a, const N: usize>(
                 let node = RawNodeConstructor::new(1u32, name.as_bytes());
                 prop_list[idx] = (name, NodeItems::RawNodeConstructor(node), total_node_len);
                 offset += total_node_len;
+                node_depth += 1;
             }
-            StructItem::EndNode => break,
+            StructItem::EndNode => {
+                if node_depth > 0 {
+                    node_depth -= 1
+                } else {
+                    break;
+                }
+            }
             StructItem::None => {
                 unreachable!()
             }

@@ -3,13 +3,6 @@
 // Copyright (c) 2018-2022 Andre Richter <andre.o.richter@gmail.com>
 
 //! Architectural asynchronous exception handling.
-//!
-//! # Orientation
-//!
-//! Since arch modules are imported into generic modules using the path attribute, the path of this
-//! file is:
-//!
-//! crate::exception::asynchronous::arch_asynchronous
 
 use cortex_a::registers::*;
 use tock_registers::interfaces::Readable;

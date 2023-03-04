@@ -1,7 +1,3 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-//
-// Copyright (c) 2020-2021 Andre Richter <andre.o.richter@gmail.com>
-
 //! Common device driver code.
 
 use core::{marker::PhantomData, ops};
@@ -44,6 +40,7 @@ impl<T> ops::Deref for MMIODerefWrapper<T> {
 /// Driver interfaces.
 pub mod interface {
     /// Device Driver functions.
+    #[no_mangle]
     pub trait DeviceDriver {
         /// Return a compatibility string for identifying the driver.
         fn compatible(&self) -> &'static str;
@@ -68,10 +65,5 @@ pub mod interface {
         ///
         /// - The order of devices is the order in which `DeviceDriver::init()` is called.
         fn all_device_drivers(&self) -> &[&'static (dyn DeviceDriver + Sync)];
-
-        /// Initialization code that runs after driver init.
-        ///
-        /// For example, device driver code that depends on other drivers already being online.
-        fn post_device_driver_init(&self);
     }
 }

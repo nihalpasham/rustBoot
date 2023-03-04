@@ -270,6 +270,10 @@ impl<'a> RawPropertyConstructor<'a> {
             prop_val,
         }
     }
+
+    pub fn prop_val(&self) -> &'a [u8] {
+        self.prop_val
+    }
     /// Constructs a device-tree `property`, given a buffer, a property value and an offset into the
     /// device-tree `strings-block`. The buffer must be adequately sized.
     pub fn make_raw_property(

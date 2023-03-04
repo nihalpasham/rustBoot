@@ -46,7 +46,10 @@ static TIME_MANAGER: GenericTimer = GenericTimer;
 impl GenericTimer {
     #[inline(always)]
     fn read_cntpct(&self) -> u64 {
-        // Prevent that the counter is read ahead of time due to out-of-order execution.
+        // CNTPCT_EL0 is a system register that holds the 64-bit physical count value. 
+        // It is part of the generic timer feature of the Arm architecture. 
+        // It can be read speculatively, meaning that it can be read out of order w.r.t the program flow. 
+        // When the ordering of the counter read is important, an ISB instruction can be used to ensure program order
         unsafe { barrier::isb(barrier::SY) };
         CNTPCT_EL0.get()
     }

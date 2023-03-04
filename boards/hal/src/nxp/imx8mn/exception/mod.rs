@@ -8,5 +8,6 @@ pub enum PrivilegeLevel {
     User,
     Kernel,
     Hypervisor,
+    EL3Mode,
     Unknown,
 }

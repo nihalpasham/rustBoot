@@ -26,7 +26,7 @@ fn main() {
         PropertyValue::U32([0x05, 0x89, 0x00, 0x00]),
         PropertyValue::U32([0x07, 0x7f, 0x08, 0x4a]),
     ];
-    let mut buf = [0; 27000];
+    let mut buf = [0; 40000];
     let (res, len) = patch_chosen_node(reader, dtb_blob, &prop_val_list, &mut buf);
     println!("len: {}", len);
     let patched_dtb_blob = &res[..len];

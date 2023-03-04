@@ -1,14 +1,7 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-//
-// Copyright (c) 2018-2022 Andre Richter <andre.o.richter@gmail.com>
-
-//--------------------------------------------------------------------------------------------------
-// Definitions
-//--------------------------------------------------------------------------------------------------
 
 /// Call the function provided by parameter `\handler` after saving the exception context. Provide
 /// the context as the first parameter to '\handler'.
-.macro CALL_WITH_CONTEXT handler
+.macro save_ctx_and_handle_exc handler
 	// Make room on the stack for the exception context.
 	sub	sp,  sp,  #16 * 17
 
@@ -29,11 +22,11 @@
 	stp	x26, x27, [sp, #16 * 13]
 	stp	x28, x29, [sp, #16 * 14]
 
-	// Add the exception link register (ELR_EL1), saved program status (SPSR_EL1) and exception
-	// syndrome register (ESR_EL1).
-	mrs	x1,  ELR_EL1
-	mrs	x2,  SPSR_EL1
-	mrs	x3,  ESR_EL1
+	// Add the exception link register (ELR_EL3), saved program status (SPSR_EL3) and exception
+	// syndrome register (ESR_EL3).
+	mrs	x1,  ELR_EL3
+	mrs	x2,  SPSR_EL3
+	mrs	x3,  ESR_EL3
 
 	stp	lr,  x1,  [sp, #16 * 15]
 	stp	x2,  x3,  [sp, #16 * 16]
@@ -75,45 +68,45 @@ __exception_vector_start:
 //
 // # Safety
 //
-// - It must be ensured that `CALL_WITH_CONTEXT` <= 0x80 bytes.
+// - It must be ensured that `save_ctx_and_handle_exc` <= 0x80 bytes.
 .org 0x000
-	CALL_WITH_CONTEXT current_el0_synchronous
+	save_ctx_and_handle_exc current_el0_synchronous
 .org 0x080
-	CALL_WITH_CONTEXT current_el0_irq
+	save_ctx_and_handle_exc current_el0_irq
 .org 0x100
 	FIQ_SUSPEND
 .org 0x180
-	CALL_WITH_CONTEXT current_el0_serror
+	save_ctx_and_handle_exc current_el0_serror
 
 // Current exception level with SP_ELx, x > 0.
 .org 0x200
-	CALL_WITH_CONTEXT current_elx_synchronous
+	save_ctx_and_handle_exc current_elx_synchronous
 .org 0x280
-	CALL_WITH_CONTEXT current_elx_irq
+	save_ctx_and_handle_exc current_elx_irq
 .org 0x300
 	FIQ_SUSPEND
 .org 0x380
-	CALL_WITH_CONTEXT current_elx_serror
+	save_ctx_and_handle_exc current_elx_serror
 
 // Lower exception level, AArch64
 .org 0x400
-	CALL_WITH_CONTEXT lower_aarch64_synchronous
+	save_ctx_and_handle_exc lower_aarch64_synchronous
 .org 0x480
-	CALL_WITH_CONTEXT lower_aarch64_irq
+	save_ctx_and_handle_exc lower_aarch64_irq
 .org 0x500
 	FIQ_SUSPEND
 .org 0x580
-	CALL_WITH_CONTEXT lower_aarch64_serror
+	save_ctx_and_handle_exc lower_aarch64_serror
 
 // Lower exception level, AArch32
 .org 0x600
-	CALL_WITH_CONTEXT lower_aarch32_synchronous
+	save_ctx_and_handle_exc lower_aarch32_synchronous
 .org 0x680
-	CALL_WITH_CONTEXT lower_aarch32_irq
+	save_ctx_and_handle_exc lower_aarch32_irq
 .org 0x700
 	FIQ_SUSPEND
 .org 0x780
-	CALL_WITH_CONTEXT lower_aarch32_serror
+	save_ctx_and_handle_exc lower_aarch32_serror
 .org 0x800
 
 //------------------------------------------------------------------------------
@@ -123,8 +116,8 @@ __exception_restore_context:
 	ldr	w19,      [sp, #16 * 16]
 	ldp	lr,  x20, [sp, #16 * 15]
 
-	msr	SPSR_EL1, x19
-	msr	ELR_EL1,  x20
+	msr	SPSR_EL3, x19
+	msr	ELR_EL3,  x20
 
 	ldp	x0,  x1,  [sp, #16 * 0]
 	ldp	x2,  x3,  [sp, #16 * 1]

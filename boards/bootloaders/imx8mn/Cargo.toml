@@ -1,0 +1,14 @@
+[package]
+name = "imx8mn-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cortex-a = {version = "8.1.1"}
+log = {version = "0.4.16", default-features = false}
+# rustBoot = {path = "../../../rustBoot", default-features = true}
+rustBoot-hal = {path = "../../hal", default-features = false, features = ["nxp", "imx8mn"]}
+tock-registers = {version = "0.8.1", default-features = false, features = ["register_types"]}
+# zeroize = {version = "1.5.7", default-features = false, features = ["zeroize_derive"]}

@@ -17,8 +17,8 @@ use crate::boot::{DTB_LOAD_ADDR, INITRAMFS_LOAD_ADDR, ITB_LOAD_ADDR, KERNEL_LOAD
 use crate::dtb::patch_dtb;
 
 /// Loads a fit-image. Returns a tuple contianing the image-tree blob and its version number
-/// 
-/// **note:** this function expects a valid `updt.txt` file to be present in the FAT partition's root directory. 
+///
+/// **note:** this function expects a valid `updt.txt` file to be present in the FAT partition's root directory.
 /// If it doesnt find one or if it isn't a valid `updt.txt` config, it will panic.
 pub fn load_fit<'a, D, T>(volume: &mut Volume, ctrlr: &mut Controller<D, T>) -> (&'a [u8], u32)
 where
@@ -179,11 +179,11 @@ where
 }
 
 /// Verifies a loaded fit-image's cryptographic digital signature, when supplied with a `fit version number`.
-/// 
-/// The fit's version number is retrieved from rustBoot's `updt.txt` file i.e. this function also checks 
+///
+/// The fit's version number is retrieved from rustBoot's `updt.txt` file i.e. this function also checks
 /// whether the `version-number` from `updt.txt` matches the fit-image's timestamp.
-/// 
-/// **note:** rustBoot uses a global mutable static to load its fit-images. 
+///
+/// **note:** rustBoot uses a global mutable static to load its fit-images.
 pub fn verify_authenticity(itb_version: u32) -> RbResult<bool> {
     info!("\x1b[5m\x1b[31mauthenticating fit-image...\x1b[0m");
     let header = Reader::get_header(unsafe { &ITB_LOAD_ADDR.0 }).unwrap();
@@ -209,7 +209,7 @@ pub fn verify_authenticity(itb_version: u32) -> RbResult<bool> {
     val
 }
 
-/// Extracts and relocates the kernel image from a loaded fit-image to a 
+/// Extracts and relocates the kernel image from a loaded fit-image to a
 /// (statically determined) location in bss.
 pub fn relocate_kernel(itb_blob: &[u8]) {
     let kernel_entry = unsafe { KERNEL_LOAD_ADDR.0.as_mut() };
@@ -226,7 +226,7 @@ pub fn relocate_kernel(itb_blob: &[u8]) {
     }
 }
 #[allow(dead_code)]
-/// Extracts and relocates the flattened device tree from a loaded fit-image to a 
+/// Extracts and relocates the flattened device tree from a loaded fit-image to a
 /// (statically determined) location in bss.
 pub fn relocate_fdt(itb_blob: &[u8]) {
     let fdt_entry = unsafe { DTB_LOAD_ADDR.0.as_mut() };
@@ -242,8 +242,8 @@ pub fn relocate_fdt(itb_blob: &[u8]) {
         }
     }
 }
-/// Extracts and relocates the ramdisk/initrd from a loaded fit-image to a 
-/// (statically determined) location in bss. 
+/// Extracts and relocates the ramdisk/initrd from a loaded fit-image to a
+/// (statically determined) location in bss.
 pub fn relocate_ramdisk(itb_blob: &[u8]) {
     let initrd_entry = unsafe { INITRAMFS_LOAD_ADDR.0.as_mut() };
     let initrd_data = get_image_data(itb_blob, "ramdisk");
@@ -259,13 +259,13 @@ pub fn relocate_ramdisk(itb_blob: &[u8]) {
     }
 }
 
-/// Relocates the kernel and ramdisk from a loaded fit-image to a 
-/// (statically determined) location in bss and extracts the device-tree blob from the fit-image, patches 
-/// it with contents of `rbconfig.txt` (i.e. linux cmdline parameters) and finally relocates it to a 
-/// (statically determined) location in bss. 
-/// 
+/// Relocates the kernel and ramdisk from a loaded fit-image to a
+/// (statically determined) location in bss and extracts the device-tree blob from the fit-image, patches
+/// it with contents of `rbconfig.txt` (i.e. linux cmdline parameters) and finally relocates it to a
+/// (statically determined) location in bss.
+///
 /// **note:** This function can fail if `patching` fails.
-/// 
+///
 pub fn relocate_and_patch<'a>(itb_blob: &'a [u8]) -> Result<&'a [u8]> {
     let _ = relocate_kernel(itb_blob);
     info!("relocating kernel to addr: {:p}", unsafe {

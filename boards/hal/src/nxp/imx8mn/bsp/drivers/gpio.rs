@@ -1,15 +1,11 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-//
-// Copyright (c) 2018-2021 Andre Richter <andre.o.richter@gmail.com>
-
 //! GPIO Driver.
 
 use super::common::MMIODerefWrapper;
 use crate::nxp::imx8mn::sync::{interface::Mutex, NullLock};
 use tock_registers::{
-    interfaces::{ReadWriteable, Writeable},
+    interfaces::{ReadWriteable, Readable, Writeable},
     register_bitfields, register_structs,
-    registers::ReadWrite,
+    registers::{ReadOnly, ReadWrite},
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -19,87 +15,143 @@ use tock_registers::{
 // GPIO registers.
 //
 // Descriptions taken from
-// - https://github.com/raspberrypi/documentation/files/1888662/BCM2837-ARM-Peripherals.-.Revised.-.V2-1.pdf
-// - https://datasheets.raspberrypi.org/bcm2711/bcm2711-peripherals.pdf
+// i.MX 8M Nano Applications Processor Reference Manual, Document Number: IMX8MNRM Rev. 2, 07/2022
+
 register_bitfields! {
     u32,
 
-    /// GPIO Function Select 1
-    GPFSEL1 [
-        /// Pin 15
-        FSEL15 OFFSET(15) NUMBITS(3) [
-            Input = 0b000,
-            Output = 0b001,
-            AltFunc0 = 0b100  // PL011 UART RX
+    /// GPIO Data Register
+    ///
+    /// The 32-bit GPIO_DR register stores data that is ready to be driven to the output lines
+    GPIO_DR [
+        /// Holds data to be written to output lines.
+        DR OFFSET(0) NUMBITS(32) []
+    ],
 
+    /// GPIO Direction Register
+    ///
+    /// GPIO_GDIR functions as direction control. Each bit specifies the direction of a one-bit signal.
+    GPIO_GDIR [
+        /// Controls the direction for PINS of the imx8mn
+        PIN_DIR OFFSET(0) NUMBITS(32) [],
+    ],
+
+    /// GPIO Pad Status Register
+    ///
+    /// GPIO_PSR is a read-only register. Each bit stores the value of the corresponding input
+    /// signal
+    GPIO_PSR [
+        /// Input state of pin(s).
+        PIN_PSR OFFSET(0) NUMBITS(32) [],
+    ],
+
+    /// GPIO Interrupt Configuration Register 1
+    ///
+    /// GPIO_ICR1 contains 16 two-bit fields, where each field specifies the interrupt
+    /// configuration for a different input signal.
+    GPIO_ICR1 [
+        /// ICR15
+        ICR15 OFFSET(30) NUMBITS(2) [
+            LowLevel = 0b00,    // Interrupt n is low-level sensitive.
+            HighLevel = 0b01,   // Interrupt n is high-level sensitive.
+            RisingEdge = 0b10,  // Interrupt n is rising-edge sensitive.
+            FallingEdge = 0b11, // Interrupt n is falling-edge sensitive.
         ],
 
-        /// Pin 14
-        FSEL14 OFFSET(12) NUMBITS(3) [
-            Input = 0b000,
-            Output = 0b001,
-            AltFunc0 = 0b100  // PL011 UART TX
+        /// ICR 14
+        ICR14 OFFSET(28) NUMBITS(2) [
+            LowLevel = 0b00,    // Interrupt n is low-level sensitive.
+            HighLevel = 0b01,   // Interrupt n is high-level sensitive.
+            RisingEdge = 0b10,  // Interrupt n is rising-edge sensitive.
+            FallingEdge = 0b11, // Interrupt n is falling-edge sensitive.
         ]
     ],
 
-    /// GPIO Pull-up/down Register
+    /// GPIO Interrupt Configuration Register 2
     ///
-    /// BCM2837 only.
-    GPPUD [
-        /// Controls the actuation of the internal pull-up/down control line to ALL the GPIO pins.
-        PUD OFFSET(0) NUMBITS(2) [
-            Off = 0b00,
-            PullDown = 0b01,
-            PullUp = 0b10
+    /// GPIO_ICR2 contains 16 two-bit fields, where each field specifies the interrupt
+    /// configuration for a different input signal.
+    GPIO_ICR2 [
+        /// ICR 31
+        ICR31 OFFSET(30) NUMBITS(2) [
+            LowLevel = 0b00,    // Interrupt n is low-level sensitive.
+            HighLevel = 0b01,   // Interrupt n is high-level sensitive.
+            RisingEdge = 0b10,  // Interrupt n is rising-edge sensitive.
+            FallingEdge = 0b11, // Interrupt n is falling-edge sensitive.
+        ],
+
+        /// ICR 30
+        ICR30 OFFSET(28) NUMBITS(2) [
+            LowLevel = 0b00,    // Interrupt n is low-level sensitive.
+            HighLevel = 0b01,   // Interrupt n is high-level sensitive.
+            RisingEdge = 0b10,  // Interrupt n is rising-edge sensitive.
+            FallingEdge = 0b11, // Interrupt n is falling-edge sensitive.
         ]
     ],
 
-    /// GPIO Pull-up/down Clock Register 0
+    /// GPIO Interrupt Mask Register
     ///
-    /// BCM2837 only.
-    GPPUDCLK0 [
-        /// Pin 15
-        PUDCLK15 OFFSET(15) NUMBITS(1) [
-            NoEffect = 0,
-            AssertClock = 1
+    /// GPIO_IMR contains masking bits for each interrupt line.
+    GPIO_IMR [
+        /// IMR 31
+        IMR31 OFFSET(31) NUMBITS(1) [
+            Masked = 0,     // Interrupt n is disabled.
+            Unmasked = 1    // Interrupt n is enabled.
         ],
-
-        /// Pin 14
-        PUDCLK14 OFFSET(14) NUMBITS(1) [
-            NoEffect = 0,
-            AssertClock = 1
+        /// IMR 30
+        IMR30 OFFSET(30) NUMBITS(1) [
+            Masked = 0,     // Interrupt n is disabled.
+            Unmasked = 1    // Interrupt n is enabled.
         ]
     ],
 
-    /// GPIO Pull-up / Pull-down Register 0
+    /// GPIO Interrupt Status Register
     ///
-    /// BCM2711 only.
-    GPIO_PUP_PDN_CNTRL_REG0 [
-        /// Pin 15
-        GPIO_PUP_PDN_CNTRL15 OFFSET(30) NUMBITS(2) [
-            NoResistor = 0b00,
-            PullUp = 0b01
+    /// The GPIO_ISR functions as an interrupt status indicator. Each bit indicates whether an
+    /// interrupt condition has been met for the corresponding input signal.
+    ///
+    /// Bit n of this register is asserted (active high) when the active condition (as
+    /// determined by the corresponding ICR register field) is detected on the GPIO input and is waiting for service. The
+    /// value of this register is independent of the value in GPIO_IMR. When the active condition has been
+    /// detected, the corresponding bit remains set until cleared by software.
+    /// Status flags are cleared by writing a 1 to the corresponding bit position.
+    GPIO_ISR [
+        /// ISR 30
+        ISR30 OFFSET(30) NUMBITS(1) [
+            Set = 1,
+            NotSet = 0,
         ],
-
-        /// Pin 14
-        GPIO_PUP_PDN_CNTRL14 OFFSET(28) NUMBITS(2) [
-            NoResistor = 0b00,
-            PullUp = 0b01
+        /// ISR 31
+        ISR31 OFFSET(31) NUMBITS(1) [
+            Set = 1,
+            NotSet = 0,
         ]
+    ],
+
+    /// GPIO Edge Select Register
+    ///
+    /// If the GPIO_EDGE_SEL bit is set, then a rising edge or falling edge in the corresponding
+    /// signal generates an interrupt. This register provides backward compatibility. On reset all
+    /// bits are cleared (ICR is not overridden).
+    GPIO_EDGE_SEL   [
+        EDGE_SEL OFFSET(0) NUMBITS(31) []
     ]
+
+
 }
 
 register_structs! {
     #[allow(non_snake_case)]
     RegisterBlock {
-        (0x00 => _reserved1),
-        (0x04 => GPFSEL1: ReadWrite<u32, GPFSEL1::Register>),
-        (0x08 => _reserved2),
-        (0x94 => GPPUD: ReadWrite<u32, GPPUD::Register>),
-        (0x98 => GPPUDCLK0: ReadWrite<u32, GPPUDCLK0::Register>),
-        (0x9C => _reserved3),
-        (0xE4 => GPIO_PUP_PDN_CNTRL_REG0: ReadWrite<u32, GPIO_PUP_PDN_CNTRL_REG0::Register>),
-        (0xE8 => @END),
+        (0x00 => GPIO_DR: ReadWrite<u32, GPIO_DR::Register>),
+        (0x04 => GPIO_GDIR: ReadWrite<u32, GPIO_GDIR::Register>),
+        (0x08 => GPIO_PSR: ReadOnly<u32, GPIO_PSR::Register>),
+        (0x0C => ICR1: ReadWrite<u32, GPIO_ICR1::Register>),
+        (0x10 => ICR2: ReadWrite<u32, GPIO_ICR2::Register>),
+        (0x14 => IMR: ReadWrite<u32, GPIO_IMR::Register>),
+        (0x18 => ISR: ReadOnly<u32, GPIO_ISR::Register>),
+        (0x1C => EDGE_SEL: ReadWrite<u32, GPIO_EDGE_SEL::Register>),
+        (0x20 => @END),
     }
 }
 
@@ -110,23 +162,23 @@ type Registers = MMIODerefWrapper<RegisterBlock>;
 // Public Definitions
 //--------------------------------------------------------------------------------------------------
 
-pub struct GPIOInner {
+pub struct GpioInner {
     registers: Registers,
 }
 
 // Export the inner struct so that BSPs can use it for the panic handler.
-pub use GPIOInner as PanicGPIO;
+pub use GpioInner as PanicGPIO;
 
 /// Representation of the GPIO HW.
-pub struct GPIO {
-    inner: NullLock<GPIOInner>,
+pub struct Gpio {
+    inner: NullLock<GpioInner>,
 }
 
 //--------------------------------------------------------------------------------------------------
 // Public Code
 //--------------------------------------------------------------------------------------------------
 
-impl GPIOInner {
+impl GpioInner {
     /// Create an instance.
     ///
     /// # Safety
@@ -138,29 +190,39 @@ impl GPIOInner {
         }
     }
 
-    /// Disable pull-up/down on pins 14 and 15.
-    fn disable_pud_14_15_bcm2711(&mut self) {
-        self.registers.GPIO_PUP_PDN_CNTRL_REG0.write(
-            GPIO_PUP_PDN_CNTRL_REG0::GPIO_PUP_PDN_CNTRL15::PullUp
-                + GPIO_PUP_PDN_CNTRL_REG0::GPIO_PUP_PDN_CNTRL14::PullUp,
-        );
+    /// Set GPIO pin
+    fn set_gpio_pin(&mut self, pin: u8, val: bool) {
+        // set or clear DR bit for corresponding pin
+        match val {
+            true => {
+                let mut reg_val = self.registers.GPIO_DR.get();
+                reg_val |= pin as u32;
+                self.registers.GPIO_DR.set(reg_val);
+            }
+            false => {
+                let mut reg_val = self.registers.GPIO_DR.get();
+                reg_val &= !pin as u32;
+                self.registers.GPIO_DR.set(reg_val);
+            }
+        }
+        // Set pin-direction to output
+        self.registers.GPIO_GDIR.write(GPIO_GDIR::PIN_DIR.val(1 << pin));
     }
 
-    /// Map PL011 UART as standard output.
-    ///
-    /// TX to pin 14
-    /// RX to pin 15
-    pub fn map_pl011_uart(&mut self) {
-        // Select the UART on pins 14 and 15.
-        self.registers
-            .GPFSEL1
-            .modify(GPFSEL1::FSEL15::AltFunc0 + GPFSEL1::FSEL14::AltFunc0);
+    /// Get GPIO pin state
+    pub fn get_gpio_pin(&mut self, pin: u8) -> u8 {
+        // Set pin-direction to input
+        let mut reg_val = self.registers.GPIO_GDIR.get();
+        reg_val &= !pin as u32;
+        self.registers.GPIO_GDIR.write(GPIO_GDIR::PIN_DIR.val(1 << pin));
 
-        self.disable_pud_14_15_bcm2711();
+        // read pad status
+        let psr = self.registers.GPIO_PSR.read(GPIO_PSR::PIN_PSR);
+        ((psr >> pin) & 0x1) as u8
     }
 }
 
-impl GPIO {
+impl Gpio {
     /// Create an instance.
     ///
     /// # Safety
@@ -168,21 +230,16 @@ impl GPIO {
     /// - The user must ensure to provide a correct MMIO start address.
     pub const unsafe fn new(mmio_start_addr: usize) -> Self {
         Self {
-            inner: NullLock::new(GPIOInner::new(mmio_start_addr)),
+            inner: NullLock::new(GpioInner::new(mmio_start_addr)),
         }
-    }
-
-    /// Concurrency safe version of `GPIOInner.map_pl011_uart()`
-    pub fn map_pl011_uart(&self) {
-        self.inner.lock(|inner| inner.map_pl011_uart())
     }
 }
 
 //------------------------------------------------------------------------------
 // OS Interface Code
 //------------------------------------------------------------------------------
-impl super::common::interface::DeviceDriver for GPIO {
+impl super::common::interface::DeviceDriver for Gpio {
     fn compatible(&self) -> &'static str {
-        "BCM GPIO"
+        "IMX8MN GPIO"
     }
 }

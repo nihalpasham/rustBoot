@@ -26,7 +26,7 @@ rustBoot aims to offer an OS and micro-architecture agnostic (i.e. highly portab
 
 - [ ] support for external flash devices (ex: SPI flash) and serial/console logging interfaces.
 - [ ] support for `ARM TrustZone-M and A` and certified `secure hardware elements` - microchip ATECC608a, NXP SE050, STSAFE-100
-- [ ] support for secure, distributed and efficient `firmware transport` method over [ipfs](https://ipfs.tech/).
+- [ ] support for secure, distributed and efficient `firmware transport` over [ipfs](https://ipfs.tech/).
 
 ## Documentation:
 

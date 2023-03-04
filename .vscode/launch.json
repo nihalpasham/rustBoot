@@ -5,6 +5,59 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "probe-rs-debug",
+            "request": "launch",
+            "name": "probe_rs launch",
+            "cwd": "${workspaceFolder}",
+            // "speed": 24000, //!MODIFY (or remove)
+            // "probe": "PID:VID:<Serial>", //!MODIFY (or remove)
+            "runtimeExecutable": "probe-rs-debugger",
+            "runtimeArgs": [
+                "debug",
+                // "--dap"
+            ],
+            "chip": "nRF52840_xxAA", //!MODIFY
+            "flashingConfig": {
+                "flashingEnabled": true,
+                "resetAfterFlashing": true,
+                "haltAfterReset": true,
+            },
+            "coreConfigs": [
+                {
+                    "coreIndex": 0,
+                    "connect_under_reset": true,
+                    "programBinary": "${workspaceFolder}/boards/target/thumbv7em-none-eabihf/release/nrf52840",
+                    "svdFile": "${workspaceFolder}/boards/bootloaders/nrf52840/nrf52840.svd"
+                }
+            ],
+            "env": {
+                //!MODIFY (or remove)
+                // "RUST_LOG": "info" // If you set this variable, check the VSCode console log window for the location of the log file.
+            },
+            "consoleLogLevel": "Info" //Info, Debug
+        },
+        {
+            "type": "probe-rs-debug",
+            "request": "attach",
+            "name": "probe_rs attach",
+            "cwd": "${workspaceFolder}",
+            "speed": 24000, //!MODIFY (or remove)
+            "chip": "nRF52840_xxAA", //!MODIFY
+            // "probe": "PID:VID:<Serial>", //!MODIFY (or remove)
+            "coreConfigs": [
+                {
+                    "coreIndex": 0,
+                    "programBinary": "${workspaceFolder}/boards/target/thumbv7em-none-eabihf/release/nrf52840", //!MODIFY
+                    "svdFile": "${workspaceFolder}/boards/bootloaders/nrf52840/nrf52840.svd" //!MODIFY
+                }
+            ],
+            "env": {
+                //!MODIFY (or remove)
+                // "RUST_LOG": "info" // If you set this variable, check the VSCode console log window for the location of the log file.
+            },
+            "consoleLogLevel": "Info" //Info, Debug
+        },
+        {
             "cwd": "${workspaceRoot}",
             "executable": "./boards/target/thumbv7em-none-eabihf/release/nrf52840_bootfw",
             "name": "PyOCD rustBoot launch",
@@ -17,15 +70,15 @@
             "type": "cortex-debug",
             "request": "launch",
             "servertype": "openocd",
-            "cwd": "${workspaceRoot}",
-            "executable": "./boards/target/thumbv7em-none-eabihf/release/nrf52840_bootfw",
-            "name": "bootfw launch (OpenOCD)",
+            "cwd": "${workspaceFolder}",
+            "executable": "./boards/target/thumbv7em-none-eabihf/release/nrf52840",
+            "name": "rustBoot launch (OpenOCD)",
             "device": "nRF52840",
             "configFiles": [
                 "interface/cmsis-dap.cfg",
                 "target/nrf52.cfg"
             ],
-            "svdFile": "${workspaceRoot}/nrf52840.svd",
+            "svdFile": "${workspaceFolder}/boards/bootloaders/nrf52840/nrf52840.svd",
         },
         {
             "type": "cortex-debug",

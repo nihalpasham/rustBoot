@@ -1,14 +1,10 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-//
-// Copyright (c) 2018-2021 Andre Richter <andre.o.richter@gmail.com>
-
 //! System console.
 
 //--------------------------------------------------------------------------------------------------
 // Public Definitions
 //--------------------------------------------------------------------------------------------------
 
-use crate::nxp::imx8mn::bsp::drivers::{gpio::PanicGPIO, uart0::PanicUart};
+use crate::nxp::imx8mn::bsp::drivers::uart0::PanicUart;
 use crate::nxp::imx8mn::bsp::global;
 use crate::nxp::imx8mn::bsp::memory_map;
 
@@ -22,8 +18,8 @@ pub trait Write {
     /// Write a Rust format string.
     fn write_fmt(&self, args: fmt::Arguments) -> fmt::Result;
 
-    /// Block until the last buffered character has been physically put on the TX wire.
-    fn flush(&self);
+    // /// Block until the last buffered character has been physically put on the TX wire.
+    // fn flush(&self);
 }
 
 /// Console read functions.
@@ -65,15 +61,14 @@ pub trait Statistics {
 ///
 /// - Use only for printing during a panic.
 pub unsafe fn panic_console_out() -> impl fmt::Write {
-    let mut panic_gpio = PanicGPIO::new(memory_map::map::mmio::GPIO_START);
-    let mut panic_uart = PanicUart::new(memory_map::map::mmio::PL011_UART_START);
+    let mut panic_uart = PanicUart::new(memory_map::map::mmio::UART_START);
 
-    panic_gpio.map_pl011_uart();
-    panic_uart.init();
+    // panic_gpio.map_pl011_uart();
+    panic_uart.init_uart();
     panic_uart
 }
 
 /// Return a reference to the console.
 pub fn console() -> &'static (impl Write + Read + Statistics) {
-    &global::PL011_UART
+    &global::UART
 }

@@ -4,6 +4,8 @@ use core::mem::size_of;
 use core::slice::from_raw_parts;
 use core::str::from_utf8;
 
+// use log::info;
+
 use super::common::*;
 use super::internal::*;
 use super::struct_item::*;
@@ -284,7 +286,7 @@ impl<'a, 'b> PathStructItems<'a, 'b> {
             match item {
                 StructItem::BeginNode { .. } => {
                     if self.level == self.path.level()
-                        && self.path.component() == item.node_name().unwrap()
+                        && self.path.component() == item.name().unwrap()
                         && !self.path.move_next()
                     {
                         self.level += 1;

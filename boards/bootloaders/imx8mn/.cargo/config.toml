@@ -1,0 +1,10 @@
+# =============================================================================
+# Build configuration options for Cortex-A i.e. Aarch64
+# =============================================================================
+
+[build]
+target = "aarch64-unknown-none-softfloat"
+rustflags = [
+  "-C", "link-arg=-Tbootloaders/imx8mn/link.lds",
+  "-C", "target-cpu=cortex-a53",
+]
