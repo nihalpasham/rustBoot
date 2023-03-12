@@ -1,9 +1,5 @@
 //! System console.
 
-//--------------------------------------------------------------------------------------------------
-// Public Definitions
-//--------------------------------------------------------------------------------------------------
-
 use crate::nxp::imx8mn::bsp::drivers::uart0::PanicUart;
 use crate::nxp::imx8mn::bsp::global;
 use crate::nxp::imx8mn::bsp::memory_map;
@@ -45,10 +41,6 @@ pub trait Statistics {
         0
     }
 }
-
-//--------------------------------------------------------------------------------------------------
-// Public Code
-//--------------------------------------------------------------------------------------------------
 
 /// In case of a panic, the panic handler uses this function to take a last shot at printing
 /// something before the system is halted.

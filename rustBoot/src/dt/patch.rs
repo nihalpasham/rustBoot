@@ -51,7 +51,7 @@ pub enum NodeItems<'a> {
 
 /// Given a node-path (a string literal), this function takes a reader, `dtb_blob` and outputs all of its properties, including
 /// any nested nodes.
-/// 
+///
 /// the output is of the following form
 /// - (&str, NodeItems, usize): (name of the property, )
 pub fn parse_raw_node<'a, const N: usize>(

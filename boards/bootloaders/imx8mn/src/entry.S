@@ -48,6 +48,7 @@ _reset:
     isb
 
     /* Apply ARM core specific erratas */
+
 	bl	apply_core_errata
 
     // initialize bss to all zeroes
@@ -62,12 +63,10 @@ _reset:
     cbnz    x10, .L__bss_loop
 .L__bss_loop_done:
 
+    msr	SPSel, #1		                /* make sure we use SP_ELx */
     // set the stack pointer
     ldr x0, =_stack_end
     mov sp, x0
-    // set the base address for the exception vector table
-    // ldr x0, = Vector_table_el3
-    // msr VBAR_EL3, x0
 
     mov x0, #0
     // jump to rust code.
@@ -115,103 +114,3 @@ __zero_region_start:
     .word _zero_region_start
 __zero_region_end:
     .word _zero_region_end
-
-
-// vectors:
-//     .balign 0x800
-//     Vector_table_el3:
-
-//     curr_el_sp0_sync:
-//         mov x0, #0
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     curr_el_sp0_irq:
-//         mov x0, #1
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     curr_el_sp0_fiq:
-//         mov x0, #2
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     curr_el_sp0_serror:
-//         mov x0, #3
-//         bl exception
-//         b .
-//     .balign 0x80
-//     curr_el_spx_sync:
-//         bl exception_sync
-//         b .
-
-//     .balign 0x80
-//         curr_el_spx_irq:
-//         mov x0, #5
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     curr_el_spx_fiq:
-//         mov x0, #6
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     curr_el_spx_serror:
-//         mov x0, #7
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     lower_el_aarch64_sync:
-//         mov x0, #8
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     lower_el_aarch64_irq:
-//         mov x0, #9
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     lower_el_aarch64_fiq:
-//         mov x0, #10
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     lower_el_aarch64_serror:
-//         mov x0, #11
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     lower_el_aarch32_sync:
-//         mov x0, #12
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     lower_el_aarch32_irq:
-//         mov x0, #13
-//         bl exception
-//         b .
-
-//     .balign 0x80
-//     lower_el_aarch32_fiq:
-//         mov x0, #14
-//         bl exception
-//         b .
-        
-//     .balign 0x80
-//     lower_el_aarch32_serror:
-//         mov x0, #15
-//         bl exception
-//         b .
-
-

@@ -1,19 +1,19 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-//
-// Copyright (c) 2018-2021 Andre Richter <andre.o.richter@gmail.com>
-
 //! Architectural processor code.
 //!
 
 pub use asm::nop;
 use aarch64_cpu::asm;
+
+use crate::info;
 //--------------------------------------------------------------------------------------------------
 // Public Code
 //--------------------------------------------------------------------------------------------------
 
 /// Pause execution on the core.
-#[inline(always)]
+#[no_mangle]
 pub fn wait_forever() -> ! {
+    info!("\n");
+    info!(" ... wait forever");
     loop {
         asm::wfe()
     }

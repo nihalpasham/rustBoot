@@ -18,10 +18,6 @@ use tock_registers::{
     registers::{ReadOnly, ReadWrite, WriteOnly},
 };
 
-//--------------------------------------------------------------------------------------------------
-// Private Definitions
-//--------------------------------------------------------------------------------------------------
-
 // UART registers.
 //
 // i.MX 8M Nano Applications Processor Reference Manual, Document Number: IMX8MNRM Rev. 2, 07/2022
@@ -865,10 +861,6 @@ enum BlockingMode {
     NonBlocking,
 }
 
-//--------------------------------------------------------------------------------------------------
-// Public Definitions
-//--------------------------------------------------------------------------------------------------
-
 pub struct UartInner {
     registers: Registers,
     chars_written: usize,
@@ -882,10 +874,6 @@ pub use UartInner as PanicUart;
 pub struct Uart {
     inner: NullLock<UartInner>,
 }
-
-//--------------------------------------------------------------------------------------------------
-// Public Code
-//--------------------------------------------------------------------------------------------------
 
 impl UartInner {
     /// Create an instance.
@@ -903,7 +891,7 @@ impl UartInner {
 
     /// Initialize UART2. On the imx8mn_evk, this is the debug port.
     ///
-    /// note: we use a fixed a baudrate of 115200 bps
+    /// note: we use a fixed baudrate of 115200 bps
     #[no_mangle]
     pub fn init_uart(&mut self) {
         self.registers.UART2_UCR1.set(0); // disable uart
@@ -1019,16 +1007,12 @@ impl Uart {
     }
 }
 
-//------------------------------------------------------------------------------
-// OS Interface Code
-//------------------------------------------------------------------------------
 
 impl super::common::interface::DeviceDriver for Uart {
     fn compatible(&self) -> &'static str {
-        "i.MX8M UART"
+        "i.MX 8M Nano Uart2"
     }
 
-    #[no_mangle]
     unsafe fn init(&self) -> Result<(), &'static str> {
         self.inner.lock(|inner| inner.init_uart());
 

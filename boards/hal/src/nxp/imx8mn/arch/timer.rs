@@ -1,15 +1,9 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-//
 //! Architectural timer primitives.
 
 use crate::warn;
 use core::time::Duration;
 use aarch64_cpu::{asm::barrier, registers::*};
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
-
-//--------------------------------------------------------------------------------------------------
-// Private Definitions
-//--------------------------------------------------------------------------------------------------
 
 const NS_PER_S: u64 = 1_000_000_000;
 
@@ -33,37 +27,25 @@ pub trait TimeManager {
 /// ARMv8 Generic Timer.
 struct GenericTimer;
 
-//--------------------------------------------------------------------------------------------------
-// Global instances
-//--------------------------------------------------------------------------------------------------
-
 static TIME_MANAGER: GenericTimer = GenericTimer;
-
-//--------------------------------------------------------------------------------------------------
-// Private Code
-//--------------------------------------------------------------------------------------------------
 
 impl GenericTimer {
     #[inline(always)]
     fn read_cntpct(&self) -> u64 {
-        // Prevent that the counter is read ahead of time due to out-of-order execution.
+        // CNTPCT_EL0 is a system register that holds the 64-bit physical count value. 
+        // It is part of the generic timer feature of the Arm architecture. 
+        // It can be read speculatively, meaning that it can be read out of order w.r.t the program flow. 
+        //
+        // When the ordering of the counter read is important, an ISB instruction can be used to ensure program order
         unsafe { barrier::isb(barrier::SY) };
         CNTPCT_EL0.get()
     }
 }
 
-//--------------------------------------------------------------------------------------------------
-// Public Code
-//--------------------------------------------------------------------------------------------------
-
 /// Return a reference to the time manager.
 pub fn time_manager() -> &'static impl TimeManager {
     &TIME_MANAGER
 }
-
-//------------------------------------------------------------------------------
-// OS Interface Code
-//------------------------------------------------------------------------------
 
 impl TimeManager for GenericTimer {
     fn resolution(&self) -> Duration {

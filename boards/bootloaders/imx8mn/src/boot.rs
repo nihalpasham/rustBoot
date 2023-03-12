@@ -1,59 +1,28 @@
-
 //! Architectural boot code.
 
 use core::arch::global_asm;
-use rustBoot_hal::info;
 
 use crate::kernel_init;
+use crate::{clocks, exception, mux::iomux::uart2_mux_mmio_set, start_system_counter};
 
 // Assembly counterpart to this file.
 global_asm!(include_str!("entry.S"));
-
-//--------------------------------------------------------------------------------------------------
-// Public Code
-//--------------------------------------------------------------------------------------------------
 
 /// The Rust entry of the `kernel` binary.
 ///
 /// The function is called from the assembly `_start` function.
 ///
-/// # Safety
-///
-/// - Exception return from EL2 must must continue execution in EL1 with `kernel_init()`.
 #[no_mangle]
 pub unsafe extern "C" fn _start_rust() -> ! {
+    // set the vector base address for register handlers
+    exception::exception::handling_init();
+    // initialize uart clock and ungate sys_counter clock 
+    clocks::ccm::init_uart_clk(1);
+    clocks::ccm::enable_sctr();
+    // start the system counter, this allows us to access ARM's architectural counter - CNTPCT_EL0
+    start_system_counter();
+    // set the mux state for UART2 peripheral.
+    uart2_mux_mmio_set();
+    // jump to next init stage.
     kernel_init()
 }
-
-
-//--------------------------------------------------------------------------------------------------
-// Public Definitions
-//--------------------------------------------------------------------------------------------------
-
-pub fn halt() -> ! {
-    info!("halting ... ");
-    loop {
-        unsafe { core::arch::asm!("wfe") }
-    }
-}
-
-// /// Prints verbose information about the exception and then panics.
-// #[no_mangle]
-// #[link_section = ".vectors._exception"]
-// pub fn exception(exc: u8) {
-//     panic!(
-//         "Unhandled CPU Exception!\n\n\
-//         {}",
-//         exc
-//     );
-// }
-
-// #[no_mangle]
-// #[link_section = ".vectors._exception_sync"]
-// pub fn exception_sync(exc: u8) {
-//     panic!(
-//         "Unhandled CPU Exception!\n\n\
-//         {}",
-//         exc
-//     );
-// }

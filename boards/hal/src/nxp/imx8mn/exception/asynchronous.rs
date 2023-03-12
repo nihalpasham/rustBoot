@@ -3,10 +3,6 @@
 use aarch64_cpu::registers::*;
 use tock_registers::interfaces::Readable;
 
-//--------------------------------------------------------------------------------------------------
-// Private Definitions
-//--------------------------------------------------------------------------------------------------
-
 trait DaifField {
     fn daif_field() -> tock_registers::fields::Field<u64, DAIF::Register>;
 }
@@ -15,10 +11,6 @@ struct Debug;
 struct SError;
 struct IRQ;
 struct FIQ;
-
-//--------------------------------------------------------------------------------------------------
-// Private Code
-//--------------------------------------------------------------------------------------------------
 
 impl DaifField for Debug {
     fn daif_field() -> tock_registers::fields::Field<u64, DAIF::Register> {
@@ -50,10 +42,6 @@ where
 {
     DAIF.is_set(T::daif_field())
 }
-
-//--------------------------------------------------------------------------------------------------
-// Public Code
-//--------------------------------------------------------------------------------------------------
 
 /// Print the AArch64 exceptions status.
 #[rustfmt::skip]

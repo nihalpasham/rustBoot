@@ -11,14 +11,10 @@ use tock_registers::{
 // Assembly counterpart to this file.
 global_asm!(include_str!("exception.S"));
 
-//--------------------------------------------------------------------------------------------------
-// Private Definitions
-//--------------------------------------------------------------------------------------------------
-
 /// Wrapper structs for memory copies of registers.
 #[repr(transparent)]
-struct SpsrEL2(InMemoryRegister<u64, SPSR_EL2::Register>);
-struct EsrEL2(InMemoryRegister<u64, ESR_EL2::Register>);
+struct SpsrEL3(InMemoryRegister<u64, SPSR_EL3::Register>);
+struct EsrEL3(InMemoryRegister<u64, ESR_EL3::Register>);
 
 /// The exception context as it is stored on the stack on exception entry.
 #[repr(C)]
@@ -33,15 +29,11 @@ struct ExceptionContext {
     elr_el3: u64,
 
     /// Saved program status.
-    spsr_el3: SpsrEL2,
+    spsr_el3: SpsrEL3,
 
     // Exception syndrome register.
-    esr_el3: EsrEL2,
+    esr_el3: EsrEL3,
 }
-
-//--------------------------------------------------------------------------------------------------
-// Private Code
-//--------------------------------------------------------------------------------------------------
 
 /// Prints verbose information about the exception and then panics.
 fn default_exception_handler(exc: &ExceptionContext) {
@@ -58,17 +50,17 @@ fn default_exception_handler(exc: &ExceptionContext) {
 
 #[no_mangle]
 unsafe extern "C" fn current_el0_synchronous(_e: &mut ExceptionContext) {
-    panic!("Should not be here. Use of SP_EL0 in EL2 is not supported.")
+    panic!("Should not be here. Use of SP_EL0 in EL3 is not supported.")
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el0_irq(_e: &mut ExceptionContext) {
-    panic!("Should not be here. Use of SP_EL0 in EL2 is not supported.")
+    panic!("Should not be here. Use of SP_EL0 in EL3 is not supported.")
 }
 
 #[no_mangle]
 unsafe extern "C" fn current_el0_serror(_e: &mut ExceptionContext) {
-    panic!("Should not be here. Use of SP_EL0 in EL2 is not supported.")
+    panic!("Should not be here. Use of SP_EL0 in EL3 is not supported.")
 }
 
 //------------------------------------------------------------------------------
@@ -128,81 +120,77 @@ unsafe extern "C" fn lower_aarch32_serror(e: &mut ExceptionContext) {
     default_exception_handler(e);
 }
 
-//------------------------------------------------------------------------------
-// Misc
-//------------------------------------------------------------------------------
-
-/// Human readable SPSR_EL2.
+/// Human readable SPSR_EL3.
 #[rustfmt::skip]
-impl fmt::Display for SpsrEL2 {
+impl fmt::Display for SpsrEL3 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Raw value.
-        writeln!(f, "SPSR_EL2: {:#010x}", self.0.get())?;
+        writeln!(f, "SPSR_EL3: {:#010x}", self.0.get())?;
 
         let to_flag_str = |x| -> _ {
             if x { "Set" } else { "Not set" }
          };
 
         writeln!(f, "      Flags:")?;
-        writeln!(f, "            Negative (N): {}", to_flag_str(self.0.is_set(SPSR_EL2::N)))?;
-        writeln!(f, "            Zero     (Z): {}", to_flag_str(self.0.is_set(SPSR_EL2::Z)))?;
-        writeln!(f, "            Carry    (C): {}", to_flag_str(self.0.is_set(SPSR_EL2::C)))?;
-        writeln!(f, "            Overflow (V): {}", to_flag_str(self.0.is_set(SPSR_EL2::V)))?;
+        writeln!(f, "            Negative (N): {}", to_flag_str(self.0.is_set(SPSR_EL3::N)))?;
+        writeln!(f, "            Zero     (Z): {}", to_flag_str(self.0.is_set(SPSR_EL3::Z)))?;
+        writeln!(f, "            Carry    (C): {}", to_flag_str(self.0.is_set(SPSR_EL3::C)))?;
+        writeln!(f, "            Overflow (V): {}", to_flag_str(self.0.is_set(SPSR_EL3::V)))?;
 
         let to_mask_str = |x| -> _ {
             if x { "Masked" } else { "Unmasked" }
         };
 
         writeln!(f, "      Exception handling state:")?;
-        writeln!(f, "            Debug  (D): {}", to_mask_str(self.0.is_set(SPSR_EL2::D)))?;
-        writeln!(f, "            SError (A): {}", to_mask_str(self.0.is_set(SPSR_EL2::A)))?;
-        writeln!(f, "            IRQ    (I): {}", to_mask_str(self.0.is_set(SPSR_EL2::I)))?;
-        writeln!(f, "            FIQ    (F): {}", to_mask_str(self.0.is_set(SPSR_EL2::F)))?;
+        writeln!(f, "            Debug  (D): {}", to_mask_str(self.0.is_set(SPSR_EL3::D)))?;
+        writeln!(f, "            SError (A): {}", to_mask_str(self.0.is_set(SPSR_EL3::A)))?;
+        writeln!(f, "            IRQ    (I): {}", to_mask_str(self.0.is_set(SPSR_EL3::I)))?;
+        writeln!(f, "            FIQ    (F): {}", to_mask_str(self.0.is_set(SPSR_EL3::F)))?;
 
         write!(f, "      Illegal Execution State (IL): {}",
-            to_flag_str(self.0.is_set(SPSR_EL2::IL))
+            to_flag_str(self.0.is_set(SPSR_EL3::IL))
         )
     }
 }
 
-impl EsrEL2 {
+impl EsrEL3 {
     #[inline(always)]
-    fn exception_class(&self) -> Option<ESR_EL2::EC::Value> {
-        self.0.read_as_enum(ESR_EL2::EC)
+    fn exception_class(&self) -> Option<ESR_EL3::EC::Value> {
+        self.0.read_as_enum(ESR_EL3::EC)
     }
 }
 
-/// Human readable ESR_EL2.
+/// Human readable ESR_EL3.
 #[rustfmt::skip]
-impl fmt::Display for EsrEL2 {
+impl fmt::Display for EsrEL3 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Raw print of whole register.
-        writeln!(f, "ESR_EL2: {:#010x}", self.0.get())?;
+        writeln!(f, "ESR_EL3: {:#010x}", self.0.get())?;
 
         // Raw print of exception class.
-        write!(f, "      Exception Class         (EC) : {:#x}", self.0.read(ESR_EL2::EC))?;
+        write!(f, "      Exception Class         (EC) : {:#x}", self.0.read(ESR_EL3::EC))?;
 
         // Exception class.
         let ec_translation = match self.exception_class() {
-            Some(ESR_EL2::EC::Value::DataAbortCurrentEL) => "Data Abort, current EL",
+            Some(ESR_EL3::EC::Value::DataAbortCurrentEL) => "Data Abort, current EL",
             _ => "N/A",
         };
         writeln!(f, " - {}", ec_translation)?;
 
         // Raw print of instruction specific syndrome.
-        write!(f, "      Instr Specific Syndrome (ISS): {:#x}", self.0.read(ESR_EL2::ISS))
+        write!(f, "      Instr Specific Syndrome (ISS): {:#x}", self.0.read(ESR_EL3::ISS))
     }
 }
 
 impl ExceptionContext {
     #[inline(always)]
-    fn exception_class(&self) -> Option<ESR_EL2::EC::Value> {
+    fn exception_class(&self) -> Option<ESR_EL3::EC::Value> {
         self.esr_el3.exception_class()
     }
 
     #[inline(always)]
     fn fault_address_valid(&self) -> bool {
-        use ESR_EL2::EC::Value::*;
+        use ESR_EL3::EC::Value::*;
 
         match self.exception_class() {
             None => false,
@@ -226,11 +214,11 @@ impl fmt::Display for ExceptionContext {
         writeln!(f, "{}", self.esr_el3)?;
 
         if self.fault_address_valid() {
-            writeln!(f, "FAR_EL2: {:#018x}", FAR_EL2.get() as usize)?;
+            writeln!(f, "FAR_EL3: {:#018x}", FAR_EL3.get() as usize)?;
         }
 
         writeln!(f, "{}", self.spsr_el3)?;
-        writeln!(f, "ELR_EL2: {:#018x}", self.elr_el3)?;
+        writeln!(f, "ELR_EL3: {:#018x}", self.elr_el3)?;
         writeln!(f)?;
         writeln!(f, "General purpose register:")?;
 
@@ -277,7 +265,7 @@ pub unsafe fn handling_init() {
         static __exception_vector_start: UnsafeCell<()>;
     }
 
-    VBAR_EL2.set(__exception_vector_start.get() as u64);
+    VBAR_EL3.set(__exception_vector_start.get() as u64);
 
     // Force VBAR update to complete before next instruction.
     barrier::isb(barrier::SY);

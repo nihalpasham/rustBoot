@@ -1,21 +1,21 @@
 #![no_std]
 #![no_main]
-#![feature(format_args_nl, core_intrinsics, once_cell)]
+#![feature(format_args_nl)]
 
 mod boot;
-// mod log;
 
 use rustBoot_hal::info;
+use rustBoot_hal::nxp::imx8mn::arch::cpu_core::*;
 use rustBoot_hal::nxp::imx8mn::bsp::{
-    drivers::{common::interface::DriverManager, driver_manager::driver_manager},
-    global,
+    drivers::{common::interface::DriverManager, driver_manager::{driver_manager, start_system_counter}},
+    global, global::CNTR,
+    clocks,
+    mux,
 };
 use rustBoot_hal::nxp::imx8mn::{
     exception,
     log::{console, console::Statistics},
 };
-
-use crate::boot::halt;
 
 /// Early init code.
 ///
@@ -25,8 +25,6 @@ use crate::boot::halt;
 /// - The init calls in this function must appear in the correct order.
 #[no_mangle]
 unsafe fn kernel_init() -> ! {
-    // set up vector base address register handlers
-    exception::exception::handling_init();
     // initialize drivers
     for i in driver_manager().all_device_drivers().iter() {
         if let Err(x) = i.init() {
@@ -39,7 +37,7 @@ unsafe fn kernel_init() -> ! {
     kernel_main()
 }
 
-/// The main function running after the early init.
+/// The main function running after early initialization.
 #[no_mangle]
 fn kernel_main() -> ! {
     info!(
@@ -61,6 +59,9 @@ fn kernel_main() -> ! {
     }
 
     info!("Chars written: {}", console::console().chars_written());
+    // info!("Counter Control Register: {}", &CNTR.get_cntcr());
 
-    halt()
+    wait_forever()
 }
+
+

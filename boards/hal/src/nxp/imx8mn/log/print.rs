@@ -1,15 +1,7 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-//
-// Copyright (c) 2018-2021 Andre Richter <andre.o.richter@gmail.com>
-
 //! Printing.
 
 use super::{console, console::Write};
 use core::fmt;
-
-//--------------------------------------------------------------------------------------------------
-// Public Code
-//--------------------------------------------------------------------------------------------------
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
@@ -40,7 +32,7 @@ macro_rules! println {
 macro_rules! info {
     ($string:expr) => ({
         #[allow(unused_imports)]
-        use $crate::nxp::imx8mn::arch::time::*;
+        use $crate::nxp::imx8mn::arch::timer::*;
 
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
@@ -54,7 +46,7 @@ macro_rules! info {
     });
     ($format_string:expr, $($arg:tt)*) => ({
         #[allow(unused_imports)]
-        use $crate::nxp::imx8mn::arch::time::*;
+        use $crate::nxp::imx8mn::arch::timer::*;
 
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
@@ -74,7 +66,7 @@ macro_rules! info {
 macro_rules! warn {
     ($string:expr) => ({
         #[allow(unused_imports)]
-        use $crate::nxp::imx8mn::arch::time::*;
+        use $crate::nxp::imx8mn::arch::timer::*;
 
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
@@ -88,7 +80,7 @@ macro_rules! warn {
     });
     ($format_string:expr, $($arg:tt)*) => ({
         #[allow(unused_imports)]
-        use $crate::nxp::imx8mn::arch::time::*;
+        use $crate::nxp::imx8mn::arch::timer::*;
 
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
