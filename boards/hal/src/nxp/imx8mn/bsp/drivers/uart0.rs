@@ -1010,7 +1010,7 @@ impl Uart {
 
 impl super::common::interface::DeviceDriver for Uart {
     fn compatible(&self) -> &'static str {
-        "i.MX 8M Nano Uart2"
+        "i.MX8M Uart2"
     }
 
     unsafe fn init(&self) -> Result<(), &'static str> {

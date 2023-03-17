@@ -8,7 +8,7 @@ use rustBoot_hal::info;
 use rustBoot_hal::nxp::imx8mn::arch::cpu_core::*;
 use rustBoot_hal::nxp::imx8mn::bsp::{
     drivers::{common::interface::DriverManager, driver_manager::{driver_manager, start_system_counter}},
-    global, global::CNTR,
+    global,
     clocks,
     mux,
 };
@@ -59,7 +59,6 @@ fn kernel_main() -> ! {
     }
 
     info!("Chars written: {}", console::console().chars_written());
-    // info!("Counter Control Register: {}", &CNTR.get_cntcr());
 
     wait_forever()
 }

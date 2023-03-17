@@ -1,7 +1,6 @@
 use rustBoot::dt::{parse_fit, prepare_img_hash, verify_fit, Reader};
 use sha2::{Digest, Sha256};
 
-use std::convert::TryInto;
 use std::env;
 use std::fs;
 use std::io::Read;
@@ -15,7 +14,7 @@ fn main() {
     file.read_to_end(&mut buf).unwrap();
     let version = args[2].parse().expect("bad version: unable to parse");
 
-    log_init();
+    // log_init();
 
     let reader = Reader::read(buf.as_slice()).unwrap();
     let res = parse_fit::<Sha256, 32, 64, 4>(reader);
@@ -68,7 +67,7 @@ impl log::Log for SimpleLogger {
                     println!("... ")
                 }
                 (_, Some(line)) => println!("\t  \u{2a3d} {} @ line:{}", record.target(), line),
-                (Some(file), None) => println!("\t  \u{2a3d} @ {}", file),
+                // (Some(file), None) => println!("\t  \u{2a3d} @ {}", file),
             }
         }
     }

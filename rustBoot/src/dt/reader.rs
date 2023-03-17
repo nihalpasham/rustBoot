@@ -286,7 +286,7 @@ impl<'a, 'b> PathStructItems<'a, 'b> {
             match item {
                 StructItem::BeginNode { .. } => {
                     if self.level == self.path.level()
-                        && self.path.component() == item.name().unwrap()
+                        && self.path.component() == item.node_name().unwrap()
                         && !self.path.move_next()
                     {
                         self.level += 1;

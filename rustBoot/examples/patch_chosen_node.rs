@@ -85,7 +85,7 @@ impl log::Log for SimpleLogger {
                     println!("... ")
                 }
                 (_, Some(line)) => println!("\t  \u{2a3d} {} @ line:{}", record.target(), line),
-                (Some(file), None) => println!("\t  \u{2a3d} @ {}", file),
+                // (Some(file), None) => println!("\t  \u{2a3d} @ {}", file),
             }
         }
     }
