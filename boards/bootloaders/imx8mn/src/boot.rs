@@ -3,7 +3,11 @@
 use core::arch::global_asm;
 
 use crate::kernel_init;
-use crate::{clocks, exception, mux::iomux::uart2_mux_mmio_set, start_system_counter};
+use crate::{
+    clocks, exception,
+    mux::{uart2grp::uart2_mux_mmio_set, usdhc2grp::usdhc2_mux_mmio_set},
+    start_system_counter,
+};
 
 // Assembly counterpart to this file.
 global_asm!(include_str!("entry.S"));
@@ -16,13 +20,15 @@ global_asm!(include_str!("entry.S"));
 pub unsafe extern "C" fn _start_rust() -> ! {
     // set the vector base address for register handlers
     exception::exception::handling_init();
-    // initialize uart clock and ungate sys_counter clock 
-    clocks::ccm::init_uart_clk(1);
-    clocks::ccm::enable_sctr();
+    // enable Uart and uSDHC clock and ungate sys_counter clock
+    clocks::uartclks::enable_uart_clk(1);
+    clocks::usdhcclks::enable_usdhc_clk(2);
+    clocks::scntrclk::enable_sctr();
     // start the system counter, this allows us to access ARM's architectural counter - CNTPCT_EL0
     start_system_counter();
-    // set the mux state for UART2 peripheral.
+    // set mux state for UART2 and uSDHC2 peripherals.
     uart2_mux_mmio_set();
+    usdhc2_mux_mmio_set();
     // jump to next init stage.
     kernel_init()
 }
