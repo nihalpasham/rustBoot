@@ -1902,12 +1902,19 @@ impl UsdhController {
             return SdResult::SdErrorReset;
         }
         info!("Sd host circuit reset..");
+        self.registers.SYS_CTRL.modify(SYS_CTRL::RESERVED0::SET);
+
+        if self.registers.PRES_STATE.read(PRES_STATE::CINST) == 0x1 {
+            info!("card inserted...")
+        } else {
+            info!("card not inserted...")
+        }
         // Set INITA field to send 80 SD-clocks to the card. After the 80 clocks are sent, this field is self
         // cleared
-        self.registers.SYS_CTRL.modify(SYS_CTRL::INITA.val(1));
-        while self.registers.SYS_CTRL.matches_all(SYS_CTRL::INITA.val(1)) {
-            cpu_core::nop()
-        }
+        // self.registers.SYS_CTRL.modify(SYS_CTRL::INITA.val(1));
+        // while self.registers.SYS_CTRL.matches_all(SYS_CTRL::INITA.val(1)) {
+        //     cpu_core::nop()
+        // }
         /* set wartermark level as 128 words and burst len as 16 (maximum) */
         self.registers.WTMK_LVL.modify(
             WTMK_LVL::RD_WML.val(0x80)
@@ -1951,10 +1958,11 @@ impl UsdhController {
                 + BWRSEN::SET
                 + DINTSEN::SET,
         );
-        // Set PROCTL reg to the default 
+        // Set PROCTL reg to the default
         self.registers
             .PROT_CTRL
-            .write(PROT_CTRL::CDTL::SET + PROT_CTRL::D3CD::SET);
+            .write(PROT_CTRL::CDTL::SET + PROT_CTRL::D3CD::CLEAR);
+        // self.registers.VEND_SPEC.modify(VEND_SPEC::FRC_SDCLK_ON::SET);
         // set timeout to maximum value
         self.registers.SYS_CTRL.modify(SYS_CTRL::DTOCV.val(0xe));
 
@@ -2016,8 +2024,10 @@ impl UsdhController {
             return SdResult::SdTimeout;
         } else if (int_status & int_error_status.get()) != 0 {
             info!(
-                "Sd Error: Cmd response returned an error, \
+                "Sd Error: Cmd response returned an error, VendSpec: 0x{:08x}, ProtCtrl: 0x{:08x}, \
                PresentStatus: 0x{:08x}, intStatus: 0x{:08x}, Resp0: 0x{:08x}, timeDiff: {}\n",
+                self.registers.VEND_SPEC.get(),
+                self.registers.PROT_CTRL.get(),
                 self.registers.PRES_STATE.get(),
                 int_status,
                 self.registers.CMD_RSP0.get(),
@@ -2110,7 +2120,10 @@ impl UsdhController {
         let resp0 = self.registers.CMD_RSP0.get();
 
         match cmd.cmd_code.read_as_enum(CMD_XFR_TYP::RSPTYP) {
-            Some(CMD_XFR_TYP::RSPTYP::Value::CMD_NO_RESP) => return SdResult::SdOk,
+            Some(CMD_XFR_TYP::RSPTYP::Value::CMD_NO_RESP) => {
+                info!("Good CMD_RSP0: 0x{:08x}", resp0);
+                return SdResult::SdOk
+            }
             Some(CMD_XFR_TYP::RSPTYP::Value::CMD_BUSY48BIT_RESP) => unsafe {
                 SD_CARD.status = resp0;
                 // Store the card state.  Note that this is the state the card was in before the
@@ -2600,47 +2613,47 @@ impl UsdhController {
 
         // Send SEND_IF_COND,0x000001AA (CMD8) voltage range 0x1 check pattern 0xAA
         // If voltage range and check pattern don't match, look for older card.
-        resp = self.send_command_a(SdCardCommands::SendIfCond, 0x000001AA);
-        let _ = match resp {
-            SdResult::SdOk => {
-                // Card responded with voltage and check pattern.
-                // Resolve voltage and check for high capacity card.
-                resp = self.app_send_op_cond(ACMD41_ARG_HC as u32);
-                if (resp != SdResult::SdOk) {
-                    return self.debug_response(resp);
-                }
+        // resp = self.send_command_a(SdCardCommands::SendIfCond, 0x000001AA);
+        // let _ = match resp {
+        //     SdResult::SdOk => {
+        //         // Card responded with voltage and check pattern.
+        //         // Resolve voltage and check for high capacity card.
+        //         resp = self.app_send_op_cond(ACMD41_ARG_HC as u32);
+        //         if (resp != SdResult::SdOk) {
+        //             return self.debug_response(resp);
+        //         }
 
-                // Check for high or standard capacity.
-                unsafe {
-                    if (SD_CARD.ocr.read(OCR::card_capacity) != 0) {
-                        SD_CARD.sd_card_type = SdCardType::Type2Hc;
-                    } else {
-                        SD_CARD.sd_card_type = SdCardType::Type2Sc;
-                    }
-                }
-            }
-            SdResult::SdBusy => return resp,
-            // No response to SEND_IF_COND, treat as an old card.
-            _ => {
-                // If there appears to be a command in progress, reset the card.
-                resp = self.reset_card();
-                if self.registers.PRES_STATE.read(PRES_STATE::CIHB) != 0 && (resp != SdResult::SdOk)
-                {
-                    return resp;
-                }
+        //         // Check for high or standard capacity.
+        //         unsafe {
+        //             if (SD_CARD.ocr.read(OCR::card_capacity) != 0) {
+        //                 SD_CARD.sd_card_type = SdCardType::Type2Hc;
+        //             } else {
+        //                 SD_CARD.sd_card_type = SdCardType::Type2Sc;
+        //             }
+        //         }
+        //     }
+        //     SdResult::SdBusy => return resp,
+        //     // No response to SEND_IF_COND, treat as an old card.
+        //     _ => {
+        //         // If there appears to be a command in progress, reset the card.
+        //         resp = self.reset_card();
+        //         if self.registers.PRES_STATE.read(PRES_STATE::CIHB) != 0 && (resp != SdResult::SdOk)
+        //         {
+        //             return resp;
+        //         }
 
-                // wait(50);
-                // Resolve voltage.
-                resp = self.app_send_op_cond(ACMD41_ARG_SC as u32);
-                if (resp != SdResult::SdOk) {
-                    return self.debug_response(resp);
-                }
+        //         // wait(50);
+        //         // Resolve voltage.
+        //         resp = self.app_send_op_cond(ACMD41_ARG_SC as u32);
+        //         if (resp != SdResult::SdOk) {
+        //             return self.debug_response(resp);
+        //         }
 
-                unsafe {
-                    SD_CARD.sd_card_type = SdCardType::Type1;
-                }
-            }
-        };
+        //         unsafe {
+        //             SD_CARD.sd_card_type = SdCardType::Type1;
+        //         }
+        //     }
+        // };
 
         // Send SEND_OP_COND (CMD1)
         // while true {

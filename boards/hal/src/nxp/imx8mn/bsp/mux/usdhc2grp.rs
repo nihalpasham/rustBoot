@@ -9,7 +9,6 @@ enum PadSelect {
     Usdhc2Vselect,
     Sdma1ExtEvent1,
 }
-
 /// Pin Muxing Registers for uSDHC2.
 struct Usdhc2MuxRegs {
     // Pad Mux Registers
@@ -70,28 +69,25 @@ impl Default for Usdhc2MuxRegs {
 }
 
 impl Usdhc2MuxRegs {
-    fn set_usdhc2_mux_cfg(
-        &self,
-        mux_val: MuxMode,
-        sion_val: Sion,
-        pad_ctrl_val: u32,
-        input_selector: u32,
-    ) {
+    fn set_usdhc2_mux_cfg(&self, mux_val: MuxMode, sion_val: Sion, input_selector: u32) {
         // #Safety
         //
-        // Only valid register writes vals are used via rust pattern-matching.
+        // Only valid register writes (vals) are used via rust pattern-matching.
         match (mux_val, sion_val) {
             (MuxMode::Alt0, Sion::Disabled) => unsafe {
                 // write to Pad Mux Registers
-                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_cd_b as *mut u32, 0);
-                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_clk as *mut u32, 0);
-                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_cmd as *mut u32, 0);
-                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_data0 as *mut u32, 0);
-                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_data1 as *mut u32, 0);
-                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_data2 as *mut u32, 0);
-                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_data3 as *mut u32, 0);
-                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_wp as *mut u32, 0);
-                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_reset_b as *mut u32, 0);
+                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_cd_b as *mut u32, 0x0);
+                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_clk as *mut u32, 0x0);
+                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_cmd as *mut u32, 0x0);
+                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_data0 as *mut u32, 0x0);
+                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_data1 as *mut u32, 0x0);
+                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_data2 as *mut u32, 0x0);
+                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_data3 as *mut u32, 0x0);
+                ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_wp as *mut u32, 0x0);
+                ::core::ptr::write_volatile(
+                    self.iomuxc_sw_mux_ctl_pad_sd2_reset_b as *mut u32,
+                    0x0,
+                );
             },
             _ => unimplemented!(),
         }
@@ -100,39 +96,102 @@ impl Usdhc2MuxRegs {
         unsafe {
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_sd2_cd_b as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Fast,
+                    Ode::Disabled,
+                    Pue::PullDown,
+                    Hys::Enabled,
+                    Pe::Enabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_sd2_clk as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Fast,
+                    Ode::Disabled,
+                    Pue::PullDown,
+                    Hys::Enabled,
+                    Pe::Enabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_sd2_cmd as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Fast,
+                    Ode::Disabled,
+                    Pue::PullUp,
+                    Hys::Enabled,
+                    Pe::Enabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_sd2_data0 as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Fast,
+                    Ode::Disabled,
+                    Pue::PullUp,
+                    Hys::Enabled,
+                    Pe::Enabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_sd2_data1 as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Fast,
+                    Ode::Disabled,
+                    Pue::PullUp,
+                    Hys::Enabled,
+                    Pe::Enabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_sd2_data2 as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Fast,
+                    Ode::Disabled,
+                    Pue::PullUp,
+                    Hys::Enabled,
+                    Pe::Enabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_sd2_data3 as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Fast,
+                    Ode::Disabled,
+                    Pue::PullUp,
+                    Hys::Enabled,
+                    Pe::Enabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_sd2_reset_b as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Slow,
+                    Ode::Disabled,
+                    Pue::PullUp,
+                    Hys::Disabled,
+                    Pe::Disabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_sd2_wp as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Fast,
+                    Ode::Disabled,
+                    Pue::PullDown,
+                    Hys::Enabled,
+                    Pe::Enabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_mux_ctl_pad_usdhc2_vselect as *mut u32,
@@ -140,15 +199,31 @@ impl Usdhc2MuxRegs {
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_usdhc2_vselect as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Slow,
+                    Ode::Disabled,
+                    Pue::PullUp,
+                    Hys::Enabled,
+                    Pe::Disabled,
+                ),
             );
         }
     }
 
     fn get_pad_ctrl_val(&self, dse: Dse, fsel: Fsel, ode: Ode, pue: Pue, hys: Hys, pe: Pe) -> u32 {
         match (dse, fsel, ode, pue, hys, pe) {
-            (Dse::DseX6, Fsel::Slow, Ode::Disabled, Pue::PullDown, Hys::Disabled, Pe::Disabled) => {
-                0x6
+            (Dse::DseX1, Fsel::Fast, Ode::Disabled, Pue::PullUp, Hys::Enabled, Pe::Enabled) => {
+                0x1d0
+            }
+            (Dse::DseX1, Fsel::Fast, Ode::Disabled, Pue::PullDown, Hys::Enabled, Pe::Enabled) => {
+                0x190
+            }
+            (Dse::DseX1, Fsel::Slow, Ode::Disabled, Pue::PullUp, Hys::Disabled, Pe::Disabled) => {
+                0x41
+            }
+            (Dse::DseX1, Fsel::Slow, Ode::Disabled, Pue::PullUp, Hys::Enabled, Pe::Disabled) => {
+                0xc1
             }
             _ => unimplemented!(),
         }
@@ -156,7 +231,7 @@ impl Usdhc2MuxRegs {
 
     fn get_pad_sel_val(&self, pad_sel_val: PadSelect) -> u32 {
         match pad_sel_val {
-            PadSelect::Usdhc2Vselect => 1,
+            PadSelect::Usdhc2Vselect => 0x1,
             _ => unimplemented!(),
         }
     }
@@ -165,15 +240,7 @@ impl Usdhc2MuxRegs {
 /// Set mux-config for the uSDHC2 peripheral.
 pub fn usdhc2_mux_mmio_set() {
     let usdhc_regs = Usdhc2MuxRegs::default();
-    let pad_ctrl_val = usdhc_regs.get_pad_ctrl_val(
-        Dse::DseX6,
-        Fsel::Slow,
-        Ode::Disabled,
-        Pue::PullDown,
-        Hys::Disabled,
-        Pe::Disabled,
-    );
     let input_selector = usdhc_regs.get_pad_sel_val(PadSelect::Usdhc2Vselect);
 
-    usdhc_regs.set_usdhc2_mux_cfg(MuxMode::Alt0, Sion::Disabled, pad_ctrl_val, input_selector);
+    usdhc_regs.set_usdhc2_mux_cfg(MuxMode::Alt0, Sion::Disabled, input_selector);
 }
