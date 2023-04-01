@@ -42,8 +42,8 @@ impl Default for Uart2MuxRegs {
 impl Uart2MuxRegs {
     fn get_pad_ctrl_val(&self, dse: Dse, fsel: Fsel, ode: Ode, pue: Pue, hys: Hys, pe: Pe) -> u32 {
         match (dse, fsel, ode, pue, hys, pe) {
-            (Dse::DseX6, Fsel::Slow, Ode::Disabled, Pue::PullDown, Hys::Disabled, Pe::Disabled) => {
-                7
+            (Dse::DseX1, Fsel::Slow, Ode::Disabled, Pue::PullUp, Hys::Disabled, Pe::Enabled) => {
+                0x140
             }
             _ => unimplemented!(),
         }
@@ -60,7 +60,6 @@ impl Uart2MuxRegs {
         &self,
         mux_val: MuxMode,
         sion_val: Sion,
-        pad_ctrl_val: u32,
         input_selector: u32,
     ) {
         // #Safety
@@ -79,11 +78,25 @@ impl Uart2MuxRegs {
         unsafe {
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_uart2_rxd as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Slow,
+                    Ode::Disabled,
+                    Pue::PullUp,
+                    Hys::Disabled,
+                    Pe::Enabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_uart2_txd as *mut u32,
-                pad_ctrl_val,
+                self.get_pad_ctrl_val(
+                    Dse::DseX1,
+                    Fsel::Slow,
+                    Ode::Disabled,
+                    Pue::PullUp,
+                    Hys::Disabled,
+                    Pe::Enabled,
+                ),
             );
             ::core::ptr::write_volatile(
                 self.iomuxc_uart2_rx_select_input as *mut u32,
@@ -96,15 +109,7 @@ impl Uart2MuxRegs {
 /// Set mux-config for the UART2 peripheral.
 pub fn uart2_mux_mmio_set() {
     let uart_regs = Uart2MuxRegs::default();
-    let pad_ctrl_val = uart_regs.get_pad_ctrl_val(
-        Dse::DseX6,
-        Fsel::Slow,
-        Ode::Disabled,
-        Pue::PullDown,
-        Hys::Disabled,
-        Pe::Disabled,
-    );
     let input_selector = uart_regs.get_pad_sel_val(PadSelect::Uart2RxdAlt0);
 
-    uart_regs.set_uart2_mux_cfg(MuxMode::Alt0, Sion::Disabled, pad_ctrl_val, input_selector);
+    uart_regs.set_uart2_mux_cfg(MuxMode::Alt0, Sion::Disabled, input_selector);
 }

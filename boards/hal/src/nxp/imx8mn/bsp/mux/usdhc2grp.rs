@@ -1,5 +1,6 @@
 //! Pin Mux settings for uSDHC2
 
+use super::super::global::GPIO2;
 use super::super::memory_map::map::mmio::IOMUXC_START;
 use super::iomuxc::*;
 
@@ -70,6 +71,10 @@ impl Default for Usdhc2MuxRegs {
 
 impl Usdhc2MuxRegs {
     fn set_usdhc2_mux_cfg(&self, mux_val: MuxMode, sion_val: Sion, input_selector: u32) {
+        unsafe {
+            ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_reset_b as *mut u32, 0x5);
+            GPIO2.set_pin(19);
+        }
         // #Safety
         //
         // Only valid register writes (vals) are used via rust pattern-matching.
@@ -84,10 +89,6 @@ impl Usdhc2MuxRegs {
                 ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_data2 as *mut u32, 0x0);
                 ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_data3 as *mut u32, 0x0);
                 ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_wp as *mut u32, 0x0);
-                ::core::ptr::write_volatile(
-                    self.iomuxc_sw_mux_ctl_pad_sd2_reset_b as *mut u32,
-                    0x0,
-                );
             },
             _ => unimplemented!(),
         }
@@ -201,13 +202,14 @@ impl Usdhc2MuxRegs {
                 self.iomuxc_sw_pad_ctl_pad_usdhc2_vselect as *mut u32,
                 self.get_pad_ctrl_val(
                     Dse::DseX1,
-                    Fsel::Slow,
+                    Fsel::Fast,
                     Ode::Disabled,
                     Pue::PullUp,
                     Hys::Enabled,
-                    Pe::Disabled,
+                    Pe::Enabled,
                 ),
             );
+            GPIO2.clear_pin(19) // gpio2 pin 19 data register clear
         }
     }
 

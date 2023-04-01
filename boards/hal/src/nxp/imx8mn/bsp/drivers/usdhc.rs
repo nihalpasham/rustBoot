@@ -1291,7 +1291,12 @@ impl SdCardCommands {
             Self::AllSendCid => Command {
                 cmd_name: "ALL_SEND_CID",
                 cmd_code: {
-                    cmd.write(CMD_XFR_TYP::CMDINX.val(0x02) + CMD_XFR_TYP::RSPTYP::CMD_136BIT_RESP);
+                    cmd.write(
+                        CMD_XFR_TYP::CMDINX.val(0x02)
+                            + CMD_XFR_TYP::RSPTYP::CMD_136BIT_RESP
+                            + CMD_XFR_TYP::CCCEN::SET
+                            + CMD_XFR_TYP::CICEN::SET,
+                    );
                     cmd
                 },
                 use_rca: 0,
@@ -1385,7 +1390,12 @@ impl SdCardCommands {
             Self::SendStatus => Command {
                 cmd_name: "SEND_STATUS",
                 cmd_code: {
-                    cmd.write(CMD_XFR_TYP::CMDINX.val(0x0d) + CMD_XFR_TYP::RSPTYP::CMD_48BIT_RESP);
+                    cmd.write(
+                        CMD_XFR_TYP::CMDINX.val(0x0d)
+                            + CMD_XFR_TYP::RSPTYP::CMD_48BIT_RESP
+                            + CMD_XFR_TYP::CCCEN::SET
+                            + CMD_XFR_TYP::CICEN::SET,
+                    );
                     cmd
                 },
                 use_rca: 1,
@@ -1911,10 +1921,10 @@ impl UsdhController {
         }
         // Set INITA field to send 80 SD-clocks to the card. After the 80 clocks are sent, this field is self
         // cleared
-        // self.registers.SYS_CTRL.modify(SYS_CTRL::INITA.val(1));
-        // while self.registers.SYS_CTRL.matches_all(SYS_CTRL::INITA.val(1)) {
-        //     cpu_core::nop()
-        // }
+        self.registers.SYS_CTRL.modify(SYS_CTRL::INITA.val(1));
+        while self.registers.SYS_CTRL.matches_all(SYS_CTRL::INITA.val(1)) {
+            cpu_core::nop()
+        }
         /* set wartermark level as 128 words and burst len as 16 (maximum) */
         self.registers.WTMK_LVL.modify(
             WTMK_LVL::RD_WML.val(0x80)
@@ -1928,7 +1938,7 @@ impl UsdhController {
 
         self.registers.VEND_SPEC.set(VENDORSPEC_INIT);
         /* Default setup, 1.8V IO */
-        self.registers.VEND_SPEC.modify(VEND_SPEC::VSELECT::CLEAR);
+        self.registers.VEND_SPEC.modify(VEND_SPEC::VSELECT::SET);
         /* Disable DLL_CTRL delay line */
         self.registers.DLL_CTRL.set(0);
 
@@ -2099,7 +2109,6 @@ impl UsdhController {
 
         /* Mask all irqs */
         self.registers.INT_SIGNAL_EN.set(0);
-        timer_wait_micro(1000);
 
         // Set the argument and the command code. Some commands require a delay before reading the response
         self.registers.CMD_ARG.set(arg);
@@ -2122,7 +2131,7 @@ impl UsdhController {
         match cmd.cmd_code.read_as_enum(CMD_XFR_TYP::RSPTYP) {
             Some(CMD_XFR_TYP::RSPTYP::Value::CMD_NO_RESP) => {
                 info!("Good CMD_RSP0: 0x{:08x}", resp0);
-                return SdResult::SdOk
+                return SdResult::SdOk;
             }
             Some(CMD_XFR_TYP::RSPTYP::Value::CMD_BUSY48BIT_RESP) => unsafe {
                 SD_CARD.status = resp0;
