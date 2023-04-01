@@ -7,12 +7,14 @@ mod boot;
 use rustBoot_hal::info;
 use rustBoot_hal::nxp::imx8mn::arch::cpu_core::*;
 use rustBoot_hal::nxp::imx8mn::bsp::drivers::usdhc::SdResult;
-use rustBoot_hal::nxp::imx8mn::bsp::global::SDHC;
+use rustBoot_hal::nxp::imx8mn::bsp::global::SDHC2;
 use rustBoot_hal::nxp::imx8mn::bsp::{
-    drivers::{common::interface::DriverManager, driver_manager::{driver_manager, start_system_counter}},
-    global,
     clocks,
-    mux,
+    drivers::{
+        common::interface::DriverManager,
+        driver_manager::{driver_manager, start_system_counter},
+    },
+    global, mux,
 };
 use rustBoot_hal::nxp::imx8mn::{
     exception,
@@ -62,12 +64,10 @@ fn kernel_main() -> ! {
     info!("Chars written: {}", console::console().chars_written());
 
     // init uSDHC
-    match SDHC.init_usdhc() {
+    match SDHC2.init_usdhc() {
         SdResult::SdOk => info!("uSDHC driver initialized"),
         _ => info!("failed to initialize"),
     };
 
     wait_forever()
 }
-
-
