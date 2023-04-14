@@ -1,4 +1,5 @@
 /target
 Cargo.lock
 /sign_images/signed_images/*.bin
+/hal/src/nxp/imx8mn/aarch64-cpu/target
 
