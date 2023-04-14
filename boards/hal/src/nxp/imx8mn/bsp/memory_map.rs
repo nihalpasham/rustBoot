@@ -10,6 +10,7 @@ pub mod map {
     pub const USDHC2_OFFSET :   usize = 0x00B5_0000;
     pub const SYSCNT_OFFSET :   usize = 0x006C_0000;
     pub const IOMUXC_OFFSET :   usize = 0x0033_0000;
+    pub const ANALOG_OFFSET :   usize = 0x0036_0000;
 
     pub mod mmio {
         use super::*;
@@ -21,6 +22,7 @@ pub mod map {
         pub const USDHC2_START:     usize = START + USDHC2_OFFSET;
         pub const SYSCNT_START:     usize = START + SYSCNT_OFFSET;
         pub const IOMUXC_START:     usize = START + IOMUXC_OFFSET;
+        pub const CCM_ANALOG:       usize = START + ANALOG_OFFSET;
         pub const END_INCLUSIVE:    usize =         0x30FF_FFFF;
         
     }

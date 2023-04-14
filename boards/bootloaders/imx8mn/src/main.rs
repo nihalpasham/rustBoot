@@ -67,7 +67,7 @@ fn kernel_main() -> ! {
     match SDHC2.init_usdhc() {
         SdResult::SdOk => info!("uSDHC driver initialized"),
         _ => info!("failed to initialize"),
-    };
+    }
 
     wait_forever()
 }

@@ -1,4 +1,4 @@
-//! The i.MX8 has 3 uSDHC(s). We use a default 400mhz source clock.
+//! The i.MX8 has 3 uSDHC(s). Set uSDHC root clock to SYSTEM_PLL1_DIV2 i.e. 400M
 
 use super::ccm::*;
 use crate::info;
@@ -18,7 +18,7 @@ pub fn enable_usdhc_clk(index: u32) {
             clock_enable(CCGRIdx::CcgrUsdhc2, false);
             clock_set_target_val(
                 ClkRootIdx::Usdhc2ClkRoot,
-                CLK_ROOT_ON | clk_root_source_sel(0),
+                CLK_ROOT_ON | clk_root_source_sel(1),
             );
             clock_enable(CCGRIdx::CcgrUsdhc2, true);
         }

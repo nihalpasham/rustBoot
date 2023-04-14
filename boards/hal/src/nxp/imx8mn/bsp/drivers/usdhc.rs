@@ -685,6 +685,38 @@ register_bitfields! {
         DMAEIEN OFFSET(28) NUMBITS(1) [],
         RESERVED5 OFFSET(29) NUMBITS(3) [],
     ],
+    /// This register provides the host driver with information specific to uSDHC
+    /// implementation. The value in this register is the power-on-reset value and does not
+    /// change with a software reset.
+    HOST_CTRL_CAP [
+        SDR50_SUPPORT OFFSET(0) NUMBITS(1) [],
+        SDR104_SUPPORT OFFSET(1) NUMBITS(1) [],
+        DDR50_SUPPORT OFFSET(2) NUMBITS(1) [],
+        RESERVED0 OFFSET(3) NUMBITS(5) [],
+        TIME_COUNT_RETUNING OFFSET(8) NUMBITS(4) [],
+        RESERVED1 OFFSET(12) NUMBITS(1) [],
+        USE_TUNING_SDR50 OFFSET(13) NUMBITS(1) [],
+        RETUNING_MODE OFFSET(14) NUMBITS(2) [],
+        MBL OFFSET(16) NUMBITS(3) [],
+        RESERVED2 OFFSET(19) NUMBITS(1) [],
+        ADMAS OFFSET(20) NUMBITS(1) [],
+        HSS OFFSET(21) NUMBITS(1) [],
+        DMAS OFFSET(22) NUMBITS(1) [],
+        SRS OFFSET(23) NUMBITS(1) [],
+        VS33 OFFSET(24) NUMBITS(1) [
+            NotSupported = 0,
+            Supported = 1,
+        ],
+        VS30 OFFSET(25) NUMBITS(1) [
+            NotSupported = 0,
+            Supported = 1,
+        ],
+        VS18 OFFSET(26) NUMBITS(1) [
+            NotSupported = 0,
+            Supported = 1,
+        ],
+        RESERVED3 OFFSET(27) NUMBITS(5) [],
+    ],
     /// This register contains the MMC Fast Boot control register.
     MMCBOOT [
         DTOCV_ACK OFFSET(0) NUMBITS(4) [],
@@ -800,7 +832,7 @@ register_structs! {
         (0x34 => INT_STATUS_EN: ReadWrite<u32, INT_STATUS_EN::Register>),
         (0x38 => INT_SIGNAL_EN: ReadWrite<u32, INT_SIGNAL_EN::Register>),
         (0x3c => AUTOCMD12_ERR_STATUS),
-        (0x40 => HOST_CTRL_CAP),
+        (0x40 => HOST_CTRL_CAP: ReadWrite<u32, HOST_CTRL_CAP::Register>),
         (0x44 => WTMK_LVL: ReadWrite<u32, WTMK_LVL::Register>),
         (0x48 => MIXCTRL: ReadWrite<u32, MIXCTRL::Register>),
         (0x4c => _reserved0),
@@ -1142,7 +1174,7 @@ mod uSDHC_constants {
     --------------------------------------------------------------------------*/
     pub const FREQ_SETUP  : usize = 400_000; // 400 Khz
     pub const FREQ_NORMAL : usize = 24_000_000; // 24 Mhz
-    pub const BASE_CLOCK  : usize = 24_000_000; // 24 Mhz
+    pub const BASE_CLOCK  : usize = 400_000_000; // 400 Mhz
 
 
     /*--------------------------------------------------------------------------
@@ -1932,13 +1964,14 @@ impl UsdhController {
                 + WTMK_LVL::RD_BRST_LEN.val(0x10)
                 + WTMK_LVL::WR_BRST_LEN.val(0x10),
         );
+
         self.registers.MMCBOOT.set(0);
         self.registers.MIXCTRL.write(MIXCTRL::RESERVED3::SET);
         self.registers.CLK_TUNE_CTRL_STS.set(0);
 
         self.registers.VEND_SPEC.set(VENDORSPEC_INIT);
         /* Default setup, 1.8V IO */
-        self.registers.VEND_SPEC.modify(VEND_SPEC::VSELECT::SET);
+        self.registers.VEND_SPEC.modify(VEND_SPEC::VSELECT::CLEAR);
         /* Disable DLL_CTRL delay line */
         self.registers.DLL_CTRL.set(0);
 
@@ -2607,6 +2640,27 @@ impl UsdhController {
         return SdResult::SdOk;
     }
 
+    fn get_host_cap(&self) -> SdResult {
+        let host_cap = match (
+            self.registers
+                .HOST_CTRL_CAP
+                .read_as_enum(HOST_CTRL_CAP::VS18),
+            self.registers
+                .HOST_CTRL_CAP
+                .read_as_enum(HOST_CTRL_CAP::VS30),
+            self.registers
+                .HOST_CTRL_CAP
+                .read_as_enum(HOST_CTRL_CAP::VS33),
+        ) {
+            (
+                Some(HOST_CTRL_CAP::VS18::Value::Supported),
+                Some(HOST_CTRL_CAP::VS30::Value::Supported),
+                Some(HOST_CTRL_CAP::VS33::Value::Supported),
+            ) => info!("uSDHC2 has support for 1.8v, 3.0v, 3.3v ..."),
+            _ => unimplemented!(),
+        };
+        SdResult::SdOk
+    }
     /// Attempts to initialize the uSDHC and returns success/error status.
     /// This method should be called before any attempt to do anything with an Sd card.
     ///
@@ -2614,7 +2668,10 @@ impl UsdhController {
     /// - SdOk - indicates the current card was successfully initialized.
     /// - !SdOk - initialization failed with code identifying error.
     pub fn init_usdhc(&self) -> SdResult {
-        let mut resp = self.reset_card(); // Reset the card.
+        // check host capabilities
+        self.get_host_cap();
+        // Reset the card.
+        let mut resp = self.reset_card(); 
 
         if (resp != SdResult::SdOk) {
             return resp;

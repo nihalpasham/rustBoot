@@ -154,10 +154,6 @@ register_structs! {
 /// Abstraction for the associated MMIO registers.
 type Registers = MMIODerefWrapper<RegisterBlock>;
 
-//--------------------------------------------------------------------------------------------------
-// Public Definitions
-//--------------------------------------------------------------------------------------------------
-
 pub struct GpioInner {
     registers: Registers,
 }

@@ -18,9 +18,22 @@ global_asm!(include_str!("entry.S"));
 ///
 #[no_mangle]
 pub unsafe extern "C" fn _start_rust() -> ! {
-    // set the vector base address for register handlers
+    // set the vector base address for excpetion handlers
     exception::exception::handling_init();
     // enable Uart and uSDHC clock and ungate sys_counter clock
+    unsafe {
+        ::core::ptr::write_volatile((0x30384004 + (0x10*11)) as *mut u32, 0x3);
+        ::core::ptr::write_volatile((0x30384004 + (0x10*12)) as *mut u32, 0x3);
+        ::core::ptr::write_volatile((0x30384004 + (0x10*13)) as *mut u32, 0x3);
+        ::core::ptr::write_volatile((0x30384004 + (0x10*14)) as *mut u32, 0x3);
+        ::core::ptr::write_volatile((0x30384004 + (0x10*15)) as *mut u32, 0x3);
+
+        ::core::ptr::write_volatile((0x30384004 + (0x10*27)) as *mut u32, 0x3);
+        ::core::ptr::write_volatile((0x30384004 + (0x10*28)) as *mut u32, 0x3);
+        ::core::ptr::write_volatile((0x30384004 + (0x10*29)) as *mut u32, 0x3);
+        ::core::ptr::write_volatile((0x30384004 + (0x10*30)) as *mut u32, 0x3);
+        ::core::ptr::write_volatile((0x30384004 + (0x10*31)) as *mut u32, 0x3);
+    }
     clocks::uartclks::enable_uart_clk(1);
     clocks::usdhcclks::enable_usdhc_clk(2);
     clocks::scntrclk::enable_sctr();

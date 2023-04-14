@@ -71,6 +71,7 @@ impl Default for Usdhc2MuxRegs {
 
 impl Usdhc2MuxRegs {
     fn set_usdhc2_mux_cfg(&self, mux_val: MuxMode, sion_val: Sion, input_selector: u32) {
+        // set sd2-reset pin to alternate mux-mode i.e. gpio 19
         unsafe {
             ::core::ptr::write_volatile(self.iomuxc_sw_mux_ctl_pad_sd2_reset_b as *mut u32, 0x5);
             GPIO2.set_pin(19);
@@ -209,7 +210,7 @@ impl Usdhc2MuxRegs {
                     Pe::Enabled,
                 ),
             );
-            GPIO2.clear_pin(19) // gpio2 pin 19 data register clear
+            GPIO2.clear_pin(19) // clear - gpio2 pin 19 data register.
         }
     }
 
