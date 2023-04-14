@@ -1,6 +1,6 @@
 #![cfg_attr(not(test), no_std)]
 #![allow(non_snake_case)]
-#![feature(once_cell, is_sorted, slice_as_chunks, bigint_helper_methods)]
+#![feature(is_sorted, slice_as_chunks, bigint_helper_methods)]
 
 pub mod cfgparser;
 #[cfg(feature = "mcu")]
