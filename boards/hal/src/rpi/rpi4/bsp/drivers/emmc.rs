@@ -755,25 +755,25 @@ use {
     CID_RAW32_1::*, CID_RAW32_2::*, CID_RAW32_3::*,
 };
 
-register_structs! {
-   #[allow(non_snake_case)]
-   pub EmmcCardregisters {
-        (0x00 => OCR: ReadWrite<u32, OCR::Register>),
-        (0x04 => SCR: ReadWrite<u64, SCR::Register>),
-        (0x0c => CID_RAW32_0: ReadWrite<u32, CID_RAW32_0::Register>),
-        (0x10 => CID_RAW32_1: ReadWrite<u32, CID_RAW32_1::Register>),
-        (0x14 => CID_RAW32_2: ReadWrite<u32, CID_RAW32_2::Register>),
-        (0x18 => CID_RAW32_3: ReadWrite<u32, CID_RAW32_3::Register>),
-        (0x1c => CEMMC_RAW32_0: ReadWrite<u32, CEMMC_RAW32_0::Register>),
-        (0x20 => CEMMC_RAW32_1: ReadWrite<u32, CEMMC_RAW32_1::Register>),
-        (0x28 => CEMMC_RAW32_2: ReadWrite<u32, CEMMC_RAW32_2::Register>),
-        (0x2c => CEMMC_RAW32_3: ReadWrite<u32, CEMMC_RAW32_3::Register>),
-        (0x30 => @END),
-    }
-}
+// register_structs! {
+//    #[allow(non_snake_case)]
+//    pub EmmcCardregisters {
+//         (0x00 => OCR: ReadWrite<u32, OCR::Register>),
+//         (0x04 => SCR: ReadWrite<u64, SCR::Register>),
+//         (0x0c => CID_RAW32_0: ReadWrite<u32, CID_RAW32_0::Register>),
+//         (0x10 => CID_RAW32_1: ReadWrite<u32, CID_RAW32_1::Register>),
+//         (0x14 => CID_RAW32_2: ReadWrite<u32, CID_RAW32_2::Register>),
+//         (0x18 => CID_RAW32_3: ReadWrite<u32, CID_RAW32_3::Register>),
+//         (0x1c => CEMMC_RAW32_0: ReadWrite<u32, CEMMC_RAW32_0::Register>),
+//         (0x20 => CEMMC_RAW32_1: ReadWrite<u32, CEMMC_RAW32_1::Register>),
+//         (0x24 => CEMMC_RAW32_2: ReadWrite<u32, CEMMC_RAW32_2::Register>),
+//         (0x28 => CEMMC_RAW32_3: ReadWrite<u32, CEMMC_RAW32_3::Register>),
+//         (0x2c => @END),
+//     }
+// }
 
-/// Abstraction for the associated MMIO registers.
-type SDRegisters = MMIODerefWrapper<EmmcCardregisters>;
+// /// Abstraction for the associated MMIO registers.
+// type SDRegisters = MMIODerefWrapper<EmmcCardregisters>;
 
 #[rustfmt::skip]
 mod rpi4_constants {
