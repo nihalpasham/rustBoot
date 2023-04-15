@@ -78,13 +78,13 @@ register_bitfields! {
         /// Response type select
         RSPTYP OFFSET(16) NUMBITS(2) [
             ///  - 0b00: no response
-            CMD_NO_RESP = 0,
+            CMD_NO_RESP = 0b00,
             ///  - 0b01: Response length 136
-            CMD_136BIT_RESP = 1,
+            CMD_136BIT_RESP = 0b01,
             ///  - 0b10: Response length 48
-            CMD_48BIT_RESP = 2,
+            CMD_48BIT_RESP = 0b10,
             ///  - 0b11: Response length 48, check busy after response
-            CMD_BUSY48BIT_RESP = 3
+            CMD_BUSY48BIT_RESP = 0b11
         ],
         RESERVED1 OFFSET(18) NUMBITS(1) [],
         /// Command CRC check enable
@@ -1174,7 +1174,7 @@ mod uSDHC_constants {
     --------------------------------------------------------------------------*/
     pub const FREQ_SETUP  : usize = 400_000; // 400 Khz
     pub const FREQ_NORMAL : usize = 24_000_000; // 24 Mhz
-    pub const BASE_CLOCK  : usize = 400_000_000; // 400 Mhz
+    pub const BASE_CLOCK  : usize = 800_000_000; // 800 Mhz
 
 
     /*--------------------------------------------------------------------------
@@ -1790,7 +1790,7 @@ use uSDHC_constants::*;
 
 const R1_ERRORS_MASK: u32 = 0xfff9c004;
 const ST_APP_CMD: u32 = 0x00000020;
-const VENDORSPEC_INIT: u32 = 0x20008000;
+const VENDORSPEC_INIT: u32 = 0x2000010b;
 
 /// Waits for the `delay` specified number of microseconds
 fn timer_wait_micro(delay: u64) {
@@ -1827,10 +1827,13 @@ impl UsdhController {
 
     fn debug_response(&self, resp: SdResult) -> SdResult {
         info!(
-            "uSDHC: PRES_STATE: 0x{:08x}, SYS_CTRL: 0x{:08x}, INT_STATUS: 0x{:08x}\n",
+            "uSDHC: PRES_STATE: 0x{:08x}, PROT_CTRL: 0x{:08x}, SYS_CTRL: 0x{:08x}, INT_STATUS: 0x{:08x}, \
+            VEND_SPEC: 0x{:08x}\n",
             self.registers.PRES_STATE.get(),
+            self.registers.PROT_CTRL.get(),
             self.registers.SYS_CTRL.get(),
-            self.registers.INT_STATUS.get()
+            self.registers.INT_STATUS.get(),
+            self.registers.VEND_SPEC.get(),
         );
         info!(
             "uSDHC: CMD {:?}, resp: {:?}, CMD_RSP3: 0x{:08x}, CMD_RSP2: 0x{:08x}, CMD_RSP1: 0x{:08x}, CMD_RSP0: 0x{:08x}\n",
@@ -1971,7 +1974,7 @@ impl UsdhController {
 
         self.registers.VEND_SPEC.set(VENDORSPEC_INIT);
         /* Default setup, 1.8V IO */
-        self.registers.VEND_SPEC.modify(VEND_SPEC::VSELECT::CLEAR);
+        // self.registers.VEND_SPEC.modify(VEND_SPEC::VSELECT::CLEAR);
         /* Disable DLL_CTRL delay line */
         self.registers.DLL_CTRL.set(0);
 
@@ -1989,6 +1992,7 @@ impl UsdhController {
         self.registers.INT_STATUS_EN.write(
             CCSEN::SET
                 + TCSEN::SET
+                + DINTSEN::SET
                 + CINTSEN::SET
                 + CTOESEN::SET
                 + CCESEN::SET
@@ -1996,16 +2000,18 @@ impl UsdhController {
                 + CIESEN::SET
                 + DTOESEN::SET
                 + DCESEN::SET
-                + DEBESEN::SET
-                + BRRSENN::SET
-                + BWRSEN::SET
-                + DINTSEN::SET,
+                + DEBESEN::SET,
         );
         // Set PROCTL reg to the default
-        self.registers
-            .PROT_CTRL
-            .write(PROT_CTRL::CDTL::SET + PROT_CTRL::D3CD::CLEAR);
+        self.registers.PROT_CTRL.write(
+            PROT_CTRL::EMODE::LittleEndianMode
+                + PROT_CTRL::D3CD::CLEAR
+                + PROT_CTRL::DTW::FourBitWide,
+        );
         // self.registers.VEND_SPEC.modify(VEND_SPEC::FRC_SDCLK_ON::SET);
+        self.registers.SYS_CTRL.modify(SYS_CTRL::RESERVED0.val(0x8));
+        self.registers.SYS_CTRL.modify(SYS_CTRL::IPP_RST_N::SET);
+
         // set timeout to maximum value
         self.registers.SYS_CTRL.modify(SYS_CTRL::DTOCV.val(0xe));
 
@@ -2068,12 +2074,16 @@ impl UsdhController {
         } else if (int_status & int_error_status.get()) != 0 {
             info!(
                 "Sd Error: Cmd response returned an error, VendSpec: 0x{:08x}, ProtCtrl: 0x{:08x}, \
-               PresentStatus: 0x{:08x}, intStatus: 0x{:08x}, Resp0: 0x{:08x}, timeDiff: {}\n",
+               PresentStatus: 0x{:08x}, intStatus: 0x{:08x}, Resp0: 0x{:08x}, Resp1: 0x{:08x}, Resp2: 0x{:08x}, \
+               Resp3: 0x{:08x}, timeDiff: {}\n",
                 self.registers.VEND_SPEC.get(),
                 self.registers.PROT_CTRL.get(),
                 self.registers.PRES_STATE.get(),
                 int_status,
                 self.registers.CMD_RSP0.get(),
+                self.registers.CMD_RSP1.get(),
+                self.registers.CMD_RSP2.get(),
+                self.registers.CMD_RSP3.get(),
                 time_diff
             );
             return SdResult::SdError;
@@ -2671,7 +2681,7 @@ impl UsdhController {
         // check host capabilities
         self.get_host_cap();
         // Reset the card.
-        let mut resp = self.reset_card(); 
+        let mut resp = self.reset_card();
 
         if (resp != SdResult::SdOk) {
             return resp;
