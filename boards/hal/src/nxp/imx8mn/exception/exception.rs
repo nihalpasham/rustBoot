@@ -9,7 +9,7 @@ use tock_registers::{
 };
 
 // Assembly counterpart to this file.
-global_asm!(include_str!("exception.S"));
+global_asm!(include_str!("exception.s"));
 
 /// Wrapper structs for memory copies of registers.
 #[repr(transparent)]

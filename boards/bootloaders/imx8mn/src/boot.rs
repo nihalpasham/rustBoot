@@ -10,7 +10,7 @@ use crate::{
 };
 
 // Assembly counterpart to this file.
-global_asm!(include_str!("entry.S"));
+global_asm!(include_str!("entry.s"));
 
 /// The Rust entry of the `kernel` binary.
 ///

@@ -811,6 +811,16 @@ register_bitfields! {
         WR_BRST_LEN OFFSET(24) NUMBITS(5) [],
         RESERVED1 OFFSET(29) NUMBITS(3) [],
     ],
+    TUNINIG_CTRL [
+        TUNING_START_TAP OFFSET(0) NUMBITS(8) [],
+        TUNING_COUNTER OFFSET(8) NUMBITS(8) [],
+        TUNING_STEP OFFSET(16) NUMBITS(3) [],
+        RESRV0 OFFSET(19) NUMBITS(1) [],
+        TUNING_WINDOW OFFSET(20) NUMBITS(3) [],
+        RESRV1 OFFSET(23) NUMBITS(1) [],
+        STD_TUNING_EN OFFSET(24) NUMBITS(1) [],
+        RESRV2 OFFSET(25) NUMBITS(7) [],
+    ]
 }
 
 register_structs! {
@@ -850,7 +860,7 @@ register_structs! {
         (0xc0 => VEND_SPEC: ReadWrite<u32, VEND_SPEC::Register>),
         (0xc4 => MMCBOOT:  ReadWrite<u32, MMCBOOT::Register>),
         (0xc8 => VEND_SPEC2),
-        (0xcc => TUNINIG_CTRL),
+        (0xcc => TUNINIG_CTRL: ReadWrite<u32, TUNINIG_CTRL::Register>),
         (0xd0 => _reserved4),
         (0x100 => CQE),
         (0x104 => @END),
@@ -1790,7 +1800,8 @@ use uSDHC_constants::*;
 
 const R1_ERRORS_MASK: u32 = 0xfff9c004;
 const ST_APP_CMD: u32 = 0x00000020;
-const VENDORSPEC_INIT: u32 = 0x2000010b;
+const VENDORSPEC_INIT: u32 = 0x2000000b;
+const TUNINIG_CTRL_INIT: u32 = 0x01222894;
 
 /// Waits for the `delay` specified number of microseconds
 fn timer_wait_micro(delay: u64) {
@@ -1960,7 +1971,7 @@ impl UsdhController {
         while self.registers.SYS_CTRL.matches_all(SYS_CTRL::INITA.val(1)) {
             cpu_core::nop()
         }
-        /* set wartermark level as 128 words and burst len as 16 (maximum) */
+        /* set watermark level as 128 words and burst len as 16 (maximum) */
         self.registers.WTMK_LVL.modify(
             WTMK_LVL::RD_WML.val(0x80)
                 + WTMK_LVL::WR_WML.val(0x80)
@@ -1969,12 +1980,12 @@ impl UsdhController {
         );
 
         self.registers.MMCBOOT.set(0);
-        self.registers.MIXCTRL.write(MIXCTRL::RESERVED3::SET);
+        self.registers.MIXCTRL.set(0);
         self.registers.CLK_TUNE_CTRL_STS.set(0);
 
         self.registers.VEND_SPEC.set(VENDORSPEC_INIT);
         /* Default setup, 1.8V IO */
-        // self.registers.VEND_SPEC.modify(VEND_SPEC::VSELECT::CLEAR);
+        self.registers.VEND_SPEC.modify(VEND_SPEC::VSELECT::CLEAR);
         /* Disable DLL_CTRL delay line */
         self.registers.DLL_CTRL.set(0);
 
@@ -2014,6 +2025,8 @@ impl UsdhController {
 
         // set timeout to maximum value
         self.registers.SYS_CTRL.modify(SYS_CTRL::DTOCV.val(0xe));
+        // set tuning ctrl
+        self.registers.TUNINIG_CTRL.set(TUNINIG_CTRL_INIT);
 
         /* Reset our card structure entries */
         unsafe {
@@ -2173,7 +2186,6 @@ impl UsdhController {
 
         match cmd.cmd_code.read_as_enum(CMD_XFR_TYP::RSPTYP) {
             Some(CMD_XFR_TYP::RSPTYP::Value::CMD_NO_RESP) => {
-                info!("Good CMD_RSP0: 0x{:08x}", resp0);
                 return SdResult::SdOk;
             }
             Some(CMD_XFR_TYP::RSPTYP::Value::CMD_BUSY48BIT_RESP) => unsafe {
@@ -2650,7 +2662,7 @@ impl UsdhController {
         return SdResult::SdOk;
     }
 
-    fn get_host_cap(&self) -> SdResult {
+    fn check_supported_volts(&self) -> SdResult {
         let host_cap = match (
             self.registers
                 .HOST_CTRL_CAP
@@ -2678,8 +2690,8 @@ impl UsdhController {
     /// - SdOk - indicates the current card was successfully initialized.
     /// - !SdOk - initialization failed with code identifying error.
     pub fn init_usdhc(&self) -> SdResult {
-        // check host capabilities
-        self.get_host_cap();
+        // check host's voltage support capabilities
+        self.check_supported_volts();
         // Reset the card.
         let mut resp = self.reset_card();
 
@@ -2731,7 +2743,7 @@ impl UsdhController {
         //     }
         // };
 
-        // Send SEND_OP_COND (CMD1)
+        // // Send SEND_OP_COND (CMD1)
         // while true {
         //     resp = self.send_command_a(SdCardCommands::SendOpCond, 0x40ff8080);
         //     if (resp != SdResult::SdOk) {
