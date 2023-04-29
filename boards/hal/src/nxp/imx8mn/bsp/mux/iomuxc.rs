@@ -21,6 +21,7 @@ pub enum Sion {
 /// Drive Strength Field
 pub enum Dse {
     DseX1,
+    DseX2,
     DseX6,
     Unimplemented,
 }

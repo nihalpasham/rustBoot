@@ -132,7 +132,7 @@ register_bitfields! {
         ///
         /// These bits are set to the command number that is specified in bits 45-40 of the command-format in the
         /// SD Memory Card Physical Layer Specification and SDIO Card Specification.
-        CMDINX OFFSET(24) NUMBITS(5) [],
+        CMDINX OFFSET(24) NUMBITS(6) [],
         RESERVED2 OFFSET(30) NUMBITS(2) [],
     ],
     /// This register is used to store part 0 of the response bits from the card.
@@ -1436,7 +1436,8 @@ impl SdCardCommands {
                         CMD_XFR_TYP::CMDINX.val(0x0d)
                             + CMD_XFR_TYP::RSPTYP::CMD_48BIT_RESP
                             + CMD_XFR_TYP::CCCEN::SET
-                            + CMD_XFR_TYP::CICEN::SET,
+                            + CMD_XFR_TYP::CICEN::SET
+                            // + CMD_XFR_TYP::DPSEL::SET
                     );
                     cmd
                 },
@@ -1804,7 +1805,7 @@ const VENDORSPEC_INIT: u32 = 0x2000000b;
 const TUNINIG_CTRL_INIT: u32 = 0x01222894;
 
 /// Waits for the `delay` specified number of microseconds
-fn timer_wait_micro(delay: u64) {
+pub fn timer_wait_micro(delay: u64) {
     time_manager().wait_for(Duration::from_micros(delay));
 }
 
@@ -1960,11 +1961,11 @@ impl UsdhController {
         info!("Sd host circuit reset..");
         self.registers.SYS_CTRL.modify(SYS_CTRL::RESERVED0::SET);
 
-        if self.registers.PRES_STATE.read(PRES_STATE::CINST) == 0x1 {
-            info!("card inserted...")
-        } else {
-            info!("card not inserted...")
-        }
+        // if self.registers.PRES_STATE.read(PRES_STATE::CINST) == 0x1 {
+        //     info!("card inserted...")
+        // } else {
+        //     info!("card not inserted...")
+        // }
         // Set INITA field to send 80 SD-clocks to the card. After the 80 clocks are sent, this field is self
         // cleared
         self.registers.SYS_CTRL.modify(SYS_CTRL::INITA.val(1));
@@ -2004,7 +2005,7 @@ impl UsdhController {
             CCSEN::SET
                 + TCSEN::SET
                 + DINTSEN::SET
-                + CINTSEN::SET
+                // + CINTSEN::SET
                 + CTOESEN::SET
                 + CCESEN::SET
                 + CEBESEN::SET
@@ -2755,6 +2756,12 @@ impl UsdhController {
         //     } else {
         //         timer_wait_micro(1000);
         //     }
+        // }
+        
+        // Send SEND_STATUS (CMD 0xd)
+        // resp = self.send_command(SdCardCommands::SendStatus);
+        // if (resp != SdResult::SdOk) {
+        //     return self.debug_response(resp);
         // }
 
         // Send ALL_SEND_CID (CMD2)
