@@ -143,7 +143,8 @@ impl MMU for MemoryManagementUnit {
         SCTLR_EL1.matches_all(SCTLR_EL1::M::Enable)
     }
 
-    unsafe fn disable_mmu_and_caching(&self) {
+    unsafe fn 
+    disable_mmu_and_caching(&self) {
         match unlikely(self.is_enabled()) {
             true => {
                 // Disable the MMU .

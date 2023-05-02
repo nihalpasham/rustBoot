@@ -36,7 +36,9 @@ You can read the book for <a href="https://nihalpasham.github.io/rustBoot-book/i
 
 ## Acknowledgment: 
 
-rustBoot exists as we could not find a suitable (open-source) option that meets our security goals. It is the result of an exhaustive evaluation of 'pretty much' the entire embedded-bootloader landscape. Having said that, it does take inspiration from similar projects (such as u-boot, zephyr, mcuboot, coreboot, wolfBoot etc). However, the key differentiator is security-above-all-else. To that extent, its built entirely in rust, takes full advantage of rust's memory safety guarantees while leveraging safer parsing libraries, compile-time state-transition checks coupled with (safe) community sourced rust-crates (such as boards, HALs drivers etc.)
+rustBoot exists as we could not find a suitable (open-source) option that meets our security goals. It is the result of an exhaustive evaluation of 'pretty much' the entire embedded-bootloader landscape. 
+
+Having said that, it does take inspiration from similar projects (such as u-boot, zephyr, mcuboot, coreboot, wolfBoot etc). However, the key differentiator is security-above-all-else. To that extent, its built entirely in rust, takes full advantage of rust's memory safety guarantees while leveraging safer parsing libraries, compile-time state-transition checks coupled with (safe) community sourced rust-crates (such as boards, HALs drivers etc.)
 
 ## Support:
 

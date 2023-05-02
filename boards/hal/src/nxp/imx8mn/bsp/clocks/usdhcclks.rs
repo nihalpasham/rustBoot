@@ -1,4 +1,4 @@
-//! The i.MX8 has 3 uSDHC(s). Select root clock SYSTEM_PLL1_CLK i.e. 800Mhz for uSDHC2  
+//! The i.MX8 has 3 uSDHC(s). Select root clock SYSTEM_PLL1_DIV2_CLK i.e. 800Mhz/2 for uSDHC2  
 
 use super::ccm::*;
 use crate::info;
@@ -18,7 +18,7 @@ pub fn enable_usdhc_clk(index: u32) {
             clock_enable(CCGRIdx::CcgrUsdhc2, false);
             clock_set_target_val(
                 ClkRootIdx::Usdhc2ClkRoot,
-                CLK_ROOT_ON | clk_root_source_sel(2),
+                CLK_ROOT_ON | clk_root_source_sel(1),
             );
             clock_enable(CCGRIdx::CcgrUsdhc2, true);
         }

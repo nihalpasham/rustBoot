@@ -2,7 +2,7 @@
 
 use super::common::interface::{DeviceDriver, DriverManager};
 use crate::info;
-use crate::nxp::imx8mn::bsp::global::{UART, CNTR};
+use crate::nxp::imx8mn::bsp::global::{UART, CNTR, ANALOG};
 
 /// Device Driver Manager type.
 struct BSPDriverManager {
@@ -23,6 +23,11 @@ pub fn driver_manager() -> &'static impl DriverManager {
 /// Turn on system counter.
 pub fn start_system_counter() {
     &CNTR.start_counter();
+}
+
+/// Configure system Plls and set clock-gates, root-clocks for GIC, DRAM, NAND, WDG etc.
+pub fn sys_clocks_init() {
+    &ANALOG.clock_init();
 }
 
 impl DriverManager for BSPDriverManager {

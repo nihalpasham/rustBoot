@@ -8,6 +8,7 @@ use super::mux::uart2grp::*;
 
 pub static UART: Uart = unsafe { Uart::new(memory_map::map::mmio::UART_START) };
 pub static GPIO2: Gpio = unsafe { Gpio::new(memory_map::map::mmio::GPIO2_START) };
+pub static GPIO1: Gpio = unsafe { Gpio::new(memory_map::map::mmio::GPIO1_START) };
 pub static CNTR: SystemCounter = unsafe { SystemCounter::new(memory_map::map::mmio::SYSCNT_START) };
 pub static SDHC2: UsdhController =
     unsafe { UsdhController::new(memory_map::map::mmio::USDHC2_START) };

@@ -1,6 +1,6 @@
 //! Pin Mux settings for uSDHC2
 
-use super::super::global::GPIO2;
+use super::super::global::{GPIO2, GPIO1};
 use super::super::memory_map::map::mmio::IOMUXC_START;
 use super::iomuxc::*;
 
@@ -43,8 +43,10 @@ impl Usdhc2GpioRegs {
             },
             _ => unimplemented!(),
         }
-         // write to Pad Control Registers
-         unsafe {
+
+        GPIO1.clear_pin(15);
+        // write to Pad Control Registers
+        unsafe {
             ::core::ptr::write_volatile(
                 self.iomuxc_sw_pad_ctl_pad_gpio1_io15 as *mut u32,
                 self.get_pad_ctrl_val(
@@ -57,6 +59,8 @@ impl Usdhc2GpioRegs {
                 ),
             );
         }
+        // GPIO1.clear_pin(15);
+
     }
 
     fn get_pad_ctrl_val(&self, dse: Dse, fsel: Fsel, ode: Ode, pue: Pue, hys: Hys, pe: Pe) -> u32 {
@@ -158,9 +162,9 @@ impl Usdhc2MuxRegs {
             //     self.iomuxc_sw_pad_ctl_pad_sd2_cd_b as *mut u32,
             //     self.get_pad_ctrl_val(
             //         Dse::DseX1,
-            //         Fsel::Fast,
+            //         Fsel::Slow,
             //         Ode::Disabled,
-            //         Pue::PullUp,
+            //         Pue::PullDown,
             //         Hys::Enabled,
             //         Pe::Enabled,
             //     ),

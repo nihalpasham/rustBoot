@@ -1,8 +1,6 @@
 //! System console.
 
-use crate::nxp::imx8mn::bsp::drivers::uart0::PanicUart;
-use crate::nxp::imx8mn::bsp::global;
-use crate::nxp::imx8mn::bsp::memory_map;
+use crate::nxp::imx8mn::bsp::{clocks, drivers::uart0::PanicUart, global, memory_map, mux};
 
 use core::fmt;
 
@@ -55,7 +53,8 @@ pub trait Statistics {
 pub unsafe fn panic_console_out() -> impl fmt::Write {
     let mut panic_uart = PanicUart::new(memory_map::map::mmio::UART_START);
 
-    // panic_gpio.map_pl011_uart();
+    clocks::uartclks::enable_uart_clk(1);
+    mux::uart2grp::uart2_mux_mmio_set();
     panic_uart.init_uart();
     panic_uart
 }

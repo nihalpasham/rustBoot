@@ -7,10 +7,11 @@ use tock_registers::{
 
 use super::super::drivers::common::MMIODerefWrapper;
 use super::super::drivers::usdhc::timer_wait_micro;
+use super::ccm::*;
 
 const INTPLL_CLKE_MASK: u32 = 1 << 11;
 
-enum PllClocks {
+pub enum PllClocks {
     ArmPll,
     VpuPll,
     GpuPll,
@@ -324,7 +325,7 @@ impl CCMAnalog {
         }
     }
 
-    fn set_pll1_outputs(&self) {
+    pub fn set_pll1_outputs(&self) {
         self.registers.SYS_PLL1_GEN_CTRL.modify(
             SYS_PLL1_GEN_CTRL::PLL_CLKE::SET
                 + SYS_PLL1_GEN_CTRL::PLL_DIV2_CLKE::SET
@@ -337,7 +338,7 @@ impl CCMAnalog {
                 + SYS_PLL1_GEN_CTRL::PLL_DIV20_CLKE::SET,
         )
     }
-    fn set_pll2_outputs(&self) {
+    pub fn set_pll2_outputs(&self) {
         self.registers.SYS_PLL2_GEN_CTRL.modify(
             SYS_PLL2_GEN_CTRL::PLL_CLKE::SET
                 + SYS_PLL2_GEN_CTRL::PLL_DIV2_CLKE::SET
@@ -350,7 +351,7 @@ impl CCMAnalog {
                 + SYS_PLL2_GEN_CTRL::PLL_DIV20_CLKE::SET,
         )
     }
-    fn pll_configure(&self, pll: PllClocks, freq: u32) {
+    pub fn pll_configure(&self, pll: PllClocks, freq: u32) {
         let pll_clke_masks = INTPLL_CLKE_MASK;
         // Bypass clock and set lock to pll output lock
         match pll {
@@ -392,9 +393,9 @@ impl CCMAnalog {
                     .modify(ARM_GEN_CTRL::PLL_CLKE::SET);
             }
             PllClocks::SystemPll3 => {
-                self.registers
-                    .SYS_PLL3_GEN_CTRL
-                    .modify(SYS_PLL3_GEN_CTRL::PLL_BYPASS::SET + SYS_PLL3_GEN_CTRL::PLL_LOCK_SEL::SET);
+                self.registers.SYS_PLL3_GEN_CTRL.modify(
+                    SYS_PLL3_GEN_CTRL::PLL_BYPASS::SET + SYS_PLL3_GEN_CTRL::PLL_LOCK_SEL::SET,
+                );
                 // Enable reset
                 self.registers
                     .SYS_PLL3_GEN_CTRL
@@ -420,7 +421,7 @@ impl CCMAnalog {
                     .SYS_PLL3_GEN_CTRL
                     .is_set(SYS_PLL3_GEN_CTRL::PLL_LOCK)
                 {}
-                // Clear bypass clock
+                // Clear bypass 
                 self.registers
                     .SYS_PLL3_GEN_CTRL
                     .modify(SYS_PLL3_GEN_CTRL::PLL_BYPASS::CLEAR);
@@ -432,5 +433,61 @@ impl CCMAnalog {
             PllClocks::SystemPll2 => {}
             _ => {}
         }
+    }
+
+    /// Configure system Plls and set clock-gates, root-clocks for GIC, DRAM, NAND, WDG etc.
+    pub fn clock_init(&self) {
+        self.set_pll1_outputs();
+        self.set_pll2_outputs();
+        // Configure ARM at 1.2GHz
+        clock_set_target_val(
+            ClkRootIdx::ArmA53ClkRoot,
+            CLK_ROOT_ON | clk_root_source_sel(2),
+        );
+        self.pll_configure(PllClocks::ArmPll, 1200);
+
+        // Bypass CCM A53 ROOT, Switch to ARM PLL -> MUX-> CPU
+        clock_set_target_val(ClkRootIdx::CoreSelCfg, clk_root_source_sel(1));
+
+        self.pll_configure(PllClocks::SystemPll3, 600);
+
+        clock_set_target_val(ClkRootIdx::NocClkRoot, CLK_ROOT_ON | clk_root_source_sel(2));
+
+        // config GIC to sys_pll2_100m
+        clock_enable(CCGRIdx::CcgrGic, false);
+        clock_set_target_val(ClkRootIdx::GicClkRoot, CLK_ROOT_ON | clk_root_source_sel(3));
+        clock_enable(CCGRIdx::CcgrGic, true);
+
+        clock_set_target_val(
+            ClkRootIdx::NandUsdhcBusClkRoot,
+            CLK_ROOT_ON | clk_root_source_sel(1),
+        );
+
+        clock_enable(CCGRIdx::CcgrDdr1, false);
+        clock_set_target_val(
+            ClkRootIdx::DramAltClkRoot,
+            CLK_ROOT_ON | clk_root_source_sel(1),
+        );
+        clock_set_target_val(
+            ClkRootIdx::DramApbClkRoot,
+            CLK_ROOT_ON | clk_root_source_sel(1),
+        );
+        clock_enable(CCGRIdx::CcgrDdr1, true);
+
+        // init watchdog clocks
+        clock_enable(CCGRIdx::CcgrWdog1, false);
+        clock_enable(CCGRIdx::CcgrWdog2, false);
+        clock_enable(CCGRIdx::CcgrWdog3, false);
+        clock_set_target_val(
+            ClkRootIdx::WdogClkRoot,
+            CLK_ROOT_ON | clk_root_source_sel(0),
+        );
+        clock_enable(CCGRIdx::CcgrWdog1, true);
+        clock_enable(CCGRIdx::CcgrWdog2, true);
+        clock_enable(CCGRIdx::CcgrWdog3, true);
+
+        clock_enable(CCGRIdx::CcgrTempSensor, true);
+
+        clock_enable(CCGRIdx::CcgrSecDebug, true);
     }
 }

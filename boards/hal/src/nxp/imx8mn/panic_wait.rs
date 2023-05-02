@@ -51,9 +51,11 @@ fn panic_prevent_reenter() {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-
+    // use crate::nxp::imx8mn::arch::timer::*;
     // Protect against panic infinite loops if any of the following code panics itself.
     panic_prevent_reenter();
+
+    // let timestamp = time_manager().uptime();
 
     let (location, line, column) = match info.location() {
         Some(loc) => (loc.file(), loc.line(), loc.column()),
@@ -64,6 +66,8 @@ fn panic(info: &PanicInfo) -> ! {
         "Kernel panic!\n\n\
         Panic location:\n      File '{}', line {}, column {}\n\n\
         {}",
+        // timestamp.as_secs(),
+        // timestamp.subsec_micros(),
         location,
         line,
         column,

@@ -12,11 +12,12 @@ use rustBoot_hal::nxp::imx8mn::bsp::{
     clocks,
     drivers::{
         common::interface::DriverManager,
-        driver_manager::{driver_manager, start_system_counter},
+        driver_manager::{driver_manager, start_system_counter, sys_clocks_init},
     },
     global, mux,
 };
 use rustBoot_hal::nxp::imx8mn::{
+    memory,
     exception,
     log::{console, console::Statistics},
 };
@@ -68,6 +69,11 @@ fn kernel_main() -> ! {
         SdResult::SdOk => info!("uSDHC driver initialized"),
         _ => info!("failed to initialize"),
     }
+
+    // info!("");
+    // info!("Trying to read from address 8 GiB...");
+    // let mut big_addr: u64 = 8 * 1024 * 1024 * 1024;
+    // unsafe { core::ptr::read_volatile(big_addr as *mut u64) };
 
     wait_forever()
 }

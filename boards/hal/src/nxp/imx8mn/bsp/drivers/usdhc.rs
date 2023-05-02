@@ -1324,7 +1324,12 @@ impl SdCardCommands {
             Self::SendOpCond => Command {
                 cmd_name: "SEND OP COND",
                 cmd_code: {
-                    cmd.write(CMD_XFR_TYP::CMDINX.val(0x01) + CMD_XFR_TYP::RSPTYP::CMD_48BIT_RESP);
+                    cmd.write(
+                        CMD_XFR_TYP::CMDINX.val(0x01)
+                            + CMD_XFR_TYP::RSPTYP::CMD_48BIT_RESP
+                            + CMD_XFR_TYP::CCCEN::SET
+                            + CMD_XFR_TYP::CICEN::SET,
+                    );
                     cmd
                 },
                 use_rca: 0,
@@ -1437,7 +1442,7 @@ impl SdCardCommands {
                             + CMD_XFR_TYP::RSPTYP::CMD_48BIT_RESP
                             + CMD_XFR_TYP::CCCEN::SET
                             + CMD_XFR_TYP::CICEN::SET
-                            // + CMD_XFR_TYP::DPSEL::SET
+                            + CMD_XFR_TYP::DPSEL::SET,
                     );
                     cmd
                 },
@@ -2005,7 +2010,7 @@ impl UsdhController {
             CCSEN::SET
                 + TCSEN::SET
                 + DINTSEN::SET
-                // + CINTSEN::SET
+                + CINTSEN::SET
                 + CTOESEN::SET
                 + CCESEN::SET
                 + CEBESEN::SET
@@ -2076,7 +2081,8 @@ impl UsdhController {
         // No response recieved, timeout occurred
         if time_diff >= 1000000 {
             info!(
-                "Sd: Operation timed out, waiting for command completion, \
+                "Sd: Operation timed out, waiting for command completion. \
+                check if you have inserted a card into the sd-slot,
                 PresentStatus: 0x{:08x}, intStatus: 0x{:08x}, Resp0: 0x{:08x}, timeDiff: {}\n",
                 self.registers.PRES_STATE.get(),
                 int_status,
@@ -2087,7 +2093,9 @@ impl UsdhController {
             return SdResult::SdTimeout;
         } else if (int_status & int_error_status.get()) != 0 {
             info!(
-                "Sd Error: Cmd response returned an error, VendSpec: 0x{:08x}, ProtCtrl: 0x{:08x}, \
+                "Sd Error: the previous cmd returned a response but it contains errors, \
+               decode the contents of interrupt status register for details
+               VendSpec: 0x{:08x}, ProtCtrl: 0x{:08x}, \
                PresentStatus: 0x{:08x}, intStatus: 0x{:08x}, Resp0: 0x{:08x}, Resp1: 0x{:08x}, Resp2: 0x{:08x}, \
                Resp3: 0x{:08x}, timeDiff: {}\n",
                 self.registers.VEND_SPEC.get(),
@@ -2700,8 +2708,8 @@ impl UsdhController {
             return resp;
         }
 
-        // Send SEND_IF_COND,0x000001AA (CMD8) voltage range 0x1 check pattern 0xAA
-        // If voltage range and check pattern don't match, look for older card.
+        // // Send SEND_IF_COND,0x000001AA (CMD8) voltage range 0x1 check pattern 0xAA
+        // // If voltage range and check pattern don't match, look for older card.
         // resp = self.send_command_a(SdCardCommands::SendIfCond, 0x000001AA);
         // let _ = match resp {
         //     SdResult::SdOk => {
@@ -2757,8 +2765,8 @@ impl UsdhController {
         //         timer_wait_micro(1000);
         //     }
         // }
-        
-        // Send SEND_STATUS (CMD 0xd)
+
+        // // Send SEND_STATUS (CMD 0xd)
         // resp = self.send_command(SdCardCommands::SendStatus);
         // if (resp != SdResult::SdOk) {
         //     return self.debug_response(resp);
