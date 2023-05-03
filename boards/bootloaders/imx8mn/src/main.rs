@@ -71,9 +71,8 @@ fn kernel_main() -> ! {
     }
 
     // info!("");
-    // info!("Trying to read from address 8 GiB...");
-    // let mut big_addr: u64 = 8 * 1024 * 1024 * 1024;
-    // unsafe { core::ptr::read_volatile(big_addr as *mut u64) };
+    // info!("Trying to read from non-existent OCRAM addresss 0x980000...");
+    // unsafe { core::ptr::read_volatile(0x980000 as *mut u64) };
 
     wait_forever()
 }

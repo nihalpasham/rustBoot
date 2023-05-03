@@ -18,7 +18,7 @@ global_asm!(include_str!("entry.s"));
 ///
 #[no_mangle]
 pub unsafe extern "C" fn _start_rust() -> ! {
-    // disable mmu, i and d caching
+    // disable i and d caching, mmu is already disabled.
     memory::mmu::mmu().disable_mmu_and_caching();
     // set the vector base address for excpetion handlers
     exception::exception::handling_init();

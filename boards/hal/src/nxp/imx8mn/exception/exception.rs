@@ -8,6 +8,8 @@ use tock_registers::{
     registers::InMemoryRegister,
 };
 
+pub use aarch64_cpu::registers::VBAR_EL3;
+
 // Assembly counterpart to this file.
 global_asm!(include_str!("exception.s"));
 
@@ -270,4 +272,5 @@ pub unsafe fn handling_init() {
 
     // Force VBAR update to complete before next instruction.
     barrier::isb(barrier::SY);
+    
 }
