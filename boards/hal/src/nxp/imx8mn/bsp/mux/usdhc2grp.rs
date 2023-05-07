@@ -43,8 +43,8 @@ impl Usdhc2GpioRegs {
             },
             _ => unimplemented!(),
         }
+        GPIO1.set_pin(15);
 
-        GPIO1.clear_pin(15);
         // write to Pad Control Registers
         unsafe {
             ::core::ptr::write_volatile(
@@ -59,7 +59,7 @@ impl Usdhc2GpioRegs {
                 ),
             );
         }
-        // GPIO1.clear_pin(15);
+        GPIO1.clear_pin(15);
 
     }
 
