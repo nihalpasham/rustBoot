@@ -8,6 +8,7 @@
 use super::common::MMIODerefWrapper;
 use crate::nxp::imx8mn::arch::cpu_core;
 use crate::nxp::imx8mn::bsp::drivers::usdhc::INT_STATUS::DEBE;
+use crate::nxp::imx8mn::bsp::global::GPIO2;
 use crate::{info, print, warn};
 use core::fmt::Debug;
 use tock_registers::{
@@ -561,12 +562,18 @@ register_bitfields! {
         ///
         /// 0b - No reset
         /// 1b - Reset
-        RSTC OFFSET(25) NUMBITS(1) [],
+        RSTC OFFSET(25) NUMBITS(1) [
+            NoReset = 0,
+            Reset = 1,
+        ],
         /// Software reset for data line
         ///
         /// Only part of the data circuit is reset. DMA circuit is also reset. After this field is set, the software waits for
         /// self-clear.
-        RSTD OFFSET(26) NUMBITS(1) [],
+        RSTD OFFSET(26) NUMBITS(1) [
+            NoReset = 0,
+            Reset = 1,
+        ],
         /// Initialization active
         ///
         /// When this field is set, 80 SD-clocks are sent to the card. After the 80 clocks are sent, this field is self
@@ -1183,7 +1190,7 @@ mod uSDHC_constants {
     						  SD CARD FREQUENCIES							   
     --------------------------------------------------------------------------*/
     pub const FREQ_SETUP  : usize = 400_000; // 400 Khz
-    pub const FREQ_NORMAL : usize = 24_000_000; // 24 Mhz
+    pub const FREQ_NORMAL : usize = 50_000_000; // 50 Mhz
     pub const BASE_CLOCK  : usize = 400_000_000; // 400 Mhz
 
 
@@ -1341,8 +1348,7 @@ impl SdCardCommands {
                     cmd.write(
                         CMD_XFR_TYP::CMDINX.val(0x02)
                             + CMD_XFR_TYP::RSPTYP::CMD_136BIT_RESP
-                            + CMD_XFR_TYP::CCCEN::SET
-                            + CMD_XFR_TYP::CICEN::SET,
+                            + CMD_XFR_TYP::CCCEN::SET, // + CMD_XFR_TYP::CICEN::SET,
                     );
                     cmd
                 },
@@ -1724,7 +1730,9 @@ impl SdCardCommands {
                     cmd.write(
                         CMD_XFR_TYP::CMDINX.val(0x33)
                             + CMD_XFR_TYP::RSPTYP::CMD_48BIT_RESP
-                            + CMD_XFR_TYP::DPSEL.val(1),
+                            + CMD_XFR_TYP::DPSEL.val(1)
+                            + CMD_XFR_TYP::CCCEN::SET
+                            + CMD_XFR_TYP::CICEN::SET,
                     );
                     cmd
                 },
@@ -1935,7 +1943,7 @@ impl UsdhController {
         div += 1;
 
         info!(
-            "Prescaler = {:?}, Divisor = {:?}, Freq Set = {:?}",
+            "Prescaler = {:?}, Divisor = {:?}, Freq = {:?} Hz",
             pre_div,
             div,
             (BASE_CLOCK as u32 / (div * pre_div))
@@ -1944,59 +1952,32 @@ impl UsdhController {
         return SdResult::SdOk;
     }
 
-    /// Reset SD Host Controller
+    /// Reset SD Host Controller.
+    /// 
+    /// Note: this method does not perform a hardware or a software reset. Apparently, it works without this 
+    /// - **hardware reset OR power-cycle**: we toggle the `IPP_RST_N` bit(23) of SYS_CTRL as per the SD standard (i.e. 1ms high and 
+    /// then 1ms low)
+    /// - **software reset**: the reference manual says we must reset the uSDHC peripheral by setting the `RSTA` 
+    /// bit (24) of SYS_CTRL register 
     ///
+    /// but after weeks of debugging, I realized (maybe) this board does not need to be reset. In fact, if you try to reset 
+    /// the card/controller with either a hardware or software reset, we run into sd-communication errors - strange. 
+    /// 
+    /// Helpful hint: Performing any of type (above mentioned) of resets results in the data and command line signals being pulled low
+    /// I confirmed this via the PRES_STAT register DLSL and CLSL bits.  
+    /// 
     /// Returns:
     /// - SdErrorReset - A fatal error occurred resetting the Sd card
     /// - SdOk - Sd card reset correctly
     fn reset_card(&self) -> SdResult {
-        // start with a time difference of zero
-        let mut td = 0;
-        let mut start_time = 0;
-
-        // Reset the complete host controller
-        self.registers.SYS_CTRL.modify(SYS_CTRL::RSTA::Reset);
-
-        // Wait for reset done
-        while (self.registers.SYS_CTRL.is_set(SYS_CTRL::RSTA)) && (td < 10) {
-            // set start time
-            if (start_time == 0) {
-                start_time = timer_get_tick_count();
-            } else {
-                td = tick_difference(start_time, timer_get_tick_count());
-            }
-        }
-        if (td >= 10) {
-            // Timeout waiting for reset flag
-            info!("Sd Error: failed to reset.\n");
-            // Return reset Sd card error
-            return SdResult::SdErrorReset;
-        }
-        info!("Sd host circuit reset in {:?}us", td);
-        // self.registers.SYS_CTRL.modify(SYS_CTRL::RESERVED0::SET);
-
+        // Start without a hardware or software reset. See above
         self.registers.MMCBOOT.set(0);
         self.registers.MIXCTRL.set(0);
         self.registers.CLK_TUNE_CTRL_STS.set(0);
-
-        self.registers.VEND_SPEC.write(
-            VEND_SPEC::RSRV1::SET
-                + VEND_SPEC::CKEN::SET
-                + VEND_SPEC::PEREN::SET
-                + VEND_SPEC::HCKEN::SET
-                + VEND_SPEC::IPGEN::SET
-                + VEND_SPEC::AC12_WR_CHKBUSY_EN::SET
-                + VEND_SPEC::EXT_DMA_EN::SET,
-        );
-        /* Default setup, 3.3V IO */
-        // self.registers.VEND_SPEC.modify(VEND_SPEC::VSELECT::CLEAR);
-        /* Disable DLL_CTRL delay line */
+        // Disable DLL_CTRL delay line 
         self.registers.DLL_CTRL.set(0);
 
-        self.registers
-            .VEND_SPEC
-            .modify(VEND_SPEC::PEREN::SET + VEND_SPEC::IPGEN::SET);
-        /* Set clock to setup frequency */
+        // Set clock to setup frequency 
         // i.e. set to low frequency clock (400Khz)
         let mut resp = self.set_clock(FREQ_SETUP as u32);
         timer_wait_micro(100);
@@ -2015,6 +1996,7 @@ impl UsdhController {
             CCSEN::SET
                 + TCSEN::SET
                 + DINTSEN::SET
+                + BRRSENN::SET
                 + CINTSEN::SET
                 + CTOESEN::SET
                 + CCESEN::SET
@@ -2024,11 +2006,6 @@ impl UsdhController {
                 + DCESEN::SET
                 + DEBESEN::SET,
         );
-
-        // Clear read/write ready status
-        self.registers
-            .INT_STATUS_EN
-            .modify(INT_STATUS_EN::BRRSENN::CLEAR + INT_STATUS_EN::BWRSEN::CLEAR);
         // Set INITA field to send 80 SD-clocks to the card. After the 80 clocks are sent, this field is self
         // cleared
         self.registers.SYS_CTRL.modify(SYS_CTRL::INITA::SET);
@@ -2037,12 +2014,9 @@ impl UsdhController {
         }
         // Set PROCTL reg to the default
         self.registers.PROT_CTRL.modify(
-            PROT_CTRL::EMODE::LittleEndianMode + PROT_CTRL::DTW::OneBitWide, // + PROT_CTRL::D3CD::CLEAR
-                                                                             // + PROT_CTRL::DTW::FourBitWide,
+            PROT_CTRL::DTW::OneBitWide, // PROT_CTRL::EMODE::LittleEndianMode + PROT_CTRL::D3CD::CLEAR
+                                        // + PROT_CTRL::DTW::FourBitWide,
         );
-        // self.registers.VEND_SPEC.modify(VEND_SPEC::FRC_SDCLK_ON::SET);
-        // self.registers.SYS_CTRL.modify(SYS_CTRL::RESERVED0.val(0x8));
-        // self.registers.SYS_CTRL.modify(SYS_CTRL::IPP_RST_N::SET);
 
         // set timeout to maximum value
         self.registers.SYS_CTRL.modify(SYS_CTRL::DTOCV.val(0xf));
@@ -2050,10 +2024,8 @@ impl UsdhController {
         self.registers
             .WTMK_LVL
             .modify(WTMK_LVL::RD_WML.val(0x10) + WTMK_LVL::WR_WML.val(0x10));
-        // set tuning ctrl
-        // self.registers.TUNINIG_CTRL.set(TUNINIG_CTRL_INIT);
-
-        /* Reset our card structure entries */
+        
+        // Reset our card structure entries
         unsafe {
             SD_CARD.rca = 0; // Zero rca
             SD_CARD.ocr.set(0); // Zero ocr
@@ -2061,6 +2033,7 @@ impl UsdhController {
             SD_CARD.status = 0; // Zero status
             SD_CARD.sd_card_type = SdCardType::TypeUnknown; // Set card type unknown
         }
+        
 
         // Send GO_IDLE_STATE to card
         resp = self.send_command(SdCardCommands::GoIdleState);
@@ -2069,7 +2042,7 @@ impl UsdhController {
         return resp;
     }
 
-    /// Wait for command completion, this method loops polling for the condition (for up to 1 second).
+    /// Wait for command completion, this method loops polling for the condition (for up to 10 milli seconds).
     ///
     /// Returns:
     /// - SdTimeout - Operation timed out
@@ -2112,7 +2085,7 @@ impl UsdhController {
         } else if (int_status & int_error_status.get()) != 0 {
             info!(
                 "Error: we got a response for the last cmd but it contains errors, \
-               decode contents of interrupt status register for details \
+               decode contents of interrupt status register for details\n \
                VendSpec: 0x{:08x}, SysCtrl: 0x{:08x}, ProtCtrl: 0x{:08x}, \
                PresentStatus: 0x{:08x}, intStatus: 0x{:08x}, Resp0: 0x{:08x}, Resp1: 0x{:08x}, Resp2: 0x{:08x}, \
                Resp3: 0x{:08x}, CC_bit set in {}us\n",
@@ -2277,6 +2250,27 @@ impl UsdhController {
                         }
                         return SdResult::SdOk;
                     }
+                    // SEND_SCR command
+                    0x33 => unsafe {
+                        let mut scr_lo = 0;
+                        let mut scr_hi = 0;
+                        for (idx, word) in (0..2u8).enumerate() {
+                            while !self.registers.INT_STATUS.is_set(INT_STATUS::BRR) {}
+                            // clear BRR with w1c - write 1 to clear
+                            self.registers.INT_STATUS.modify(INT_STATUS::BRR::SET);
+                            // for non-DMA read transfers, the uSDHC module implements an internal buffer to
+                            // transfer data efficiently.
+                            match idx {
+                                0 => scr_lo = self.registers.DATA_BUFF_ACC_PORT.get(),
+                                1 => scr_hi = self.registers.DATA_BUFF_ACC_PORT.get(),
+                                _ => {
+                                    unreachable!()
+                                }
+                            }
+                        }
+                        SD_CARD.scr.set(scr_lo as u64 | ((scr_hi as u64) << 32));
+                        return SdResult::SdOk;
+                    },
                     _ => {
                         unsafe {
                             SD_CARD.status = resp0;
@@ -2588,7 +2582,7 @@ impl UsdhController {
         // In other words- issuing `APP_SEND_OP_COND`, will trigger an APP_CMD prior to sending out APP_SEND_OP_COND.
         // We must ensure a 100us delay between the 2 commands.
         let mut resp = self.send_command_a(SdCardCommands::AppSendOpCond, arg);
-        if resp != SdResult::SdTimeout {
+        if resp != SdResult::SdOk && resp != SdResult::SdTimeout {
             // #[cfg(feature = "log")]
             info!("{:?}: ACMD41 returned non-timeout error \n", resp);
 
@@ -2598,7 +2592,7 @@ impl UsdhController {
         while unsafe { SD_CARD.ocr.read(OCR::card_power_up_busy) == 0 } && retries != 0 {
             timer_wait_micro(400000);
             resp = self.send_command_a(SdCardCommands::AppSendOpCond, arg);
-            if resp != SdResult::SdTimeout {
+            if resp != SdResult::SdOk && resp != SdResult::SdTimeout {
                 // #[cfg(feature = "log")]
                 info!("{:?}: ACMD41 returned non-timeout error \n", resp);
 
@@ -2624,73 +2618,23 @@ impl UsdhController {
     }
 
     /// Read card's SCR. APP_CMD sent automatically if required.
+    /// 
+    /// TODO: Find out why we get a timeout error when we send SetBlocklen (CMD 16) before issuing the SCR.
     fn sd_read_scr(&self) -> SdResult {
-        // SEND_SCR command is like a READ_SINGLE but for a block of 8 bytes.
-        // Ensure that any data operation has completed before reading the block.
-        if self.wait_for_cmd_data() != SdResult::SdOk {
-            return SdResult::SdTimeout;
-        }
-
-        self.registers.MIXCTRL.modify(MIXCTRL::BCEN::SET);
-        // Set BLKSIZECNT to 1 block of 8 bytes, send SEND_SCR command
-        self.registers.BLK_ATT.modify(BLK_ATT::BLKCNT.val(1));
+        // Send set block length command
+        // let resp = self.send_command_a(SdCardCommands::SetBlocklen, 8);
+        // if resp != SdResult::SdOk {
+        //     return self.debug_response(resp);
+        // }
+        // enable MIXCTRL bitfield to transfer data from the SD card to uSDHC
+        self.registers.MIXCTRL.modify(MIXCTRL::DTDSEL::SET);
+        // Set BLKSIZE to 1 block of 8 bytes, send SEND_SCR command
         self.registers.BLK_ATT.modify(BLK_ATT::BLKSIZE.val(8));
 
         let resp = self.send_command(SdCardCommands::SendScr);
         if resp != SdResult::SdOk {
             return self.debug_response(resp);
         }
-
-        // Allow maximum of 100ms for the read operation.
-        let mut num_read = 0u32;
-        let mut count = 100000u32;
-        let mut scr_lo = 0u32;
-        let mut scr_hi = 0u32;
-        while (num_read < 2) {
-            if self
-                .registers
-                .PRES_STATE
-                .matches_all(PRES_STATE::RTA.val(1))
-            {
-                if num_read == 0 {
-                    unsafe {
-                        scr_lo = self.registers.DATA_BUFF_ACC_PORT.get();
-                    }
-                } else {
-                    unsafe {
-                        scr_hi = self.registers.DATA_BUFF_ACC_PORT.get();
-                    }
-                }
-                num_read += 1;
-                info!("in num_read match-arm");
-            } else {
-                timer_wait_micro(1);
-                count -= 1;
-                if count == 0 {
-                    break;
-                }
-            }
-        }
-        // If SCR not fully read, the operation timed out.
-        if (num_read != 2) {
-            // #[cfg(feature = "log")]
-            {
-                info!(
-                    "Sd Error: SEND_SCR ERR: 0x{:x}, 0x{:x}, 0x{:?}\n",
-                    self.registers.PRES_STATE.get(),
-                    self.registers.INT_STATUS.get(),
-                    self.registers.CMD_RSP0.get()
-                );
-                info!(
-                    "Sd Read Timeout: Reading SCR, only read : {:?} words\n",
-                    num_read
-                );
-            }
-
-            return SdResult::SdTimeout;
-        }
-
-        unsafe { SD_CARD.scr.set(scr_lo as u64 | ((scr_hi as u64) << 32)) };
         return SdResult::SdOk;
     }
 
@@ -2710,7 +2654,7 @@ impl UsdhController {
                 Some(HOST_CTRL_CAP::VS18::Value::Supported),
                 Some(HOST_CTRL_CAP::VS30::Value::Supported),
                 Some(HOST_CTRL_CAP::VS33::Value::Supported),
-            ) => info!("uSDHC2 has support for 1.8v, 3.0v, 3.3v ..."),
+            ) => info!("uSDHC2 supports 1.8v, 3.0v, 3.3v ..."),
             _ => unimplemented!(),
         };
         SdResult::SdOk
@@ -2731,7 +2675,6 @@ impl UsdhController {
         if (resp != SdResult::SdOk) {
             return resp;
         }
-
         // Send SEND_IF_COND,0x000001AA (CMD8) voltage range 0x1 check pattern 0xAA
         // If voltage range and check pattern don't match, look for older card.
         resp = self.send_command_a(SdCardCommands::SendIfCond, 0x000001AA);
@@ -2757,50 +2700,29 @@ impl UsdhController {
             SdResult::SdBusy => return resp,
             // No response to SEND_IF_COND, treat as an old card.
             _ => {
-                info!(
-                    "{:?}: Send interface condition command (CMD8) returned an error \n",
-                    resp
-                );
-                return SdResult::SdError;
+                // info!(
+                //     "{:?}: Send interface condition command (CMD8) returned an error \n",
+                //     resp
+                // );
+                // return SdResult::SdError;
                 // If there appears to be a command in progress, reset the card.
-                // resp = self.reset_card();
-                // if self.registers.PRES_STATE.is_set(PRES_STATE::CIHB) && (resp != SdResult::SdOk)
-                // {
-                //     return resp;
-                // }
+                resp = self.reset_card();
+                if self.registers.PRES_STATE.is_set(PRES_STATE::CIHB) && (resp != SdResult::SdOk) {
+                    return resp;
+                }
 
-                // // wait(50);
-                // // Resolve voltage.
-                // resp = self.app_send_op_cond(ACMD41_ARG_SC as u32);
-                // if (resp != SdResult::SdOk) {
-                //     return self.debug_response(resp);
-                // }
+                // wait(50);
+                // Resolve voltage.
+                resp = self.app_send_op_cond(ACMD41_ARG_SC as u32);
+                if (resp != SdResult::SdOk) {
+                    return self.debug_response(resp);
+                }
 
-                // unsafe {
-                //     SD_CARD.sd_card_type = SdCardType::Type1;
-                // }
+                unsafe {
+                    SD_CARD.sd_card_type = SdCardType::Type1;
+                }
             }
         };
-
-        // // Send SEND_OP_COND (CMD1)
-        // while true {
-        //     resp = self.send_command_a(SdCardCommands::SendOpCond, 0x40ff8080);
-        //     if (resp != SdResult::SdOk) {
-        //         return self.debug_response(resp);
-        //     }
-        //     /* Wait for uSDHC to power up */
-        //     if (self.registers.CMD_RSP0.get() & (1 << 31)) != 0 {
-        //         break;
-        //     } else {
-        //         timer_wait_micro(1000);
-        //     }
-        // }
-
-        // // Send SEND_STATUS (CMD 0xd)
-        // resp = self.send_command(SdCardCommands::SendStatus);
-        // if (resp != SdResult::SdOk) {
-        //     return self.debug_response(resp);
-        // }
 
         // Send ALL_SEND_CID (CMD2)
         resp = self.send_command(SdCardCommands::AllSendCid);
@@ -2850,7 +2772,7 @@ impl UsdhController {
                 .read_as_enum::<SCR::BUS_WIDTH::Value>(SCR::BUS_WIDTH)
         } {
             Some(v) => {
-                info!("SCR BUS_WIDTH: {:?}", v)
+                info!("SCR bus width: {:?}", v)
             }
             None => {
                 info!("Unsupported bus width, we'll default to using a `1-bit` bus")

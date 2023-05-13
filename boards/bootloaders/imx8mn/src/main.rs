@@ -12,7 +12,7 @@ use rustBoot_hal::nxp::imx8mn::bsp::{
     clocks,
     drivers::{
         common::interface::DriverManager,
-        driver_manager::{driver_manager, start_system_counter, sys_clocks_init},
+        driver_manager::{driver_manager, start_system_counter},
     },
     global, mux,
 };
@@ -66,7 +66,7 @@ fn kernel_main() -> ! {
 
     // init uSDHC
     match SDHC2.init_usdhc() {
-        SdResult::SdOk => info!("uSDHC driver initialized"),
+        SdResult::SdOk => info!("uSDHC driver initialized..."),
         _ => info!("failed to initialize"),
     }
 

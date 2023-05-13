@@ -1,3 +1,5 @@
+//! PLL configuration - TODO - implementation not ready yet
+
 use tock_registers::interfaces::ReadWriteable;
 use tock_registers::{
     interfaces::{Readable, Writeable},
@@ -351,6 +353,7 @@ impl CCMAnalog {
                 + SYS_PLL2_GEN_CTRL::PLL_DIV20_CLKE::SET,
         )
     }
+    /// TODO: implementation not complete. Still needs to be tested
     pub fn pll_configure(&self, pll: PllClocks, freq: u32) {
         let pll_clke_masks = INTPLL_CLKE_MASK;
         // Bypass clock and set lock to pll output lock
@@ -434,7 +437,7 @@ impl CCMAnalog {
             _ => {}
         }
     }
-
+    /// TODO: implementation not complete. Still needs to be tested
     /// Configure system Plls and set clock-gates, root-clocks for GIC, DRAM, NAND, WDG etc.
     pub fn clock_init(&self) {
         self.set_pll1_outputs();

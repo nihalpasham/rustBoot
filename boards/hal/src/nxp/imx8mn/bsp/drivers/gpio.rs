@@ -184,14 +184,13 @@ impl GpioInner {
 
     /// Set GPIO pin
     fn set_gpio_pin(&mut self, pin: u8, val: bool) {
-        // Set pin-direction to output
-        self.registers
-            .GPIO_GDIR
-            .modify(GPIO_GDIR::PIN_DIR.val(1 << pin));
-
         // set or clear DR bit for corresponding pin
         match val {
             true => {
+                // Set pin-direction to output
+                self.registers
+                    .GPIO_GDIR
+                    .modify(GPIO_GDIR::PIN_DIR.val(1 << pin));
                 self.registers.GPIO_DR.modify(GPIO_DR::DR.val(1 << pin));
             }
             false => {
@@ -224,17 +223,17 @@ impl Gpio {
             inner: NullLock::new(GpioInner::new(mmio_start_addr)),
         }
     }
-    /// Sets the supplied Gpio pin's state to output
+    /// Sets the supplied Gpio pin's direction and state to output
     pub fn set_pin(&self, pin: u8) {
-        self.inner.lock(|gpio | gpio.set_gpio_pin(pin, true));
+        self.inner.lock(|gpio| gpio.set_gpio_pin(pin, true));
     }
     /// Clears the supplied Gpio pin's output-mode status
     pub fn clear_pin(&self, pin: u8) {
-        self.inner.lock(|gpio | gpio.set_gpio_pin(pin, false));
+        self.inner.lock(|gpio| gpio.set_gpio_pin(pin, false));
     }
     /// Reads the the supplied Gpio pin's state.
     pub fn read_pin(&self, pin: u8) -> u8 {
-        let res = self.inner.lock(|gpio | gpio.get_gpio_pin(pin));
+        let res = self.inner.lock(|gpio| gpio.get_gpio_pin(pin));
         res
     }
 }
@@ -247,4 +246,3 @@ impl super::common::interface::DeviceDriver for Gpio {
         "i.MX 8M Nano Gpio"
     }
 }
-
