@@ -1,0 +1,34 @@
+[package]
+build = "build.rs"
+edition = "2018"
+name = "nrf9160"
+version = "0.1.0"
+
+# makes `cargo check --all-targets` work
+[[bin]]
+bench = false
+doctest = false
+name = "nrf9160"
+test = false
+
+[dependencies]
+cortex-m-rt = "0.7"
+cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
+rustBoot-hal = {path = "../../hal", features = ["nrf9160", "nrf"]}
+
+#trustzone-m-macros = { path = "../../../tools/trustzone-m-tools/macros" }
+#trustzone-m-secure-rt = {path = "../../tools/trustzone-m-tools/secure-rt", features = ["nrf9160"]}
+
+nrf9160-pac = "0.12.2"
+
+rustBoot-update = {path = "../../update", features = ["nrf9160"]}
+defmt = {version = "0.3.1", optional = true}
+defmt-rtt = {version = "0.3.2", optional = true}
+
+
+#[build-dependencies]
+#trustzone-m-tools = {path = "../../../tools/trustzone-m-tools/tools"}
+
+[features]
+default = ["defmt", "defmt-rtt"]
+

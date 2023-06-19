@@ -1,0 +1,31 @@
+[package]
+name = "nrf9160_updtfw"
+version = "0.1.0"
+edition = "2018"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# makes `cargo check --all-targets` work
+[[bin]]
+name = "nrf9160_updtfw"
+bench = false
+doctest = false
+test = false
+
+[dependencies]
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+nrf9160-pac = "0.12.2"
+nrf9160-hal = { version = "0.16.0", default-features = false }
+defmt = {version = "0.3.2", optional = true}
+defmt-rtt = {version = "0.3.2", optional = true}
+
+rustBoot-hal = {path = "../../../hal", default-features = false, features = ["nrf9160", "nrf"]}
+rustBoot-update = {path = "../../../update", features = ["nrf9160"]}
+
+#[build-dependencies]
+
+
+[features]
+default = ["defmt", "defmt-rtt"]

@@ -65,6 +65,9 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
         &"nrf52840" => {
             cmd!("cargo build --release").run()?;
         }
+	&"nrf9160" => {
+            cmd!("cargo build --release").run()?;
+        }
         &"stm32f411" => {
             cmd!("cargo build --release").run()?;
         }
@@ -149,6 +152,16 @@ fn sign_packages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(), 
             let _p = xshell::pushd(root_dir().join("rbsigner"))?;
             cmd!("cargo run mcu-image ../boards/sign_images/signed_images/nrf52840_bootfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {boot_ver}").run()?;
             cmd!("cargo run mcu-image ../boards/sign_images/signed_images/nrf52840_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
+            Ok(())
+        }
+        "nrf9160" => {
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv8m.main-none-eabihf/release/nrf9160_bootfw -O binary nrf9160_bootfw.bin").run()?;
+            cmd!("rust-objcopy -I elf32-littlearm ../../target/thumbv8m.main-none-eabihf/release/nrf9160_updtfw -O binary nrf9160_updtfw.bin").run()?;
+
+            let _p = xshell::pushd(root_dir().join("rbsigner"))?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/nrf9160_bootfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {boot_ver}").run()?;
+            cmd!("cargo run mcu-image ../boards/sign_images/signed_images/nrf9160_updtfw.bin nistp256 ../boards/sign_images/keygen/ecc256.der {updt_ver}").run()?;
             Ok(())
         }
         "stm32f411" => {
@@ -238,6 +251,15 @@ fn flash_signed_fwimages(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Res
             cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip nRF52840_xxAA nrf52840_updtfw_v{updt_ver}_signed.bin").run()?;
             Ok(())
         }
+        "nrf9160" => {
+            let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
+            let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
+            cmd!("probe-rs-cli download --format Bin --base-address {boot_part_addr} --chip nRF9160_xxAA nrf9160_bootfw_v{boot_ver}_signed.bin").run()?;
+
+            let updt_part_addr = format!("0x{:x}", UPDATE_PARTITION_ADDRESS);
+            cmd!("probe-rs-cli download --format Bin --base-address {updt_part_addr} --chip nRF9160_xxAA nrf9160_updtfw_v{updt_ver}_signed.bin").run()?;
+            Ok(())
+        }
         "stm32f411" => {
             let _p = xshell::pushd(root_dir().join("boards/sign_images/signed_images"))?;
             let boot_part_addr = format!("0x{:x}", BOOT_PARTITION_ADDRESS);
@@ -312,6 +334,11 @@ fn flash_rustBoot(target: &&str) -> Result<(), anyhow::Error> {
             cmd!("cargo flash --chip nRF52840_xxAA --release").run()?;
             Ok(())
         }
+        "nrf9160" => {
+            let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
+            cmd!("cargo flash --chip nRF9160_xxAA --release").run()?;
+            Ok(())
+        }
         "stm32f411" => {
             let _p = xshell::pushd(root_dir().join("boards/bootloaders").join(target))?;
             cmd!("cargo flash --chip stm32f411vetx --release").run()?;
@@ -358,6 +385,14 @@ fn full_image_flash(target: &&str, boot_ver: &&str, updt_ver: &&str) -> Result<(
             build_rustBoot(target)?;
             sign_packages(target, boot_ver, updt_ver)?;
             cmd!("probe-rs-cli erase --chip nRF52840_xxAA").run()?;
+            flash_signed_fwimages(target, boot_ver, updt_ver)?;
+            flash_rustBoot(target)?;
+            Ok(())
+        }
+        "nrf9160" => {
+            build_rustBoot(target)?;
+            sign_packages(target, boot_ver, updt_ver)?;
+            cmd!("probe-rs-cli erase --chip nRF9160_xxAA").run()?;
             flash_signed_fwimages(target, boot_ver, updt_ver)?;
             flash_rustBoot(target)?;
             Ok(())
