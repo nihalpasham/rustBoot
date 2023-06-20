@@ -38,6 +38,7 @@ jobs:
           cargo +nightly test --package rustBoot --lib --features stm32f746 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features stm32f334 -- parser::tests --nocapture
           cargo +nightly test --package rustBoot --lib --features rp2040 -- parser::tests --nocapture
+          cargo +nightly test --package rustBoot --lib --features nrf9160 -- parser::tests --nocapture
 
   builds:
     runs-on: ${{ matrix.os }}
@@ -72,6 +73,13 @@ jobs:
           use-cross: false
           command: run
           args: -p xtask --features nrf52840 -- nrf52840 build rustBoot-only
+      - name: nrf9160
+        if: matrix.target == 'thumbv8m.main-none-eabihf'
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: run
+          args: -p xtask --features nrf9160 -- nrf9160 build rustBoot-only
       - name: stm32f411
         if: matrix.target == 'thumbv7em-none-eabihf'
         uses: actions-rs/cargo@v1
