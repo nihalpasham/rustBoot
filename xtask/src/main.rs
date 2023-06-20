@@ -65,7 +65,7 @@ fn build_rustBoot_only(target: &&str) -> Result<(), anyhow::Error> {
         &"nrf52840" => {
             cmd!("cargo build --release").run()?;
         }
-	    &"nrf9160" => {
+        &"nrf9160" => {
             cmd!("cargo build --release").run()?;
         }
         &"stm32f411" => {
