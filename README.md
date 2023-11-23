@@ -51,4 +51,4 @@ rustBoot is licensed under
 * MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
 
 ## Contributing:
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the MIT license, shall be licensed as above, without any additional terms or conditions.
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the MIT license, shall be licensed as above, without any additional terms or conditions.We enforce [developer certificate of origin (DCO) commit signing](./DCO.md).

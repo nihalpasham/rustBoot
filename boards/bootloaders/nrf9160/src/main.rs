@@ -12,7 +12,6 @@ use rustBoot_update::update::{update_flash::FlashUpdater, UpdateInterface};
 
 use cortex_m_rt::entry;
 
-
 #[entry]
 fn main() -> ! {
     let dp = nrf9160_pac::Peripherals::take().unwrap();
