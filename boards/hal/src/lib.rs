@@ -7,6 +7,7 @@
 #![feature(asm_const)]
 #![allow(warnings)]
 #![feature(core_intrinsics)]
+#![feature(abi_c_cmse_nonsecure_call)]
 #[cfg(feature = "nrf")]
 pub mod nrf;
 #[cfg(feature = "rpi")]

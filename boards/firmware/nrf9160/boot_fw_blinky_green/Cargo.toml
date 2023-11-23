@@ -1,0 +1,35 @@
+[package]
+name = "nrf9160_bootfw"
+version = "0.1.0"
+edition = "2018"
+build = "build.rs"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# makes `cargo check --all-targets` work
+[[bin]]
+name = "nrf9160_bootfw"
+bench = false
+doctest = false
+test = false
+
+[dependencies]
+cortex-m = { version = "0.7.6", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7"
+nrf9160-pac = "0.12.2"
+#embassy-executor = { git = "https://github.com/embassy-rs/embassy.git", rev = "c53614f", features = ["nightly"] }
+#embassy-nrf = { git = "https://github.com/embassy-rs/embassy.git", rev = "c53614f", features = ["nightly", "nrf9160-ns", "unstable-pac", "unstable-traits"] }
+#embassy-sync = "0.1.0"
+nrf9160-hal = { version = "0.16.0", default-features = false }
+defmt = {version = "0.3.2", optional = true}
+defmt-rtt = {version = "0.3.2", optional = true}
+#trustzone-m-macros = { path = "../../../tools/trustzone-m-tools/macros" }
+rustBoot-hal = {path = "../../../hal", default-features = false, features = ["nrf9160", "nrf"]}
+rustBoot-update = {path = "../../../update", features = ["nrf9160"]}
+panic-probe = { version = "0.3.0" }
+spin = "0.9.4"
+
+#[build-dependencies]
+
+
+[features]
+default = ["defmt", "defmt-rtt"]
