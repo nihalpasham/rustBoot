@@ -1,0 +1,5 @@
+ASSERT(LENGTH(NSC_FLASH) <= 4096, "ERROR(trustzone): The NSC flash region cannot be bigger than 4096 bytes");
+ASSERT(LENGTH(NSC_FLASH) >= 32, "ERROR(trustzone): The NSC flash region cannot be smaller than 32 bytes");
+ASSERT((LENGTH(NSC_FLASH) & (LENGTH(NSC_FLASH) - 1)) == 0, "ERROR(trustzone): The NSC flash region must have a length that is a power of 2");
+
+ASSERT(_s_flash_end == _nsc_flash_start, "ERROR(trustzone): The NSC flash region must come right after the S flash region");
