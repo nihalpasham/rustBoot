@@ -168,12 +168,11 @@ where
                         {
                             return Err(RustbootError::ECCError);
                         }
-                        if (!updt_part.hdr_ok
-                            || updt.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
-                            || updt.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
-                        {
-                            panic!("firmware authentication failed");
+                        if (!updt_part.hdr_ok) {
+                            return Err(RustbootError::InvalidImage);
                         }
+                        updt.verify_integrity::<SHA256_DIGEST_SIZE>()?;
+                        updt.verify_authenticity::<HDR_IMG_TYPE_AUTH>()?;
                     }
                     // disallow downgrades
                     match boot {
@@ -272,25 +271,23 @@ where
     Interface: FlashInterface,
 {
     fn rustboot_start(self) -> ! {
+        let trigger_rollback = || -> Result<()> {
+            self.update_trigger();
+            self.rustboot_update(true)?;
+            Ok(())
+        };
         let mut boot = PartDescriptor::open_partition(Boot, self).unwrap();
         let updt = PartDescriptor::open_partition(Update, self).unwrap();
 
         // Check the BOOT partition for state - if it is still in TESTING, trigger rollback.
         if let ImageType::BootInTestingState(_v) = boot {
-            self.update_trigger();
-            match self.rustboot_update(true) {
-                Ok(_v) => {}
-                Err(_e) => {
-                    panic!("rollback failed.")
-                }
+            if trigger_rollback().is_err() {
+                panic!("rollback failed.");
             }
         // Check the UPDATE partition for state - if it is marked as UPDATING, trigger update.
         } else if let ImageType::UpdateInUpdatingState(_v) = updt {
-            match self.rustboot_update(false) {
-                Ok(_v) => {}
-                Err(_e) => {
-                    panic!("update-swap failed.")
-                }
+            if self.rustboot_update(false).is_err() {
+                /* If update cannot be performed, launch former boot partition by default */
             }
         } else {
             match boot {

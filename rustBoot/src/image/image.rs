@@ -569,7 +569,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                         let hasher = compute_img_hash::<Part, State, Sha256, N>(self, fw_size)?;
                         let computed_hash = hasher.finalize();
                         if computed_hash.as_slice() != stored_hash {
-                            panic!("..integrity check failed");
+                            return Err(RustbootError::IntegrityCheckFailed);
                         }
                         integrity_check = true;
                         Some(stored_hash.as_ptr())
