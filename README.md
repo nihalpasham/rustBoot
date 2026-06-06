@@ -1,5 +1,5 @@
-![GitHub](https://img.shields.io/github/license/nihalpasham/rustBoot)
-[![ci](https://github.com/nihalpasham/rustBoot/actions/workflows/ci.yml/badge.svg)](https://github.com/nihalpasham/rustBoot/actions/workflows/ci.yml)
+![GitHub](https://img.shields.io/github/license/vlordier/rustBoot)
+[![ci](https://github.com/vlordier/rustBoot/actions/workflows/ci.yml/badge.svg)](https://github.com/vlordier/rustBoot/actions/workflows/ci.yml)
 
 # rustBoot — Secure Bootloader for Embedded Systems
 

@@ -6,7 +6,7 @@ A hardware asbtraction layer for rustBoot. It contains HW-specific impls
 for board-specific programming, written in pure-Rust .
 """
 documentation = ""
-edition = "2018"
+edition = "2021"
 homepage = ""
 keywords = ["security", "bootloader", "firmware", "authentication", "update"]
 license = "MIT"

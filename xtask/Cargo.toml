@@ -1,6 +1,6 @@
 [package]
 authors = ["Nihal Pasham <Twitter: @npashi>"]
-edition = "2018"
+edition = "2021"
 name = "xtask"
 publish = false
 version = "0.1.0"

@@ -1,10 +1,6 @@
 #![no_std]
-#![feature(const_fn_fn_ptr_basics)]
-#![feature(panic_info_message)]
 #![feature(format_args_nl)]
-#![feature(global_asm)]
 #![feature(asm)]
-#![feature(asm_const)]
 #![feature(core_intrinsics)]
 // Safety: unsafe_code is required for MMIO register access, inline assembly,
 // and architecture-specific operations. Each unsafe block is documented.

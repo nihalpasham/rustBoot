@@ -6,7 +6,7 @@ A micro-architecture agnostic, portable secure bootloader with firmware authenti
 and update capabilities, written in pure-Rust .
 """
 documentation = ""
-edition = "2018"
+edition = "2021"
 homepage = ""
 keywords = ["security", "bootloader", "firmware", "authentication", "update"]
 license = "MIT"

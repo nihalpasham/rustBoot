@@ -6,7 +6,7 @@ This is a rustBoot dependency. It allows for multi-slot partitioning of a flash 
 and can be used to perform power-interruptible A/B updates.  
 """
 documentation = ""
-edition = "2018"
+edition = "2021"
 homepage = ""
 keywords = ["security", "bootloader", "firmware", "authentication", "update"]
 license = "MIT"
