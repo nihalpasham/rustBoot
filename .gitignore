@@ -1,21 +1,29 @@
-/rustBoot/src/dt/writer_test.rs
-/rustBoot/src/dt/reader_test.rs
+# Build artifacts
+/target
+/rustBoot/src/writer_test.rs
+/rustBoot/src/reader_test.rs
 /rustBoot/examples/fit2.rs
 /rustBoot/examples/patch2.rs
 /rustBoot/examples/test.rs
 /rustBoot/src/disk.img
-/target
-Cargo.lock
+/rustBoot/src/dt/test.md
+boards/bootloaders/rpi4/layout_copy.ld
+boards/bootloaders/rpi4/bl_objdump.s
+boards/bootloaders/rpi4/failtestdump.s
+boards/bootloaders/rpi4/testdump.s
+boards/bootloaders/rpi4/output.txt
+boards/bootloaders/rpi4/kernel8.img
+boards/bootloaders/rpi4/apertis/signed-v*
+boards/bootloaders/rpi4-test/
+dts
+
+# OS files
+**/.DS_Store
 .gdb_history
 test.md
-**/*.DS_Store
-/boards/bootloaders/rpi4-test/
-/boards/bootloaders/rpi4/layout_copy.ld
-/boards/bootloaders/rpi4/bl_objdump.s
-/boards/bootloaders/rpi4/failtestdump.s
-/boards/bootloaders/rpi4/testdump.s
-/boards/bootloaders/rpi4/output.txt
-/boards/bootloaders/rpi4/kernel8.img
-/boards/bootloaders/rpi4/apertis/signed-v*
-dts
-/boards/bootloaders/imx8mn/imx8mn.bin
+
+# Compiled binary artifacts (generated during build)
+**/*.bin
+**/*.elf
+**/*.hex
+**/*.img

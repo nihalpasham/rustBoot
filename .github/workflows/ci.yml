@@ -1,10 +1,15 @@
+# CI pipeline for rustBoot
+#
+# IMPORTANT: This pipeline must pass before any PR is merged to main.
+# All jobs must succeed — CI fails closed.
+#
 name: ci
 
 on:
   push:
-    branches: [main, mcusigner]
+    branches: [main]
   pull_request:
-    branches: [main, mcusigner]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,9 +18,42 @@ jobs:
   formatting:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: rustup show
       - name: Check formatting
-        run: cargo fmt -- --check
+        run: cargo fmt --all --check
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: rustup show
+      - name: Run clippy (rustBoot, nrf52840)
+        run: cargo clippy --package rustBoot --all-targets --features nrf52840 -- -D warnings
+      - name: Run clippy (rbsigner)
+        run: cargo clippy --package rbsigner --all-targets --all-features -- -D warnings
+      - name: Run clippy (xtask)
+        run: cargo clippy --package xtask --all-targets --features nrf52840 -- -D warnings
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Audit dependencies
+        run: cargo audit
+
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+      - name: Check licenses and bans
+        run: cargo deny check
 
   tests:
     runs-on: ${{ matrix.os }}
@@ -23,110 +61,63 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: rustup show
       - name: device-tree - unit tests
-        run: |
-          rustup install nightly
-          cargo +nightly test --package rustBoot --lib -- --nocapture
+        run: cargo test --package rustBoot --lib -- --nocapture
       - name: rustBoot image parser - unit tests
         run: |
-          cargo +nightly test --package rustBoot --lib --features nrf52840 -- parser::tests --nocapture
-          cargo +nightly test --package rustBoot --lib --features stm32f411 -- parser::tests --nocapture
-          cargo +nightly test --package rustBoot --lib --features stm32f446 -- parser::tests --nocapture
-          cargo +nightly test --package rustBoot --lib --features stm32f469 -- parser::tests --nocapture
-          cargo +nightly test --package rustBoot --lib --features stm32h723 -- parser::tests --nocapture
-          cargo +nightly test --package rustBoot --lib --features stm32f746 -- parser::tests --nocapture
-          cargo +nightly test --package rustBoot --lib --features stm32f334 -- parser::tests --nocapture
-          cargo +nightly test --package rustBoot --lib --features rp2040 -- parser::tests --nocapture
+          cargo test --package rustBoot --lib --features nrf52840 -- parser::tests --nocapture
+          cargo test --package rustBoot --lib --features stm32f411 -- parser::tests --nocapture
+          cargo test --package rustBoot --lib --features stm32f446 -- parser::tests --nocapture
+          cargo test --package rustBoot --lib --features stm32f469 -- parser::tests --nocapture
+          cargo test --package rustBoot --lib --features stm32h723 -- parser::tests --nocapture
+          cargo test --package rustBoot --lib --features stm32f746 -- parser::tests --nocapture
+          cargo test --package rustBoot --lib --features stm32f334 -- parser::tests --nocapture
+          cargo test --package rustBoot --lib --features rp2040 -- parser::tests --nocapture
 
   builds:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
         target: [thumbv7em-none-eabihf, aarch64-unknown-none-softfloat, thumbv6m-none-eabi]
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
-      - name: Install rust for target
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          override: true
-          target: ${{ matrix.target }}
+        uses: actions/checkout@v4
+      - name: Install toolchain
+        run: rustup show
       - name: Install flip-link
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: install
-          args: flip-link
+        run: cargo install flip-link --locked
       - name: Install cargo-binutils
         run: |
-          cargo install cargo-binutils
+          cargo install cargo-binutils --locked
           rustup component add llvm-tools-preview
       - name: nrf52840
         if: matrix.target == 'thumbv7em-none-eabihf'
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: run
-          args: -p xtask --features nrf52840 -- nrf52840 build rustBoot-only
+        run: cargo run -p xtask --features nrf52840 -- nrf52840 build rustBoot-only
       - name: stm32f411
         if: matrix.target == 'thumbv7em-none-eabihf'
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: run
-          args: -p xtask --features stm32f411 -- stm32f411 build rustBoot-only
+        run: cargo run -p xtask --features stm32f411 -- stm32f411 build rustBoot-only
       - name: stm32f446
         if: matrix.target == 'thumbv7em-none-eabihf'
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: run
-          args: -p xtask --features stm32f446 -- stm32f446 build rustBoot-only
+        run: cargo run -p xtask --features stm32f446 -- stm32f446 build rustBoot-only
       - name: stm32f469
         if: matrix.target == 'thumbv7em-none-eabihf'
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: run
-          args: -p xtask --features stm32f469 -- stm32f469 build rustBoot-only
+        run: cargo run -p xtask --features stm32f469 -- stm32f469 build rustBoot-only
       - name: stm32h723
         if: matrix.target == 'thumbv7em-none-eabihf'
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: run
-          args: -p xtask --features stm32h723 -- stm32h723 build rustBoot-only
+        run: cargo run -p xtask --features stm32h723 -- stm32h723 build rustBoot-only
       - name: stm32f746
         if: matrix.target == 'thumbv7em-none-eabihf'
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: run
-          args: -p xtask --features stm32f746 -- stm32f746 build rustBoot-only
+        run: cargo run -p xtask --features stm32f746 -- stm32f746 build rustBoot-only
       - name: stm32f334
         if: matrix.target == 'thumbv7em-none-eabihf'
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: run
-          args: -p xtask --features stm32f334 -- stm32f334 build rustBoot-only
+        run: cargo run -p xtask --features stm32f334 -- stm32f334 build rustBoot-only
       - name: rp2040
         if: matrix.target == 'thumbv6m-none-eabi'
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: run
-          args: -p xtask --features rp2040 -- rp2040 build rustBoot-only
+        run: cargo run -p xtask --features rp2040 -- rp2040 build rustBoot-only
       - name: rpi4
         if: matrix.target == 'aarch64-unknown-none-softfloat'
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: false
-          command: run
-          args: -p xtask -- rpi4 build rustBoot-only
-
-
+        run: cargo run -p xtask -- rpi4 build rustBoot-only

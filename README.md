@@ -1,54 +1,107 @@
-![GitHub](https://img.shields.io/github/license/nihalpasham/rustBoot) [![ci](https://github.com/nihalpasham/rustBoot/actions/workflows/ci.yml/badge.svg)](https://github.com/nihalpasham/rustBoot/actions/workflows/ci.yml) [![chat](https://img.shields.io/badge/chat-rustBoot%3Amatrix.org-brightgreen)](https://matrix.to/#/#rustBoot:matrix.org)
-# rustBoot 
-rustBoot is a standalone bootloader, written entirely in `Rust`, designed to run on anything from a microcontroller to a system on chip. It can be used to boot into bare-metal firmware or Linux.
+![GitHub](https://img.shields.io/github/license/nihalpasham/rustBoot)
+[![ci](https://github.com/nihalpasham/rustBoot/actions/workflows/ci.yml/badge.svg)](https://github.com/nihalpasham/rustBoot/actions/workflows/ci.yml)
 
-![rustBoot](https://user-images.githubusercontent.com/20253082/131207587-5c0caba7-f70a-4062-bd53-5035fd6df668.png "rustBoot - Just a secure bootloader and nothing more!")
+# rustBoot — Secure Bootloader for Embedded Systems
 
-## Why rustBoot?
+rustBoot is a standalone secure bootloader written entirely in Rust, designed for
+microcontrollers through system-on-chip, supporting bare-metal firmware and Linux
+booting. It provides A/B firmware update with cryptographic verification,
+anti-rollback, and power-interruptible swap.
 
-rustBoot aims to offer an OS and micro-architecture agnostic (i.e. highly portable) secure bootloader which is standards-compatible and easy to integrate into existing embedded software projects.
+## Operational Scope
 
-![What is rustBoot](https://user-images.githubusercontent.com/20253082/131283947-98b77b33-65e9-4a6a-b554-4ec6fb4813c2.png "So, how does rustBoot help")
+rustBoot is a **secure bootloader** intended for hardened embedded deployments.
+It is not a general-purpose bootloader — it prioritizes:
 
-## Features currently supported:
+- Cryptographic integrity and authenticity verification (ECDSA, SHA-256)
+- Deterministic boot flow with explicit state machine
+- Anti-rollback via version numbering
+- Power-fail-safe firmware updates with automatic fallback
+- Memory-safe core in Rust (no_std)
 
-- [x] support for `ARM Cortex-M, Cortex-A` micro-architectures
-- [x] support for multi-slot partitioning of microcontroller flash memory. This allows us to implement the `boot/update` approach for bare-metal `firmware updates`.
-- [x] support for `Aarch64 linux` booting
-- [x] elliptic curve cryptography for integrity and authenticity verification using [`RustCrypto`](https://github.com/RustCrypto) crates
-- [x] a tiny hardware abstraction layer for non-volatile memory (i.e. flash) access.
-- [x] anti-rollback protection via version numbering.
-- [x] a fully memory safe core-bootloader implementation with safe parsers and firmware-update logic.
-- [x] power-interruptible firmware updates along with the assurance of fall-back availability.
-- [x] a `signing utility` to sign bare-metal firmware and fit-image(s), written in pure rust.
+## Supported Targets
 
-## Features planned:
+| Target | Architecture | Boot Mode |
+|--------|-------------|-----------|
+| nRF52840 | ARM Cortex-M4F | Bare-metal firmware |
+| STM32F334 | ARM Cortex-M4F | Bare-metal firmware |
+| STM32F411 | ARM Cortex-M4F | Bare-metal firmware |
+| STM32F446 | ARM Cortex-M4F | Bare-metal firmware |
+| STM32F469 | ARM Cortex-M4F | Bare-metal firmware |
+| STM32F746 | ARM Cortex-M7F | Bare-metal firmware |
+| STM32H723 | ARM Cortex-M7F | Bare-metal firmware |
+| RP2040 | ARM Cortex-M0+ | Bare-metal firmware |
+| Raspberry Pi 4 | AArch64 | Linux FIT image |
+| i.MX 8M Nano | AArch64 | Linux FIT image |
 
-- [ ] support for external flash devices (ex: SPI flash) and serial/console logging interfaces.
-- [ ] support for `ARM TrustZone-M and A` and certified `secure hardware elements` - microchip ATECC608a, NXP SE050, STSAFE-100
-- [ ] support for secure, distributed and efficient `firmware transport` over [ipfs](https://ipfs.tech/).
+## Features
 
-## Documentation:
+- ARM Cortex-M, Cortex-A, AArch64 support
+- Multi-slot flash partitioning (boot/update/swap)
+- ECDSA signature verification (NIST P-256, secp256k1, ed25519 planned)
+- SHA-256/384 integrity verification
+- Anti-rollback via version numbering
+- Power-interruptible A/B firmware swap with fallback
+- Flattened Image Tree (FIT) support for Linux booting
+- Device tree (DTB) parsing, patching, and writing
+- Signed firmware generation utility (`rbsigner`)
 
-You can read the book for <a href="https://nihalpasham.github.io/rustBoot-book/index.html" target="_blank">`free online`.</a>. 
+## Prerequisites
 
-> Note: `rustBoot` and the `book` are still in development (i.e. a work in progress).
+- Rust nightly toolchain (see `rust-toolchain.toml`)
+- `arm-none-eabi` or appropriate cross-compilation toolchain for target
+- For flashing: `probe-rs-cli` or `pyocd`
+- For full verification: `cargo-audit`, `cargo-deny`, `cargo-cyclonedx`
 
-## Acknowledgment: 
+## Quick Start
 
-rustBoot exists as we could not find a suitable (open-source) option that meets our security goals. It is the result of an exhaustive evaluation of 'pretty much' the entire embedded-bootloader landscape. 
+```bash
+# Verify the build works (replace nrf52840 with your target)
+cargo run -p xtask --features nrf52840 -- nrf52840 build rustBoot-only
 
-Having said that, it does take inspiration from similar projects (such as u-boot, zephyr, mcuboot, coreboot, wolfBoot etc). However, the key differentiator is security-above-all-else. To that extent, its built entirely in rust, takes full advantage of rust's memory safety guarantees while leveraging safer parsing libraries, compile-time state-transition checks coupled with (safe) community sourced rust-crates (such as boards, HALs drivers etc.)
+# Full verification pipeline
+cargo fmt --all --check
+cargo clippy --package rustBoot --all-targets --features nrf52840 -- -D warnings
+cargo test --package rustBoot --lib
+```
 
-## Support:
+## Build
 
-For questions, issues, feature requests, and other changes, please file an issue in the github project.
+```bash
+cargo run -p xtask --features <board> -- <board> build [rustBoot-only|pkgs-for]
+```
 
-## License:
+Supported boards: `nrf52840`, `stm32f411`, `stm32f446`, `stm32f469`, `stm32h723`,
+`stm32f746`, `stm32f334`, `rp2040`, `rpi4`.
 
-rustBoot is licensed under 
- 
-* MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
+## Verification Pipeline
 
-## Contributing:
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the MIT license, shall be licensed as above, without any additional terms or conditions.
+The canonical verification command is `just verify`, which runs:
+
+- `cargo fmt --all --check`
+- `cargo clippy` with deny warnings
+- `cargo test`
+- `cargo audit`
+- `cargo deny check`
+
+See `justfile` for all available commands.
+
+## Security
+
+- **Report vulnerabilities**: See `SECURITY.md`
+- **Threat model**: `docs/threat-model/`
+- **FMEA**: `docs/fmea/`
+- **Requirements traceability**: `docs/requirements/`
+
+## Documentation
+
+- [rustBoot Book](https://nihalpasham.github.io/rustBoot-book/index.html) (work in progress)
+
+## License
+
+MIT license. See [LICENSE](LICENSE).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). All contributions are subject to the
+MIT license terms.
