@@ -19,6 +19,10 @@ pub(crate) fn parse_tlv<'a, Part: ValidPart + Swappable, State: TypeState>(
         // we've checked `magic` and `size` fields of the header during init
         // start parsing from the 8th byte of the header
         header_bytes = &header_bytes[8..];
+        // EndOfHeader is a pseudo-tag — return early since the value is meaningless
+        if matches!(type_field, Tags::EndOfHeader) {
+            return Err(RustbootError::TLVNotFound);
+        }
         let value = match type_field {
             Tags::Version => {
                 let (_, version) =
@@ -55,7 +59,6 @@ pub(crate) fn parse_tlv<'a, Part: ValidPart + Swappable, State: TypeState>(
                     extract_signature(header_bytes).map_err(|_| RustbootError::InvalidValue)?;
                 signature
             }
-            Tags::EndOfHeader => todo!(),
         };
         Ok(value)
     } else {
@@ -118,7 +121,7 @@ pub(crate) fn get_tlv_offset<'a, Part: ValidPart + Swappable, State: TypeState>(
                 let offset = IMAGE_HEADER_SIZE - remaining.len() - (4 + ECC_SIGNATURE_SIZE);
                 Ok(offset)
             }
-            Tags::EndOfHeader => todo!(),
+            Tags::EndOfHeader => Ok(IMAGE_HEADER_SIZE),
         }
     } else {
         Err(RustbootError::__Nonexhaustive)

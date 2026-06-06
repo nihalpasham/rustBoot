@@ -5,8 +5,10 @@
 #![feature(global_asm)]
 #![feature(asm)]
 #![feature(asm_const)]
-#![allow(warnings)]
 #![feature(core_intrinsics)]
+// Safety: unsafe_code is required for MMIO register access, inline assembly,
+// and architecture-specific operations. Each unsafe block is documented.
+// Target: provide safe abstractions over time.
 #[cfg(feature = "nrf")]
 pub mod nrf;
 #[cfg(feature = "rpi")]

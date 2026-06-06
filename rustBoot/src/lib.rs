@@ -1,6 +1,19 @@
 #![cfg_attr(not(test), no_std)]
-#![allow(non_snake_case)]
-#![feature(is_sorted, slice_as_chunks, bigint_helper_methods)]
+#![deny(warnings)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
+#![deny(clippy::indexing_slicing)]
+#![deny(clippy::integer_division)]
+#![deny(clippy::float_cmp)]
+// Safety: unsafe_code is required for MMIO flash access, raw pointer dereferences
+// for memory-mapped partitions, and static mut singletons. Each unsafe block in
+// this crate is documented with an explicit safety case.
+// Target: eliminate all unsafe over time via safe abstractions.
+// Required nightly features - evaluate removal as features stabilize
+#![feature(bigint_helper_methods)]
 
 pub mod cfgparser;
 #[cfg(feature = "mcu")]

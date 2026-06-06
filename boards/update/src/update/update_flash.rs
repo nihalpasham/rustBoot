@@ -120,11 +120,11 @@ where
                 let mut flag = SectFlags::None;
                 {
                     // This scope is to satisfy the borrow checker
-                    let updt_part = updt.part_desc.get().unwrap();
+                    let updt_part = updt.part_desc.get().ok_or(RustbootError::FieldNotSet)?;
                     let boot_part = match boot {
                         // Explicitly check all possible Boot states
                         ImageType::BootInNewState(ref boot) => {
-                            let boot_fw_size = boot.part_desc.get().unwrap().fw_size; // can be unwrapped as it was checked during init.
+                            let boot_fw_size = boot.part_desc.get().ok_or(RustbootError::FieldNotSet)?.fw_size;
                             let update_fw_size = updt_part.fw_size;
                             total_size = boot_fw_size + IMAGE_HEADER_SIZE;
                             if ((update_fw_size + IMAGE_HEADER_SIZE) > total_size) {
@@ -133,7 +133,7 @@ where
                             boot.part_desc.get()
                         }
                         ImageType::BootInSuccessState(ref boot) => {
-                            let boot_fw_size = boot.part_desc.get().unwrap().fw_size; // can be unwrapped as it was checked during init.
+                            let boot_fw_size = boot.part_desc.get().ok_or(RustbootError::FieldNotSet)?.fw_size;
                             let update_fw_size = updt_part.fw_size;
                             total_size = boot_fw_size + IMAGE_HEADER_SIZE;
                             if ((update_fw_size + IMAGE_HEADER_SIZE) > total_size) {
@@ -143,7 +143,7 @@ where
                         }
                         // in case of a rollback
                         ImageType::BootInTestingState(ref boot) => {
-                            let boot_fw_size = boot.part_desc.get().unwrap().fw_size; // can be unwrapped as it was checked during init.
+                            let boot_fw_size = boot.part_desc.get().ok_or(RustbootError::FieldNotSet)?.fw_size;
                             let update_fw_size = updt_part.fw_size;
                             total_size = boot_fw_size + IMAGE_HEADER_SIZE;
                             if ((update_fw_size + IMAGE_HEADER_SIZE) > total_size) {
@@ -172,7 +172,7 @@ where
                             || updt.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                             || updt.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                         {
-                            panic!("firmware authentication failed");
+                            return Err(RustbootError::FwAuthFailed);
                         }
                     }
                     // disallow downgrades
@@ -203,9 +203,9 @@ where
                      * The status is saved in the sector flags of the update partition.
                      * If something goes wrong, the operation will be resumed upon reboot.
                      */
-                    let boot_part = boot_part.unwrap();
-                    let updt_part = updt.part_desc.get().unwrap();
-                    let swap_part = swap.part_desc.get().unwrap();
+                    let boot_part = boot_part.ok_or(RustbootError::FieldNotSet)?;
+                    let updt_part = updt.part_desc.get().ok_or(RustbootError::FieldNotSet)?;
+                    let swap_part = swap.part_desc.get().ok_or(RustbootError::FieldNotSet)?;
                     while ((sector * SECTOR_SIZE) < total_size) {
                         if updt_part.get_flags(sector).is_err()
                             || updt_part.get_flags(sector)?.has_new_flag()
@@ -244,7 +244,7 @@ where
                 // Note: A successful swap moves the image in the update partition to the boot partition.
                 // TODO: As we're using singletons (i.e. BOOT, UPDT), swap the following `rustBoot header` fields -
                 //       size, sha_hash, signature_ok, sha_ok, hdr_ok.
-                let boot = PartDescriptor::open_partition(Boot, self).unwrap();
+                let boot = PartDescriptor::open_partition(Boot, self)?;
                 // the only valid state for the boot partition after a swap is `newState` as all state
                 // info is erased post the swap.
                 let new_img = match boot {
@@ -257,13 +257,13 @@ where
                 new_img
                     .part_desc
                     .get()
-                    .unwrap()
-                    .set_state(self, new_img.get_state());
+                    .ok_or(RustbootError::FieldNotSet)?
+                    .set_state(self, new_img.get_state()?)?;
                 new_boot_img = Some(new_img);
             }
             _ => return Err(RustbootError::InvalidState),
         }
-        Ok(new_boot_img.unwrap())
+        new_boot_img.ok_or(RustbootError::InvalidState)
     }
 }
 
@@ -379,14 +379,14 @@ where
     }
 
     fn update_trigger(self) -> Result<()> {
-        let updt = PartDescriptor::open_partition(Update, self).unwrap();
+        let updt = PartDescriptor::open_partition(Update, self)?;
         Self::flash_unlock();
         match updt {
             ImageType::UpdateInNewState(img) => {
                 let new_img = img.into_updating_state();
                 let part_desc = new_img.part_desc.get();
                 match part_desc {
-                    Some(part) => part.set_state(self, new_img.get_state()),
+                    Some(part) => { part.set_state(self, new_img.get_state()?)?; },
                     None => return Err(RustbootError::__Nonexhaustive),
                 };
             }
@@ -398,14 +398,14 @@ where
     }
 
     fn update_success(self) -> Result<()> {
-        let boot = PartDescriptor::open_partition(Boot, self).unwrap();
+        let boot = PartDescriptor::open_partition(Boot, self)?;
         Self::flash_unlock();
         match boot {
             ImageType::BootInTestingState(img) => {
                 let new_img = img.into_success_state();
                 let part_desc = new_img.part_desc.get();
                 match part_desc {
-                    Some(part) => part.set_state(self, new_img.get_state()),
+                    Some(part) => { part.set_state(self, new_img.get_state()?)?; },
                     None => return Err(RustbootError::__Nonexhaustive),
                 };
             }

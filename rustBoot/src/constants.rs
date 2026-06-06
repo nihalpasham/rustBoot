@@ -1,6 +1,4 @@
-#![allow(non_snake_case)]
-
-// **** TARGET PLATFORM - FLASH PARTIONINING ****
+// **** TARGET PLATFORM - FLASH PARTITIONING ****
 
 #[cfg(feature = "nrf52840")]
 pub const SECTOR_SIZE: usize = 0x1000;

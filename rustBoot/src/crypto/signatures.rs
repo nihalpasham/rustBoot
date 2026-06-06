@@ -1,5 +1,3 @@
-#![allow(warnings)]
-
 use crate::{Result, RustbootError};
 use core::convert::TryFrom;
 use core::ops::Add;

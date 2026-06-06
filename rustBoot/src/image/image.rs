@@ -23,11 +23,29 @@ use sha2::Sha384;
 use core::cell::OnceCell;
 use core::convert::TryInto;
 
-/// Singleton to ensure we only ever have one instance of the `BOOT` partition
+/// Singleton for the `BOOT` partition.
+///
+/// # Safety
+/// - Only accessed from `open_partition` which is called once during boot.
+/// - `OnceCell` provides single-init guarantee.
+/// - No concurrent access: this runs before interrupts or on single-core MCUs.
+#[allow(unsafe_code)]
 static mut BOOT: OnceCell<PartDescriptor<Boot>> = OnceCell::new();
-/// Singleton to ensure we only ever have one instance of the `UPDATE` partition
+/// Singleton for the `UPDATE` partition.
+///
+/// # Safety
+/// - Only accessed from `open_partition` which is called once during boot.
+/// - `OnceCell` provides single-init guarantee.
+/// - No concurrent access: this runs before interrupts or on single-core MCUs.
+#[allow(unsafe_code)]
 static mut UPDT: OnceCell<PartDescriptor<Update>> = OnceCell::new();
-/// Singleton to ensure we only ever have one instance of the `SWAP` partition
+/// Singleton for the `SWAP` partition.
+///
+/// # Safety
+/// - Only accessed from `open_partition` which is called once during boot.
+/// - `OnceCell` provides single-init guarantee.
+/// - No concurrent access: this runs before interrupts or on single-core MCUs.
+#[allow(unsafe_code)]
 static mut SWAP: OnceCell<PartDescriptor<Swap>> = OnceCell::new();
 
 #[cfg_attr(feature = "defmt", derive(Format))]
@@ -221,7 +239,8 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                         },
                         state: Some(state),
                     })),
-                    _ => todo!(),
+                    // No other states are valid for the BOOT partition at open time
+                    _ => Err(RustbootError::InvalidState),
                 }
             }
             PartId::PartUpdate => {
@@ -261,7 +280,8 @@ impl<Part: ValidPart> PartDescriptor<Part> {
                             state: Some(state),
                         }))
                     }
-                    _ => todo!(),
+                    // No other states are valid for the UPDATE partition at open time
+                    _ => Err(RustbootError::InvalidState),
                 }
             }
             PartId::PartSwap => {
@@ -537,9 +557,8 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
 }
 
 impl<'a, Part: ValidPart + Swappable, State: Updateable> RustbootImage<'a, Part, State> {
-    pub fn get_state(&self) -> &State {
-        let state = self.state.as_ref().unwrap();
-        state
+    pub fn get_state(&self) -> Result<&State> {
+        self.state.as_ref().ok_or(RustbootError::FieldNotSet)
     }
     pub fn get_image_type(&self) -> Result<u16> {
         let val = parse_tlv(self, Tags::ImgType)?;
@@ -569,7 +588,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                         let hasher = compute_img_hash::<Part, State, Sha256, N>(self, fw_size)?;
                         let computed_hash = hasher.finalize();
                         if computed_hash.as_slice() != stored_hash {
-                            panic!("..integrity check failed");
+                            return Err(RustbootError::IntegrityCheckFailed);
                         }
                         integrity_check = true;
                         Some(stored_hash.as_ptr())
@@ -591,7 +610,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                     Err(RustbootError::Unreachable) // technically should be unreachable
                 }
             }
-            _ => todo!(),
+            _ => Err(RustbootError::InvalidValue),
         }
     }
 
@@ -649,8 +668,8 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                 }
             }
             #[cfg(feature = "ed25519")]
-            HDR_IMG_TYPE_AUTH => todo!(),
-            _ => todo!(),
+            HDR_IMG_TYPE_AUTH => Err(RustbootError::InvalidValue),
+            _ => Err(RustbootError::InvalidValue),
         }
     }
 }
@@ -672,7 +691,7 @@ where
     D: Digest,
 {
     let mut size = fw_size;
-    let part_desc = img.part_desc.get().unwrap();
+    let part_desc = img.part_desc.get().ok_or(RustbootError::FieldNotSet)?;
     if let Some(val) = part_desc.hdr {
         let part = (unsafe { (val as *const [u8; PARTITION_SIZE]).as_ref() })
             .ok_or(RustbootError::NullValue)?;
@@ -707,8 +726,8 @@ where
                 Ok(hasher)
             }
             #[cfg(feature = "sha384")]
-            SHA384_DIGEST_SIZE => todo!(),
-            _ => todo!(),
+            SHA384_DIGEST_SIZE => Err(RustbootError::InvalidValue),
+            _ => Err(RustbootError::InvalidValue),
         }
     } else {
         return Err(RustbootError::InvalidValue);
