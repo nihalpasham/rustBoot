@@ -57,3 +57,13 @@ clippy:
     cargo clippy --package rustBoot --all-targets --features nrf52840 -- -D warnings
     cargo clippy --package rbsigner --all-targets --all-features -- -D warnings
     cargo clippy --package xtask --all-targets --features nrf52840 -- -D warnings
+
+# Generate code coverage (line + branch) using cargo-llvm-cov
+# Requires: cargo-llvm-cov (cargo install cargo-llvm-cov --locked)
+coverage:
+    cargo llvm-cov --package rustBoot --all-features --lcov --output-path lcov.info
+
+# Generate MC/DC coverage for critical modules
+# Requires: cargo-llvm-cov (cargo install cargo-llvm-cov --locked)
+coverage-mcdc:
+    cargo llvm-cov --package rustBoot --all-features --mcdc --output-path mcdc.json

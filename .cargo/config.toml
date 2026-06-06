@@ -9,3 +9,8 @@ stm32f746 = 'run -p xtask --features stm32f746 -- stm32f746'
 stm32f334 = 'run -p xtask --features stm32f334 -- stm32f334'
 rp2040 = 'run -p xtask --features rp2040 -- rp2040'
 rpi4 = 'run -p xtask -- rpi4'
+
+[target.'cfg(all())']
+# Enable LLVM coverage profiling for all targets
+# See: https://github.com/taiki-e/cargo-llvm-cov
+profiler = true
