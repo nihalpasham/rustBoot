@@ -168,6 +168,33 @@ use nom::{
     Err, IResult,
 };
 
+// Public test wrappers for fuzz testing — these exist so the fuzz crate
+// can call the parser functions without depending on internal module layout.
+pub fn test_check_for_eof(input: &[u8]) -> bool {
+    check_for_eof(input).is_err()
+}
+pub fn test_check_for_padding(input: &[u8]) -> bool {
+    check_for_padding(input).is_ok()
+}
+pub fn test_extract_version(input: &[u8]) -> Option<Vec<u8>> {
+    extract_version(input).ok().map(|(_, v)| v.to_vec())
+}
+pub fn test_extract_timestamp(input: &[u8]) -> Option<Vec<u8>> {
+    extract_timestamp(input).ok().map(|(_, v)| v.to_vec())
+}
+pub fn test_extract_img_type(input: &[u8]) -> Option<Vec<u8>> {
+    extract_img_type(input).ok().map(|(_, v)| v.to_vec())
+}
+pub fn test_extract_digest(input: &[u8]) -> Option<Vec<u8>> {
+    extract_digest(input).ok().map(|(_, v)| v.to_vec())
+}
+pub fn test_extract_pubkey_digest(input: &[u8]) -> Option<Vec<u8>> {
+    extract_pubkey_digest(input).ok().map(|(_, v)| v.to_vec())
+}
+pub fn test_extract_signature(input: &[u8]) -> Option<Vec<u8>> {
+    extract_signature(input).ok().map(|(_, v)| v.to_vec())
+}
+
 // use libc_print::libc_println;
 
 fn check_for_eof(input: &[u8]) -> IResult<&[u8], &[u8]> {
@@ -463,5 +490,36 @@ mod tests {
         };
         let offset = DATA.len() - remaining.len() - (4 + PUBKEY_DIGEST_SIZE);
         assert_eq!(offset, 8 + 4 + 12 + 6 + 6 + 36)
+    }
+
+    proptest::proptest! {
+        // Property: parser must never panic on any input
+        #[test]
+        fn parser_never_panics_on_arbitrary_input(data: Vec<u8>) {
+            let _ = extract_version(&data);
+            let _ = extract_timestamp(&data);
+            let _ = extract_img_type(&data);
+            let _ = extract_digest(&data);
+            let _ = extract_pubkey_digest(&data);
+            let _ = extract_signature(&data);
+            let _ = check_for_eof(&data);
+            let _ = check_for_padding(&data);
+        }
+
+        // Property: version extraction returns at most 4 bytes on valid input
+        #[test]
+        fn parser_version_output_len_valid(data: Vec<u8>) {
+            if let Ok((_, version)) = extract_version(&data) {
+                assert!(version.len() <= 4);
+            }
+        }
+
+        // Property: timestamp extraction returns at most 8 bytes on valid input
+        #[test]
+        fn parser_timestamp_output_len_valid(data: Vec<u8>) {
+            if let Ok((_, timestamp)) = extract_timestamp(&data) {
+                assert!(timestamp.len() <= 8);
+            }
+        }
     }
 }

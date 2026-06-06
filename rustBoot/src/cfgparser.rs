@@ -480,4 +480,17 @@ mod tests {
             ))
         );
     }
+
+    proptest::proptest! {
+        // Property: config parser never panics on arbitrary input
+        #[test]
+        fn cfgparser_never_panics_on_arbitrary_input(data: String) {
+            let _ = config_keys(&data);
+            let _ = image_name(&data);
+            let _ = image_version(&data);
+            let _ = ready_for_update(&data);
+            let _ = update_status(&data);
+            let _ = parse_config(&data);
+        }
+    }
 }

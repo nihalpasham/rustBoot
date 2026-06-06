@@ -1,0 +1,11 @@
+[package]
+name = "rustboot-kani"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+rustBoot = {path = "..", features = ["nrf52840"]}
+
+# Prevent this from interfering with workspace
+[workspace]

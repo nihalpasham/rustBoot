@@ -1,0 +1,23 @@
+[package]
+name = "rustboot-fuzz"
+version = "0.1.0"
+edition = "2018"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+rustBoot = {path = "..", features = ["nrf52840"]}
+
+# Prevent this from interfering with workspaces
+[workspace]
+
+[[bin]]
+name = "image_header_parser"
+path = "fuzz_targets/image_header_parser.rs"
+
+[[bin]]
+name = "config_parser"
+path = "fuzz_targets/config_parser.rs"

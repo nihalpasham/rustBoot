@@ -42,6 +42,7 @@ log = {version = "0.4", default-features = false, features = ["std"]}
 env_logger = "0.9.1"
 tracing = {version = "0.1", default-features = false}
 tracing-subscriber = {version = "0.3", default-features = false, features = ["env-filter", "fmt"]}
+proptest = {version = "1.4", default-features = false, features = ["std"]}
 
 [features]
 default = ["sha256", "nistp256", "log"]
