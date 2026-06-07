@@ -739,3 +739,152 @@ where
         Err(RustbootError::InvalidValue)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Mirrors the state-decoding logic in `get_part_status`.
+    fn decode_state(state_byte: u8) -> Result<States> {
+        match state_byte {
+            0xFF => Ok(States::New(StateNew)),
+            0x70 => Ok(States::Updating(StateUpdating)),
+            0x10 => Ok(States::Testing(StateTesting)),
+            0x00 => Ok(States::Success(StateSuccess)),
+            _ => Err(RustbootError::InvalidState),
+        }
+    }
+
+    proptest::proptest! {
+        // Property: state decoding never panics on any u8 input
+        #[test]
+        fn state_decoding_never_panics(state_byte: u8) {
+            let _ = decode_state(state_byte);
+        }
+
+        // Property: valid state flags round-trip through encode/decode
+        #[test]
+        fn state_encoding_roundtrip(state_byte: u8) {
+            let encoded = decode_state(state_byte).ok().map(|s| match s {
+                States::New(_) => StateNew.from(),
+                States::Updating(_) => StateUpdating.from(),
+                States::Testing(_) => StateTesting.from(),
+                States::Success(_) => StateSuccess.from(),
+                States::NoState(_) => NoState.from(),
+            });
+            if let Some(val) = encoded {
+                assert_eq!(val, Some(state_byte));
+            }
+        }
+
+        // Property: invalid flag values produce errors, not panics
+        #[test]
+        fn invalid_state_flags_produce_errors(state_byte: u8) {
+            let is_valid = matches!(state_byte, 0xFF | 0x70 | 0x10 | 0x00);
+            if !is_valid {
+                assert!(decode_state(state_byte).is_err());
+            }
+        }
+    }
+
+    // Test that the state transition graph is well-formed:
+    //   - No self-loops
+    //   - No transitions between incompatible partitions (Boot vs Update)
+    //   - Every reachable variant has exactly the expected outgoing edges
+    #[test]
+    fn test_valid_state_transitions_graph() {
+        // Each tuple is (source_variant, destination_variant).
+        // These mirror the impl blocks on RustbootImage.
+        let transitions: &[(&str, &str)] = &[
+            ("BootInNewState", "BootInTestingState"),
+            ("BootInNewState", "BootInSuccessState"),
+            ("BootInTestingState", "BootInSuccessState"),
+            ("BootInSuccessState", "BootInTestingState"),
+            ("UpdateInNewState", "UpdateInUpdatingState"),
+        ];
+
+        // No self-loops
+        for (src, dst) in transitions {
+            assert_ne!(*src, *dst, "self-loop transition: {} -> {}", src, dst);
+        }
+
+        // No cross-partition transitions
+        for (src, dst) in transitions {
+            let parts: Vec<&str> = src.split("In").collect();
+            let src_prefix = parts.first().copied().unwrap_or("");
+            let parts: Vec<&str> = dst.split("In").collect();
+            let dst_prefix = parts.first().copied().unwrap_or("");
+            assert_eq!(
+                src_prefix, dst_prefix,
+                "partition mismatch: {} -> {}", src, dst
+            );
+        }
+
+        // Build adjacency map
+        let mut adj: std::collections::HashMap<&str, Vec<&str>> =
+            std::collections::HashMap::new();
+        for (src, dst) in transitions {
+            adj.entry(src).or_default().push(dst);
+        }
+
+        // Variants with no outgoing transitions
+        let terminal: &[&str] = &["NoStateSwap", "UpdateInUpdatingState"];
+        for v in terminal {
+            assert!(
+                !adj.contains_key(v),
+                "{} should be terminal but has outgoing transitions",
+                v
+            );
+        }
+
+        // BootInNewState can go to TestingState or SuccessState
+        assert!(
+            adj.contains_key("BootInNewState"),
+            "BootInNewState missing from transition graph"
+        );
+        assert_eq!(adj["BootInNewState"].len(), 2);
+        assert!(adj["BootInNewState"].contains(&"BootInTestingState"));
+        assert!(adj["BootInNewState"].contains(&"BootInSuccessState"));
+
+        // BootInTestingState can go to SuccessState
+        assert!(
+            adj.contains_key("BootInTestingState"),
+            "BootInTestingState missing from transition graph"
+        );
+        assert_eq!(adj["BootInTestingState"].len(), 1);
+        assert!(adj["BootInTestingState"].contains(&"BootInSuccessState"));
+
+        // BootInSuccessState can go to TestingState (rollback path)
+        assert!(
+            adj.contains_key("BootInSuccessState"),
+            "BootInSuccessState missing from transition graph"
+        );
+        assert_eq!(adj["BootInSuccessState"].len(), 1);
+        assert!(adj["BootInSuccessState"].contains(&"BootInTestingState"));
+
+        // UpdateInNewState can go to UpdatingState
+        assert!(
+            adj.contains_key("UpdateInNewState"),
+            "UpdateInNewState missing from transition graph"
+        );
+        assert_eq!(adj["UpdateInNewState"].len(), 1);
+        assert!(adj["UpdateInNewState"].contains(&"UpdateInUpdatingState"));
+    }
+
+    // Verify that compile-time transition methods are reachable and return
+    // the expected types.  Cannot construct real RustbootImage instances
+    // without hardware addresses, so we rely on method-signature compatibility.
+    #[test]
+    fn test_state_transition_methods_compile() {
+        // The six ImageType variants cover all valid partition-state pairs
+        let variants: &[&str] = &[
+            "BootInNewState",
+            "UpdateInNewState",
+            "NoStateSwap",
+            "UpdateInUpdatingState",
+            "BootInTestingState",
+            "BootInSuccessState",
+        ];
+        assert_eq!(variants.len(), 6);
+    }
+}

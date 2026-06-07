@@ -556,3 +556,179 @@ pub fn as_str(bytes: &[u8]) -> Result<Option<&str>> {
         .strip_suffix("\u{0}");
     Ok(val)
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests {
+    use super::*;
+    use crate::dt::internal::*;
+
+    fn make_fit_blob(algo_val: &[u8]) -> Vec<u8> {
+        let strings = b"default\0algo\0";
+        let default_val = b"conf-1\0";
+        let default_val_padded = {
+            let mut v = default_val.to_vec();
+            while !v.len().is_multiple_of(4) {
+                v.push(0);
+            }
+            v
+        };
+        let algo_val_padded = {
+            let mut v = algo_val.to_vec();
+            while !v.len().is_multiple_of(4) {
+                v.push(0);
+            }
+            v
+        };
+
+        let mut struct_blk = Vec::new();
+        // BEGIN_NODE "" (root node name is empty string in DTB)
+        struct_blk.extend_from_slice(&TOK_BEGIN_NODE.to_be_bytes());
+        struct_blk.extend_from_slice(&[0u8; 4]);
+        // BEGIN_NODE "configurations" (15 bytes -> pad to 16)
+        struct_blk.extend_from_slice(&TOK_BEGIN_NODE.to_be_bytes());
+        struct_blk.extend_from_slice(b"configurations\0");
+        struct_blk.push(0);
+        // PROPERTY "default"
+        struct_blk.extend_from_slice(&TOK_PROPERTY.to_be_bytes());
+        struct_blk
+            .extend_from_slice(&(default_val.len() as u32).to_be_bytes());
+        struct_blk.extend_from_slice(&0u32.to_be_bytes());
+        struct_blk.extend_from_slice(&default_val_padded);
+        // BEGIN_NODE "conf-1" (7 bytes -> pad to 8)
+        struct_blk.extend_from_slice(&TOK_BEGIN_NODE.to_be_bytes());
+        struct_blk.extend_from_slice(b"conf-1\0\0");
+        // BEGIN_NODE "signature" (10 bytes -> pad to 12)
+        struct_blk.extend_from_slice(&TOK_BEGIN_NODE.to_be_bytes());
+        struct_blk.extend_from_slice(b"signature\0\0\0");
+        // PROPERTY "algo"
+        struct_blk.extend_from_slice(&TOK_PROPERTY.to_be_bytes());
+        struct_blk
+            .extend_from_slice(&(algo_val.len() as u32).to_be_bytes());
+        struct_blk.extend_from_slice(&8u32.to_be_bytes());
+        struct_blk.extend_from_slice(&algo_val_padded);
+        // END_NODE (signature)
+        struct_blk.extend_from_slice(&TOK_END_NODE.to_be_bytes());
+        // END_NODE (conf-1)
+        struct_blk.extend_from_slice(&TOK_END_NODE.to_be_bytes());
+        // END_NODE (configurations)
+        struct_blk.extend_from_slice(&TOK_END_NODE.to_be_bytes());
+        // END_NODE (root)
+        struct_blk.extend_from_slice(&TOK_END_NODE.to_be_bytes());
+        // END
+        struct_blk.extend_from_slice(&TOK_END.to_be_bytes());
+
+        let mem_rsvmap: [u8; 16] = [0u8; 16];
+        let off_dt_struct: u32 = 40 + 16;
+        let off_dt_strings: u32 = off_dt_struct + struct_blk.len() as u32;
+        let total_size = off_dt_strings + strings.len() as u32;
+
+        let mut blob = Vec::with_capacity(total_size as usize);
+        // Header
+        blob.extend_from_slice(&DTB_MAGIC.to_be_bytes());
+        blob.extend_from_slice(&total_size.to_be_bytes());
+        blob.extend_from_slice(&off_dt_struct.to_be_bytes());
+        blob.extend_from_slice(&off_dt_strings.to_be_bytes());
+        blob.extend_from_slice(&40u32.to_be_bytes()); // off_mem_rsvmap
+        blob.extend_from_slice(&17u32.to_be_bytes()); // version
+        blob.extend_from_slice(&16u32.to_be_bytes()); // last_comp_version
+        blob.extend_from_slice(&0u32.to_be_bytes()); // boot_cpuid_phys
+        blob.extend_from_slice(&(strings.len() as u32).to_be_bytes());
+        blob.extend_from_slice(&(struct_blk.len() as u32).to_be_bytes());
+        // Memory reservation map
+        blob.extend_from_slice(&mem_rsvmap);
+        // Structure block
+        blob.extend_from_slice(&struct_blk);
+        // Strings block
+        blob.extend_from_slice(strings);
+
+        blob
+    }
+
+    #[test]
+    fn test_parse_algo_valid_curve() {
+        let blob = make_fit_blob(b"sha256,ecdsa256,nistp256\0");
+        let result = parse_algo(&blob);
+        assert!(matches!(result, Ok(CurveType::NistP256)));
+    }
+
+    #[test]
+    fn test_parse_algo_unknown_curve_returns_error() {
+        let blob = make_fit_blob(b"sha256,ecdsa256,secp256k1\0");
+        let result = parse_algo(&blob);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_algo_empty_algo_returns_error() {
+        let blob = make_fit_blob(b"\0");
+        let result = parse_algo(&blob);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_as_str_valid_utf8_with_null() {
+        let result = as_str(b"hello\0");
+        assert!(matches!(result, Ok(Some("hello"))));
+    }
+
+    #[test]
+    fn test_as_str_valid_utf8_no_null() {
+        let result = as_str(b"hello");
+        assert!(matches!(result, Ok(None)));
+    }
+
+    #[test]
+    fn test_as_str_invalid_utf8() {
+        let result = as_str(b"\xff\xfe");
+        assert!(result.is_err());
+        assert!(matches!(result, Err(Error::BadStrEncoding(_))));
+    }
+
+    #[test]
+    fn test_as_str_empty() {
+        let result = as_str(b"");
+        assert!(matches!(result, Ok(None)));
+    }
+
+    #[test]
+    fn test_flatten_correct_size() {
+        let input = [[0xAAu8; 32]; 4];
+        let output = flatten(input);
+        assert_eq!(output.len(), 128);
+        for byte in output.iter() {
+            assert_eq!(*byte, 0xAA);
+        }
+    }
+
+    #[test]
+    fn test_flatten_all_zeros() {
+        let input = [[0u8; 32]; 4];
+        let output = flatten(input);
+        assert_eq!(output, [0u8; 128]);
+    }
+
+    #[test]
+    fn test_flatten_distinct_values() {
+        let mut input = [[0u8; 32]; 4];
+        input[0][0] = 0x01;
+        input[1][0] = 0x02;
+        input[2][0] = 0x03;
+        input[3][0] = 0x04;
+        let output = flatten(input);
+        assert_eq!(output[0], 0x01);
+        assert_eq!(output[32], 0x02);
+        assert_eq!(output[64], 0x03);
+        assert_eq!(output[96], 0x04);
+    }
+
+    #[test]
+    fn test_flatten_partial_usage() {
+        let mut input = [[0u8; 32]; 4];
+        input[0][31] = 0xFF;
+        input[3][15] = 0xAA;
+        let output = flatten(input);
+        assert_eq!(output[31], 0xFF);
+        assert_eq!(output[32 * 3 + 15], 0xAA);
+    }
+}
