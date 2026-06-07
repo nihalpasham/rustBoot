@@ -148,3 +148,119 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
         _ => Err(RustbootError::InvalidValue),
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "nistp256")]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests {
+    use super::*;
+    use p256::{ecdsa::{SigningKey, Signature}};
+    use sha2::Sha256;
+    use sha2::digest::Digest;
+    use signature::DigestSigner;
+
+    fn test_signing_key_1() -> SigningKey {
+        let sk_bytes = [
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ];
+        SigningKey::from_slice(&sk_bytes).expect("valid test signing key")
+    }
+
+    fn test_signing_key_2() -> SigningKey {
+        let sk_bytes = [
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ];
+        SigningKey::from_slice(&sk_bytes).expect("valid test signing key")
+    }
+
+    #[test]
+    fn nistp256_verify_good_signature() {
+        let signing_key = test_signing_key_1();
+        let verify_key = VerifyingKey::from(&signing_key);
+        let verifier = NistP256Signature { verify_key };
+
+        let message = b"test firmware image data for rustBoot";
+        let digest = Sha256::new().chain_update(message);
+        let sig: Signature = signing_key.sign_digest(digest);
+
+        let verify_digest = Sha256::new().chain_update(message);
+        let result = verifier.verify::<Sha256>(verify_digest, sig.to_bytes().as_ref());
+        assert!(result.unwrap());
+    }
+
+    #[test]
+    fn nistp256_verify_bad_signature() {
+        let signing_key = test_signing_key_1();
+        let verify_key = VerifyingKey::from(&signing_key);
+        let verifier = NistP256Signature { verify_key };
+
+        let bad_sig = [0xabu8; 64];
+        let digest = Sha256::new().chain_update(b"irrelevant");
+
+        let result = verifier.verify::<Sha256>(digest, &bad_sig);
+        assert!(!result.unwrap());
+    }
+
+    #[test]
+    fn nistp256_verify_malformed_signature() {
+        let signing_key = test_signing_key_1();
+        let verify_key = VerifyingKey::from(&signing_key);
+        let verifier = NistP256Signature { verify_key };
+
+        let truncated_sig = [0x01u8; 10];
+        let digest = Sha256::new().chain_update(b"msg");
+
+        let result = verifier.verify::<Sha256>(digest, &truncated_sig);
+        assert!(matches!(result, Err(RustbootError::BadSignature)));
+    }
+
+    #[test]
+    fn nistp256_verify_wrong_key() {
+        let sk1 = test_signing_key_1();
+        let wrong_sk = test_signing_key_2();
+        let verify_key = VerifyingKey::from(&wrong_sk);
+        let verifier = NistP256Signature { verify_key };
+
+        let message = b"signed by different key";
+        let digest = Sha256::new().chain_update(message);
+        let sig: Signature = sk1.sign_digest(digest);
+
+        let verify_digest = Sha256::new().chain_update(message);
+        let result = verifier.verify::<Sha256>(verify_digest, sig.to_bytes().as_ref());
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+    }
+
+    #[test]
+    fn import_pubkey_nistp256_ok() {
+        let result = import_pubkey(PubkeyTypes::NistP256);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            VerifyingKeyTypes::VKeyNistP256(_) => {},
+            _ => panic!("expected NistP256 verifying key"),
+        }
+    }
+
+    #[test]
+    fn import_pubkey_unsupported_returns_error() {
+        let result = import_pubkey(PubkeyTypes::Ed25519);
+        assert!(matches!(result, Err(RustbootError::InvalidValue)));
+    }
+
+    #[test]
+    fn verify_ecc256_bad_sig_returns_auth_failed() {
+        let bad_sig = [0xdeu8; 64];
+        let digest = Sha256::new().chain_update(b"test");
+        let result = verify_ecc256_signature::<Sha256, {HDR_IMG_TYPE_AUTH}>(
+            digest,
+            &bad_sig,
+        );
+        assert!(matches!(result, Err(RustbootError::FwAuthFailed)));
+    }
+}
