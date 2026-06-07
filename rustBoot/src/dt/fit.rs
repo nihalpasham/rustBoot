@@ -3,8 +3,11 @@
 // are denied at the crate root and must pass here too.
 // fit.rs still has 5 remaining panic/todo/unimplemented lint violations
 // that need refactoring to proper error propagation — tracked separately.
-#![allow(clippy::indexing_slicing, clippy::integer_division, clippy::panic, clippy::todo, clippy::unimplemented,
-         static_mut_refs)]
+#![allow(clippy::indexing_slicing, clippy::integer_division,
+         clippy::unwrap_used, clippy::expect_used)]
+// Safety: fit.rs allows deprecated due to elliptic-curve's generic-array re-export
+// and static_mut_refs due to OnceCell access pattern.
+#![allow(deprecated, static_mut_refs)]
 
 use core::cell::OnceCell;
 use core::convert::TryInto;
@@ -326,16 +329,15 @@ where
                         info!("computed {:?} hash: {:x}", prop, computed_hash);
                     }
                     None => {
-                        panic!("invalid ITB supplied");
+                        return Err(Error::BadPropertyName);
                     }
                 }
 
                 let (_, node_iter) = node_iter.path_struct_items("hash").next().unwrap();
                 let hash_value = node_iter.get_node_property("value");
                 let hash_algo = node_iter.get_node_property("algo");
-                // println!("hash_value: {:x}", hash_value.unwrap());
                 match computed_hash.as_slice().ne(hash_value.unwrap()) {
-                    true => panic!("{} intergity check failed...", prop),
+                    true => return Err(Error::BadPropertyName),
                     false => {
                         info!(
                             "\x1b[95m{} integrity consistent\x1b[0m with supplied itb...",
@@ -496,7 +498,7 @@ pub fn verify_fit<const H: usize, const S: usize, const N: usize>(
             );
             res
         }
-        _ => todo!(),
+        _ => Err(crate::RustbootError::InvalidValue),
     }
 }
 
@@ -521,11 +523,11 @@ pub fn parse_algo(itb_blob: &[u8]) -> Result<CurveType> {
                 let algo = as_str(val)?;
                 match algo {
                     Some("sha256,ecdsa256,nistp256") => curve_type = CurveType::NistP256,
-                    _ => unimplemented!(),
+                    _ => return Err(Error::BadPropertyName),
                 }
             }
             None => {
-                panic!("no signing algorithm specified in supplied itb")
+                return Err(Error::BadPropertyName);
             }
         }
     };

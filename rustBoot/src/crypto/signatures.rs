@@ -1,7 +1,5 @@
 use crate::{Result, RustbootError};
 use core::convert::TryFrom;
-use core::ops::Add;
-use ecdsa::signature::DigestVerifier;
 use sha2::digest::{Digest, FixedOutput};
 
 #[cfg(feature = "secp256k1")]
@@ -11,6 +9,7 @@ use k256::{
     Secp256k1,
 };
 #[cfg(feature = "nistp256")]
+#[allow(deprecated)]
 use p256::{
     ecdsa::{Signature, VerifyingKey},
     elliptic_curve::consts::U32,
@@ -121,8 +120,9 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
         #[cfg(feature = "secp256k1")]
         PubkeyTypes::Secp256k1 => {
             let embedded_pubkey = [0u8; 64];
+            #[allow(deprecated)]
             let untagged_bytes: &GenericArray<u8, U64> =
-                GenericArray::<u8, U64>::from_slice(&embedded_pubkey[..]);
+                GenericArray::from_slice(&embedded_pubkey[..]);
             let sec1_encoded_pubkey = EncodedPoint::from_untagged_bytes(untagged_bytes);
             let secp256k1_vk = VerifyingKey::from_encoded_point(&sec1_encoded_pubkey)
                 .map_err(|_| RustbootError::ECCError);
@@ -137,8 +137,9 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
                 0x34, 0x23, 0xFE, 0x63, 0x05, 0x15, 0x30, 0x43, 0xBB, 0x9E, 0x75, 0x63, 0xE0, 0x41,
                 0x6A, 0x70, 0xCE, 0x16, 0x0A, 0x60, 0x2A, 0x38,
             ];
+            #[allow(deprecated)]
             let untagged_bytes: &GenericArray<u8, U64> =
-                GenericArray::<u8, U64>::from_slice(&embedded_pubkey[..]);
+                GenericArray::from_slice(&embedded_pubkey[..]);
             let sec1_encoded_pubkey = EncodedPoint::from_untagged_bytes(untagged_bytes);
             let p256_vk = VerifyingKey::from_encoded_point(&sec1_encoded_pubkey)
                 .map_err(|_| RustbootError::ECCError);

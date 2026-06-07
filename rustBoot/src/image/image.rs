@@ -1,7 +1,7 @@
 // image.rs uses indexing on bounded arrays (IMAGE_HEADER_SIZE).
 // Bounds are compile-time verified.
 #![allow(clippy::indexing_slicing, clippy::needless_return, clippy::needless_late_init,
-         clippy::doc_lazy_continuation, static_mut_refs)]
+         clippy::doc_lazy_continuation, static_mut_refs, deprecated)]
 
 use super::sealed::Sealed;
 use crate::constants::*;

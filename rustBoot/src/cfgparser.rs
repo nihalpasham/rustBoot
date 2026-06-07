@@ -8,7 +8,7 @@ use nom::{
     character::complete::{digit0, multispace0, multispace1},
     combinator::opt,
     error::{Error, ErrorKind},
-    sequence::{preceded, separated_pair, tuple},
+    sequence::{preceded, separated_pair},
     IResult, Parser,
 };
 
@@ -78,17 +78,14 @@ fn config_keys(input: &str) -> IResult<&str, ConfigKeys> {
 }
 
 fn image_name(input: &str) -> IResult<&str, ImageLabel<'_>> {
-    preceded(
-        tag("image_name="),
-        tuple((alphanumericwithhypen, tag(".itb"))),
-    ).parse(input)
+    preceded(tag("image_name="), (alphanumericwithhypen, tag(".itb"))).parse(input)
 }
 
 #[allow(clippy::expect_used)]
 fn image_version(input: &str) -> IResult<&str, u32> {
     preceded(
         tag("image_version="),
-        separated_pair(tag("ts"), tag("_"), tuple((digit0, multispace1))),
+        separated_pair(tag("ts"), tag("_"), (digit0, multispace1)),
     ).parse(input)
     .map(|(next_input, res)| {
         (
@@ -121,15 +118,14 @@ fn ready_for_update(input: &str) -> IResult<&str, bool> {
 }
 
 fn active_config(input: &str) -> IResult<&str, ActiveConf<'_>> {
-    tuple((
+    (
         multispace0,
         config_keys,
         multispace1,
         image_name,
         multispace1,
         image_version,
-        // multispace1,
-    )).parse(input)
+    ).parse(input)
     .map(|(next_input, res)| {
         let (_crlf0, active_config, _crlf1, image_name, _crlf2, image_version) = res;
         (
@@ -144,7 +140,7 @@ fn active_config(input: &str) -> IResult<&str, ActiveConf<'_>> {
 }
 
 fn passive_config(input: &str) -> IResult<&str, PassiveConf<'_>> {
-    tuple((
+    (
         multispace0,
         config_keys,
         multispace1,
@@ -153,10 +149,9 @@ fn passive_config(input: &str) -> IResult<&str, PassiveConf<'_>> {
         opt(image_name),
         multispace0,
         opt(image_version),
-        // multispace1,
         opt(update_status),
         multispace0,
-    )).parse(input)
+    ).parse(input)
     .map(|(next_input, res)| {
         let (
             _crlf0,
@@ -199,7 +194,7 @@ fn passive_config(input: &str) -> IResult<&str, PassiveConf<'_>> {
 /// **note:** for an example of what constitutes a `valid config file`, please see the `updt.txt`
 /// in the rpi4 example.
 pub fn parse_config(input: &str) -> IResult<&str, (ActiveConf<'_>, PassiveConf<'_>)> {
-    tuple((active_config, passive_config)).parse(input)
+    (active_config, passive_config).parse(input)
 }
 
 fn alphanumericwithhypen(i: &str) -> IResult<&str, &str> {
