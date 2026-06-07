@@ -1,7 +1,13 @@
 // image.rs uses indexing on bounded arrays (IMAGE_HEADER_SIZE).
 // Bounds are compile-time verified.
-#![allow(clippy::indexing_slicing, clippy::needless_return, clippy::needless_late_init,
-         clippy::doc_lazy_continuation, static_mut_refs, deprecated)]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::needless_return,
+    clippy::needless_late_init,
+    clippy::doc_lazy_continuation,
+    static_mut_refs,
+    deprecated
+)]
 
 use super::sealed::Sealed;
 use crate::constants::*;
@@ -322,7 +328,7 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
             let _ = self.set_partition_trailer_magic(updater);
         }
         let state = unsafe { *self.get_partition_state()? };
-        
+
         match state {
             0xFF => Ok(States::New(StateNew)),
             0x70 => Ok(States::Updating(StateUpdating)),
@@ -816,13 +822,13 @@ mod tests {
             let dst_prefix = parts.first().copied().unwrap_or("");
             assert_eq!(
                 src_prefix, dst_prefix,
-                "partition mismatch: {} -> {}", src, dst
+                "partition mismatch: {} -> {}",
+                src, dst
             );
         }
 
         // Build adjacency map
-        let mut adj: std::collections::HashMap<&str, Vec<&str>> =
-            std::collections::HashMap::new();
+        let mut adj: std::collections::HashMap<&str, Vec<&str>> = std::collections::HashMap::new();
         for (src, dst) in transitions {
             adj.entry(src).or_default().push(dst);
         }

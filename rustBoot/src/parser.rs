@@ -1,5 +1,9 @@
-#![allow(clippy::indexing_slicing, clippy::needless_lifetimes, clippy::redundant_slicing,
-         clippy::extra_unused_lifetimes)]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::needless_lifetimes,
+    clippy::redundant_slicing,
+    clippy::extra_unused_lifetimes
+)]
 #![allow(clippy::legacy_numeric_constants)]
 
 use core::usize;
@@ -161,8 +165,6 @@ impl Tags {
         }
     }
 }
-
-
 
 use nom::bytes::complete::take_while;
 use nom::bytes::complete::{tag, take};

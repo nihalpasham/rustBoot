@@ -153,26 +153,22 @@ mod tests {
     #[test]
     fn test_is_begin_node() {
         assert!(StructItem::BeginNode { name: "" }.is_begin_node());
-        assert!(
-            !StructItem::Property {
-                name: "",
-                value: &[],
-            }
-            .is_begin_node()
-        );
+        assert!(!StructItem::Property {
+            name: "",
+            value: &[],
+        }
+        .is_begin_node());
         assert!(!StructItem::EndNode.is_begin_node());
     }
 
     #[test]
     fn test_is_property() {
         assert!(!StructItem::BeginNode { name: "" }.is_property());
-        assert!(
-            StructItem::Property {
-                name: "",
-                value: &[],
-            }
-            .is_property()
-        );
+        assert!(StructItem::Property {
+            name: "",
+            value: &[],
+        }
+        .is_property());
         assert!(!StructItem::EndNode.is_property());
     }
 
@@ -342,16 +338,9 @@ mod tests {
         name: &'static str,
         expected: &'static str,
     ) {
+        assert_eq!(accessor(StructItem::BeginNode { name }).unwrap(), expected);
         assert_eq!(
-            accessor(StructItem::BeginNode { name }).unwrap(),
-            expected
-        );
-        assert_eq!(
-            accessor(StructItem::Property {
-                name,
-                value: &[],
-            })
-            .unwrap_err(),
+            accessor(StructItem::Property { name, value: &[] }).unwrap_err(),
             Error::BadStructItemType
         );
         assert_eq!(

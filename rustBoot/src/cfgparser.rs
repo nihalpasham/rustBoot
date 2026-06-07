@@ -73,7 +73,8 @@ impl From<&str> for UpdateStatus {
 }
 
 fn config_keys(input: &str) -> IResult<&str, ConfigKeys> {
-    alt((tag("[active]"), tag("[passive]"))).parse(input)
+    alt((tag("[active]"), tag("[passive]")))
+        .parse(input)
         .map(|(next_input, res)| (next_input, res.into()))
 }
 
@@ -86,7 +87,8 @@ fn image_version(input: &str) -> IResult<&str, u32> {
     preceded(
         tag("image_version="),
         separated_pair(tag("ts"), tag("_"), (digit0, multispace1)),
-    ).parse(input)
+    )
+    .parse(input)
     .map(|(next_input, res)| {
         (
             next_input,
@@ -99,7 +101,8 @@ fn update_status(input: &str) -> IResult<&str, UpdateStatus> {
     preceded(
         tag("update_status="),
         alt((tag("updating"), tag("testing"), tag("success"))),
-    ).parse(input)
+    )
+    .parse(input)
     .map(|(next_input, res)| (next_input, res.into()))
 }
 
@@ -108,7 +111,8 @@ fn ready_for_update(input: &str) -> IResult<&str, bool> {
     preceded(
         tag("ready_for_update_flag="),
         alt((tag("true"), tag("false"))),
-    ).parse(input)
+    )
+    .parse(input)
     .map(|(next_input, res)| {
         (
             next_input,
@@ -125,18 +129,19 @@ fn active_config(input: &str) -> IResult<&str, ActiveConf<'_>> {
         image_name,
         multispace1,
         image_version,
-    ).parse(input)
-    .map(|(next_input, res)| {
-        let (_crlf0, active_config, _crlf1, image_name, _crlf2, image_version) = res;
-        (
-            next_input,
-            ActiveConf {
-                active_config,
-                image_name,
-                image_version,
-            },
-        )
-    })
+    )
+        .parse(input)
+        .map(|(next_input, res)| {
+            let (_crlf0, active_config, _crlf1, image_name, _crlf2, image_version) = res;
+            (
+                next_input,
+                ActiveConf {
+                    active_config,
+                    image_name,
+                    image_version,
+                },
+            )
+        })
 }
 
 fn passive_config(input: &str) -> IResult<&str, PassiveConf<'_>> {
@@ -151,38 +156,39 @@ fn passive_config(input: &str) -> IResult<&str, PassiveConf<'_>> {
         opt(image_version),
         opt(update_status),
         multispace0,
-    ).parse(input)
-    .map(|(next_input, res)| {
-        let (
-            _crlf0,
-            passive_config,
-            _crlf1,
-            ready_for_update_flag,
-            _crlf2,
-            mut image_name,
-            _crlf3,
-            mut image_version,
-            mut update_status,
-            _crlf5,
-        ) = res;
-
-        match (image_name, image_version, &update_status) {
-            (None, _, _) => (image_version, update_status) = (None, None),
-            (_, None, _) => (image_name, update_status) = (None, None),
-            (_, _, &None) => (image_name, image_version) = (None, None),
-            (_, _, _) => {}
-        }
-        (
-            next_input,
-            PassiveConf {
+    )
+        .parse(input)
+        .map(|(next_input, res)| {
+            let (
+                _crlf0,
                 passive_config,
+                _crlf1,
                 ready_for_update_flag,
-                image_name,
-                image_version,
-                update_status,
-            },
-        )
-    })
+                _crlf2,
+                mut image_name,
+                _crlf3,
+                mut image_version,
+                mut update_status,
+                _crlf5,
+            ) = res;
+
+            match (image_name, image_version, &update_status) {
+                (None, _, _) => (image_version, update_status) = (None, None),
+                (_, None, _) => (image_name, update_status) = (None, None),
+                (_, _, &None) => (image_name, image_version) = (None, None),
+                (_, _, _) => {}
+            }
+            (
+                next_input,
+                PassiveConf {
+                    passive_config,
+                    ready_for_update_flag,
+                    image_name,
+                    image_version,
+                    update_status,
+                },
+            )
+        })
 }
 
 /// Parses the provided configuration file and returns the active and passive components
@@ -208,8 +214,8 @@ fn alphanumericwithhypen(i: &str) -> IResult<&str, &str> {
 
 #[cfg(test)]
 mod tests {
-    use libc_print::libc_println;
     use super::*;
+    use libc_print::libc_println;
     use nom::{error::Error, Err};
 
     #[test]

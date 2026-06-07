@@ -122,9 +122,8 @@ impl<'a> StructItems<'a> {
         loop {
             self.assert_enough_struct(self.offset, TOKEN_SIZE)?;
 
-            let token = u32::from_be(unsafe {
-                *(self.struct_block[self.offset..].as_ptr() as *const u32)
-            });
+            let token =
+                u32::from_be(unsafe { *(self.struct_block[self.offset..].as_ptr() as *const u32) });
 
             if token == TOK_NOP {
                 self.offset += TOKEN_SIZE;
@@ -385,9 +384,7 @@ impl<'a> Reader<'a> {
             from_raw_parts(ptr, reserved_max_size / entry_size)
         };
 
-        let index = reserved
-            .iter()
-            .position(|e| e.address == 0 && e.size == 0);
+        let index = reserved.iter().position(|e| e.address == 0 && e.size == 0);
         if index.is_none() {
             return Err(Error::NoZeroReservedMemEntry);
         }

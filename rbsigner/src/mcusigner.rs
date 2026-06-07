@@ -1,9 +1,9 @@
 use crate::curve::*;
 use field::*;
 use p256::ecdsa::signature::digest::Digest;
-use signature::DigestSigner;
 use rustBoot::rbconstants::*;
 use sha2::Sha256;
+use signature::DigestSigner;
 
 use filetime::FileTime;
 use std::fs;

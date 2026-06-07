@@ -189,7 +189,7 @@ pub fn get_padded_node_len<'a>(reader: &Reader<'a>, node_name: &str) -> usize {
     let (node, _) = root.path_struct_items(node_name).next().unwrap();
 
     let node_len = TOKEN_SIZE + node.node_name().unwrap().len();
-    
+
     node_len + (node_len % 4)
 }
 
@@ -328,6 +328,5 @@ pub fn correct_endianess(val: u32) -> u32 {
     let byte_2 = val << 8 & 0xff0000;
     let byte_1 = val << 24 & 0xff000000;
 
-    
     byte_1 | byte_2 | byte_3 | byte_4
 }

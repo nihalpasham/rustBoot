@@ -37,7 +37,11 @@ impl NistP256Signature {
         D: Digest + FixedOutput<OutputSize = U32>,
     {
         let sig = Signature::try_from(signature).map_err(|_| RustbootError::BadSignature)?;
-        let res = <ecdsa::VerifyingKey<NistP256> as ecdsa::signature::DigestVerifier<D, ecdsa::Signature<NistP256>>>::verify_digest(&self.verify_key, digest, &sig).is_ok();
+        let res = <ecdsa::VerifyingKey<NistP256> as ecdsa::signature::DigestVerifier<
+            D,
+            ecdsa::Signature<NistP256>,
+        >>::verify_digest(&self.verify_key, digest, &sig)
+        .is_ok();
         Ok(res)
     }
 }
@@ -54,7 +58,11 @@ impl Secp256k1Signature {
         D: Digest + FixedOutput<OutputSize = U32>,
     {
         let sig = Signature::try_from(signature).map_err(|_| RustbootError::BadSignature)?;
-        let res = <ecdsa::VerifyingKey<k256::Secp256k1> as ecdsa::signature::DigestVerifier<D, ecdsa::Signature<k256::Secp256k1>>>::verify_digest(&self.verify_key, digest, &sig).is_ok();
+        let res = <ecdsa::VerifyingKey<k256::Secp256k1> as ecdsa::signature::DigestVerifier<
+            D,
+            ecdsa::Signature<k256::Secp256k1>,
+        >>::verify_digest(&self.verify_key, digest, &sig)
+        .is_ok();
         Ok(res)
     }
 }
@@ -154,27 +162,25 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
-    use p256::{ecdsa::{SigningKey, Signature}};
-    use sha2::Sha256;
+    use p256::ecdsa::{Signature, SigningKey};
     use sha2::digest::Digest;
+    use sha2::Sha256;
     use signature::DigestSigner;
 
     fn test_signing_key_1() -> SigningKey {
         let sk_bytes = [
-            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
         ];
         SigningKey::from_slice(&sk_bytes).expect("valid test signing key")
     }
 
     fn test_signing_key_2() -> SigningKey {
         let sk_bytes = [
-            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
         ];
         SigningKey::from_slice(&sk_bytes).expect("valid test signing key")
     }
@@ -242,7 +248,7 @@ mod tests {
         let result = import_pubkey(PubkeyTypes::NistP256);
         assert!(result.is_ok());
         match result.unwrap() {
-            VerifyingKeyTypes::VKeyNistP256(_) => {},
+            VerifyingKeyTypes::VKeyNistP256(_) => {}
             _ => panic!("expected NistP256 verifying key"),
         }
     }
@@ -257,10 +263,7 @@ mod tests {
     fn verify_ecc256_bad_sig_returns_auth_failed() {
         let bad_sig = [0xdeu8; 64];
         let digest = Sha256::new().chain_update(b"test");
-        let result = verify_ecc256_signature::<Sha256, {HDR_IMG_TYPE_AUTH}>(
-            digest,
-            &bad_sig,
-        );
+        let result = verify_ecc256_signature::<Sha256, { HDR_IMG_TYPE_AUTH }>(digest, &bad_sig);
         assert!(matches!(result, Err(RustbootError::FwAuthFailed)));
     }
 }

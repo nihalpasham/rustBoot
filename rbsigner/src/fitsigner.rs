@@ -3,8 +3,8 @@ use log::info;
 use sha2::Sha256;
 use signature::DigestSigner;
 
-use rustBoot::dt::{prepare_img_hash, update_dtb_header, Reader};
 use rustBoot::dt::Error as DtError;
+use rustBoot::dt::{prepare_img_hash, update_dtb_header, Reader};
 
 /// Retruns a signed fit-image, given a image tree blob, a signing key and the curve type. Only supports `elliptic curve crypto`
 ///
@@ -36,8 +36,7 @@ fn set_config_signature(
     signature: SignatureType,
     config_name: &str,
 ) -> Result<Vec<u8>> {
-    let reader = Reader::read(itb_blob.as_slice())
-        .map_err(RbSignerError::BadImageHeader)?;
+    let reader = Reader::read(itb_blob.as_slice()).map_err(RbSignerError::BadImageHeader)?;
     let root = reader.struct_items();
     let (_node, node_iter) = root
         .path_struct_items(format!("/configurations/{}/signature/value", config_name).as_str())

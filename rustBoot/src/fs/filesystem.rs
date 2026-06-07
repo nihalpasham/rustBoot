@@ -286,8 +286,7 @@ impl LongFileName {
             contents: [' '; 0xff],
             end_offset: 0,
         };
-        name
-            .chars()
+        name.chars()
             .enumerate()
             .for_each(|(i, c)| (lfn.contents[i], lfn.end_offset) = (c, i as u8));
         lfn

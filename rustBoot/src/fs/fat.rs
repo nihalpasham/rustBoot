@@ -2,11 +2,21 @@
 //!
 //! Implements the File Allocation Table file system. Supports FAT16 and FAT32 volumes.
 
-#![allow(clippy::panic, clippy::unimplemented, clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing,
-         clippy::integer_division, clippy::let_unit_value, clippy::manual_rotate,
-         clippy::needless_range_loop, clippy::needless_return,
-         clippy::doc_lazy_continuation,
-         static_mut_refs, mismatched_lifetime_syntaxes)]
+#![allow(
+    clippy::panic,
+    clippy::unimplemented,
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::integer_division,
+    clippy::let_unit_value,
+    clippy::manual_rotate,
+    clippy::needless_range_loop,
+    clippy::needless_return,
+    clippy::doc_lazy_continuation,
+    static_mut_refs,
+    mismatched_lifetime_syntaxes
+)]
 
 use super::blockdevice::{Block, BlockCount, BlockDevice, BlockIdx};
 use super::controller::{Controller, Error, VolumeType};
@@ -140,7 +150,8 @@ impl<'a> Bpb<'a> {
             return Err("Bad BPB footer");
         }
 
-        let root_dir_blocks = (u32::from(bpb.root_entries_count()) * OnDiskDirEntry::LEN_U32).div_ceil(Block::LEN_U32);
+        let root_dir_blocks = (u32::from(bpb.root_entries_count()) * OnDiskDirEntry::LEN_U32)
+            .div_ceil(Block::LEN_U32);
         let data_blocks = bpb.total_blocks()
             - (u32::from(bpb.reserved_block_count())
                 + (u32::from(bpb.num_fats()) * bpb.fat_size())
@@ -1542,7 +1553,8 @@ where
                 return Err(Error::BadBlockSize(bpb.bytes_per_block()));
             }
             // FirstDataSector = BPB_ResvdSecCnt + (BPB_NumFATs * FATSz) + RootDirSectors;
-            let root_dir_blocks = (u32::from(bpb.root_entries_count()) * OnDiskDirEntry::LEN_U32).div_ceil(Block::LEN_U32);
+            let root_dir_blocks = (u32::from(bpb.root_entries_count()) * OnDiskDirEntry::LEN_U32)
+                .div_ceil(Block::LEN_U32);
             let fat_start = BlockCount(u32::from(bpb.reserved_block_count()));
             let first_root_dir_block =
                 fat_start + BlockCount(u32::from(bpb.num_fats()) * bpb.fat_size());

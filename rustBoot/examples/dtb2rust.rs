@@ -111,7 +111,7 @@ fn main() {
                 if node_depth > 0 {
                     node_depth -= 1;
                     node_str = remove_trailing_path_component(node_str);
-                } 
+                }
             }
             StructItem::Property { name: _, value: _ } => {}
             _ => {

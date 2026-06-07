@@ -10,12 +10,12 @@ use super::blockdevice::{Block, BlockCount, BlockDevice, BlockIdx};
 use super::fat;
 use super::fat::FatVolume;
 use super::fat::RESERVED_ENTRIES;
-use byteorder::{ByteOrder, LittleEndian};
-use log::info;
 use super::filesystem::{
     Attributes, Cluster, DirEntry, Directory, File, FilenameError, Mode, ShortFileName, TimeSource,
     Timestamp, MAX_FILE_SIZE,
 };
+use byteorder::{ByteOrder, LittleEndian};
+use log::info;
 
 pub use super::fat::FAT_CACHE;
 

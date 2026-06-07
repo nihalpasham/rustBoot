@@ -38,8 +38,7 @@ impl<const M: usize> SerializedBuffer<M> {
     }
 
     pub fn as_str_no_suffix(&self) -> Result<&str> {
-        let val =
-            core::str::from_utf8(self.as_slice()).map_err(Error::BadStrEncoding)?;
+        let val = core::str::from_utf8(self.as_slice()).map_err(Error::BadStrEncoding)?;
         Ok(val)
     }
 }
@@ -252,7 +251,6 @@ pub struct RawPropertyConstructor<'a> {
     name_off: u32,
     prop_val: &'a [u8],
 }
-
 
 impl<'a> RawPropertyConstructor<'a> {
     pub fn new(fdt_prop: u32, prop_len: u32, name_off: u32, prop_val: &'a [u8]) -> Self {

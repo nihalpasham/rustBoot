@@ -14,7 +14,7 @@ fn main() {
     let passive_img_name;
 
     // Load update config
-    
+
     let mut cfg = Vec::new();
     println!("\x1b[5m\x1b[34mloading update config...\x1b[0m");
     let args = env::args().collect::<Vec<_>>();

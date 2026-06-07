@@ -3,8 +3,12 @@
 // are denied at the crate root and must pass here too.
 // fit.rs still has 5 remaining panic/todo/unimplemented lint violations
 // that need refactoring to proper error propagation — tracked separately.
-#![allow(clippy::indexing_slicing, clippy::integer_division,
-         clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::integer_division,
+    clippy::unwrap_used,
+    clippy::expect_used
+)]
 // Safety: fit.rs allows deprecated due to elliptic-curve's generic-array re-export
 // and static_mut_refs due to OnceCell access pattern.
 #![allow(deprecated, static_mut_refs)]
@@ -443,7 +447,7 @@ where
     let mut img_hashes = [[0u8; H]; N];
     for (idx, img) in images.images.iter().enumerate() {
         img_hashes[idx] = img.hash.value;
-    };
+    }
 
     // rustBoot FIT images include a time_stamp, configuration details,
     // and 4 (i.e kernel, fdt, ramdisk, config) images i.e. we concatenate 6 hashes in total.
@@ -591,8 +595,7 @@ mod tests {
         struct_blk.push(0);
         // PROPERTY "default"
         struct_blk.extend_from_slice(&TOK_PROPERTY.to_be_bytes());
-        struct_blk
-            .extend_from_slice(&(default_val.len() as u32).to_be_bytes());
+        struct_blk.extend_from_slice(&(default_val.len() as u32).to_be_bytes());
         struct_blk.extend_from_slice(&0u32.to_be_bytes());
         struct_blk.extend_from_slice(&default_val_padded);
         // BEGIN_NODE "conf-1" (7 bytes -> pad to 8)
@@ -603,8 +606,7 @@ mod tests {
         struct_blk.extend_from_slice(b"signature\0\0\0");
         // PROPERTY "algo"
         struct_blk.extend_from_slice(&TOK_PROPERTY.to_be_bytes());
-        struct_blk
-            .extend_from_slice(&(algo_val.len() as u32).to_be_bytes());
+        struct_blk.extend_from_slice(&(algo_val.len() as u32).to_be_bytes());
         struct_blk.extend_from_slice(&8u32.to_be_bytes());
         struct_blk.extend_from_slice(&algo_val_padded);
         // END_NODE (signature)
