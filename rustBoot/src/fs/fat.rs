@@ -2,6 +2,13 @@
 //!
 //! Implements the File Allocation Table file system. Supports FAT16 and FAT32 volumes.
 
+// SAFETY (NATO ASSESSMENT): unsafe_code is required for static mut FAT_CACHE access.
+// The cache is populated once during boot (populate_static_fat_cache) and read-only thereafter.
+// Access is single-threaded (single-core MCU). No concurrent mutation.
+// Verification: read_multi integration test on rpi4 validates FAT32 traversal.
+// Target: replace with atomic OnceCell<FatCache> or sync::OnceLock.
+#![allow(unsafe_code)]
+
 #![allow(
     clippy::panic,
     clippy::unimplemented,

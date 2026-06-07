@@ -7,6 +7,10 @@
 #![deny(clippy::panic)]
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
+// NATO-grade: no crate-level unsafe code permitted.
+// Each module that requires unsafe has a documented module-level allow
+// with a formal safety case. See individual module files for details.
+#![deny(unsafe_code)]
 // Style advisories - warn but don't block CI
 #![warn(clippy::indexing_slicing)]
 #![warn(clippy::integer_division)]
@@ -17,11 +21,6 @@
 #![warn(clippy::redundant_closure)]
 // Legacy pattern — fix tracked separately
 #![allow(clippy::match_ref_pats)]
-
-// Safety: unsafe_code is required for MMIO flash access, raw pointer dereferences
-// for memory-mapped partitions, and static mut singletons. Each unsafe block in
-// this crate is documented with an explicit safety case.
-// Target: eliminate all unsafe over time via safe abstractions.
 
 pub mod cfgparser;
 #[cfg(feature = "mcu")]

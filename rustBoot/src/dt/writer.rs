@@ -27,7 +27,8 @@ impl<const M: usize> SerializedBuffer<M> {
     }
     /// Returns a slice containing the entire vector.
     pub fn as_slice(&self) -> &[u8] {
-        unsafe { core::slice::from_raw_parts(self.buffer.as_ptr() as *const u8, self.len) }
+        debug_assert!(self.len <= self.buffer.len());
+        &self.buffer[..self.len]
     }
 
     pub fn as_str(&self) -> Result<&str> {
@@ -468,20 +469,17 @@ impl<'a> ReservedMem<'a> {
     }
 
     /// Adds a new reserved memory entry.
-    #[allow(clippy::cast_ptr_alignment)]
     pub fn add_entry(&mut self, address: u64, size: u64) -> Result<()> {
         if self.buf.len() < self.offset + size_of::<ReservedMemEntry>() {
             return Err(Error::BufferTooSmall);
         }
 
-        let entry_be =
-            unsafe { &mut *(self.buf.as_mut_ptr().add(self.offset) as *mut ReservedMemEntry) };
-
-        entry_be.address = u64::to_be(address);
-        entry_be.size = u64::to_be(size);
+        let end = self.offset + size_of::<ReservedMemEntry>();
+        let entry_bytes = &mut self.buf[self.offset..end];
+        entry_bytes[0..8].copy_from_slice(&address.to_be_bytes());
+        entry_bytes[8..16].copy_from_slice(&size.to_be_bytes());
 
         self.offset += size_of::<ReservedMemEntry>();
-
         Ok(())
     }
 }
@@ -522,32 +520,34 @@ mod tests {
     const HEADER_U32_NUM: usize = size_of::<Header>() / size_of::<u32>();
     const ENTRY_U32_NUM: usize = size_of::<ReservedMemEntry>() / size_of::<u32>();
 
-    fn assert_reserved_mem<'a, T>(func: fn(buf: &'a mut [u8]) -> Result<T>)
-    where
-        T: std::fmt::Debug,
-    {
-        aligned_buf!(tmp, [0u32; HEADER_U32_NUM + 1]);
-        let len = tmp.len();
-        let unaligned_buf = &mut tmp[1..len - 1];
-        assert_eq!(func(unaligned_buf).unwrap_err(), Error::BufferTooSmall);
-
-        aligned_buf!(buf, [0u32; HEADER_U32_NUM - 1]);
-        assert_eq!(func(buf).unwrap_err(), Error::BufferTooSmall);
-    }
-
     #[test]
     fn test_reserved_mem() {
-        assert_reserved_mem(ReservedMem::from_buf);
+        {
+            let mut tmp = [0u8; (HEADER_U32_NUM + 1) * 4];
+            let len = tmp.len();
+            let unaligned_buf = &mut tmp[1..len - 1];
+            assert_eq!(
+                ReservedMem::from_buf(unaligned_buf).unwrap_err(),
+                Error::BufferTooSmall
+            );
+        }
+        {
+            let mut buf = [0u8; (HEADER_U32_NUM - 1) * 4];
+            assert_eq!(
+                ReservedMem::from_buf(&mut buf).unwrap_err(),
+                Error::BufferTooSmall
+            );
+        }
 
-        aligned_buf!(buf, [0u32; HEADER_U32_NUM]);
-        let mut reserved_mem = ReservedMem::from_buf(buf).unwrap();
+        let mut buf = [0u8; HEADER_U32_NUM * 4];
+        let mut reserved_mem = ReservedMem::from_buf(&mut buf).unwrap();
         assert_eq!(
             reserved_mem.add_entry(1, 1).unwrap_err(),
             Error::BufferTooSmall
         );
 
-        aligned_buf!(buf, [0u32; HEADER_U32_NUM + ENTRY_U32_NUM]);
-        let mut reserved_mem = ReservedMem::from_buf(buf).unwrap();
+        let mut buf = [0u8; (HEADER_U32_NUM + ENTRY_U32_NUM) * 4];
+        let mut reserved_mem = ReservedMem::from_buf(&mut buf).unwrap();
         reserved_mem.add_entry(1, 1).unwrap();
         assert_eq!(
             reserved_mem.add_entry(1, 1).unwrap_err(),
@@ -557,12 +557,30 @@ mod tests {
 
     #[test]
     fn test_new_writer() {
-        assert_reserved_mem(Writer::from_buf);
+        {
+            let mut tmp = [0u8; (HEADER_U32_NUM + 1) * 4];
+            let len = tmp.len();
+            let unaligned_buf = &mut tmp[1..len - 1];
+            assert_eq!(
+                Writer::from_buf(unaligned_buf).unwrap_err(),
+                Error::BufferTooSmall
+            );
+        }
+        {
+            let mut buf = [0u8; (HEADER_U32_NUM - 1) * 4];
+            assert_eq!(
+                Writer::from_buf(&mut buf).unwrap_err(),
+                Error::BufferTooSmall
+            );
+        }
 
-        aligned_buf!(buf, [0u32; HEADER_U32_NUM]);
-        assert_eq!(Writer::from_buf(buf).unwrap_err(), Error::BufferTooSmall);
+        let mut buf = [0u8; HEADER_U32_NUM * 4];
+        assert_eq!(
+            Writer::from_buf(&mut buf).unwrap_err(),
+            Error::BufferTooSmall
+        );
 
-        let reserved_mem = ReservedMem::from_buf(buf).unwrap();
+        let reserved_mem = ReservedMem::from_buf(&mut buf).unwrap();
         assert_eq!(
             Writer::from_reserved_mem(reserved_mem).unwrap_err(),
             Error::BufferTooSmall

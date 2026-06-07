@@ -1,3 +1,12 @@
+// SAFETY (NATO ASSESSMENT): unsafe_code is required for:
+// - from_raw_parts reinterpreting reserved memory bytes as ReservedMemEntry slices
+// - read_from_address (pub unsafe fn) which reads DTB from arbitrary memory addresses
+// The reinterpret is safe because alignment (8-byte) and bounds are verified.
+// read_from_address is inherently unsafe by contract (caller must ensure valid addr).
+// Verification: test suite covers valid DTB parsing, all error paths, test_dtb corpus.
+// Target: eliminate get_reserved_mem unsafe by parsing entries individually.
+#![allow(unsafe_code)]
+
 use core::convert::TryFrom;
 use core::iter::FusedIterator;
 use core::mem::size_of;
@@ -87,17 +96,21 @@ impl<'a> StructItems<'a> {
         let desc_size = size_of::<PropertyDesc>();
         self.assert_enough_struct(offset, desc_size)?;
 
-        let desc_be = unsafe {
-            &*(self.struct_block[offset..].as_ptr() as *const PropertyDesc) as &PropertyDesc
-        };
+        let desc_bytes = &self.struct_block[offset..offset + desc_size];
+        let value_size = u32::from_be_bytes(
+            desc_bytes[0..4].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        ) as usize;
+        let name_offset = u32::from_be_bytes(
+            desc_bytes[4..8].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        ) as usize;
         offset += desc_size;
 
-        let value_size = u32::from_be(desc_be.value_size) as usize;
+        let value_size = value_size as usize;
         self.assert_enough_struct(offset, value_size)?;
         let value = &self.struct_block[offset..offset + value_size];
         offset += value_size;
 
-        let name_offset = u32::from_be(desc_be.name_offset) as usize;
+        let name_offset = name_offset as usize;
         let string_start = self
             .strings_block
             .get(name_offset..)
@@ -117,13 +130,14 @@ impl<'a> StructItems<'a> {
     }
 
     /// Advances the iterator and returns the next structure item or error.
-    #[allow(clippy::cast_ptr_alignment)]
     pub fn next_item(&mut self) -> Result<StructItem<'a>> {
         loop {
             self.assert_enough_struct(self.offset, TOKEN_SIZE)?;
 
-            let token =
-                u32::from_be(unsafe { *(self.struct_block[self.offset..].as_ptr() as *const u32) });
+            let token_bytes: [u8; 4] = self.struct_block[self.offset..self.offset + TOKEN_SIZE]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfStruct)?;
+            let token = u32::from_be_bytes(token_bytes);
 
             if token == TOK_NOP {
                 self.offset += TOKEN_SIZE;
@@ -327,40 +341,61 @@ pub struct Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
-    #[allow(clippy::cast_ptr_alignment)]
     pub fn get_header(blob: &'a [u8]) -> Result<Header> {
         if !(blob.as_ptr() as usize).is_multiple_of(size_of::<u64>()) {
             return Err(Error::UnalignedBlob);
-        }
-
-        if blob.len() < 4 {
-            return Err(Error::BadMagic);
-        }
-
-        let be_header = blob.as_ptr() as *const Header;
-        let be_magic = unsafe { (*be_header).magic };
-
-        if u32::from_be(be_magic) != DTB_MAGIC {
-            return Err(Error::BadMagic);
         }
 
         if blob.len() < size_of::<Header>() {
             return Err(Error::UnexpectedEndOfBlob);
         }
 
-        let be_header = unsafe { &*be_header };
+        let magic = u32::from_be_bytes(
+            blob[0..4].try_into().map_err(|_| Error::BadMagic)?,
+        );
+        if magic != DTB_MAGIC {
+            return Err(Error::BadMagic);
+        }
+
+        let total_size = u32::from_be_bytes(
+            blob[4..8].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        );
+        let struct_offset = u32::from_be_bytes(
+            blob[8..12].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        );
+        let strings_offset = u32::from_be_bytes(
+            blob[12..16].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        );
+        let reserved_mem_offset = u32::from_be_bytes(
+            blob[16..20].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        );
+        let version = u32::from_be_bytes(
+            blob[20..24].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        );
+        let last_comp_version = u32::from_be_bytes(
+            blob[24..28].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        );
+        let bsp_cpu_id = u32::from_be_bytes(
+            blob[28..32].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        );
+        let strings_size = u32::from_be_bytes(
+            blob[32..36].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        );
+        let struct_size = u32::from_be_bytes(
+            blob[36..40].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+        );
 
         Ok(Header {
             magic: DTB_MAGIC,
-            total_size: u32::from_be(be_header.total_size),
-            struct_offset: u32::from_be(be_header.struct_offset),
-            strings_offset: u32::from_be(be_header.strings_offset),
-            reserved_mem_offset: u32::from_be(be_header.reserved_mem_offset),
-            version: u32::from_be(be_header.version),
-            last_comp_version: u32::from_be(be_header.last_comp_version),
-            bsp_cpu_id: u32::from_be(be_header.bsp_cpu_id),
-            strings_size: u32::from_be(be_header.strings_size),
-            struct_size: u32::from_be(be_header.struct_size),
+            total_size,
+            struct_offset,
+            strings_offset,
+            reserved_mem_offset,
+            version,
+            last_comp_version,
+            bsp_cpu_id,
+            strings_size,
+            struct_size,
         })
     }
 
@@ -376,12 +411,13 @@ impl<'a> Reader<'a> {
         }
 
         let reserved_max_size = (header.struct_offset - header.reserved_mem_offset) as usize;
-        let reserved = unsafe {
-            // SAFETY: we checked this index during header parsing. It is also
-            // properly aligned.
-            let ptr =
-                blob.as_ptr().add(header.reserved_mem_offset as usize) as *const ReservedMemEntry;
-            from_raw_parts(ptr, reserved_max_size / entry_size)
+        let reserved_addr = header.reserved_mem_offset as usize;
+        let reserved_bytes = &blob[reserved_addr..reserved_addr + reserved_max_size];
+        let reserved: &[ReservedMemEntry] = unsafe {
+            core::slice::from_raw_parts(
+                reserved_bytes.as_ptr() as *const ReservedMemEntry,
+                reserved_max_size / entry_size,
+            )
         };
 
         let index = reserved.iter().position(|e| e.address == 0 && e.size == 0);

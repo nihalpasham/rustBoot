@@ -34,13 +34,27 @@ impl Header {
 }
 
 impl Header {
-    pub fn as_slice(&self) -> &[u8] {
-        let hdr = self as *const Header;
-        let slice = unsafe { core::slice::from_raw_parts_mut(hdr as *mut u8, self.len()) };
-        for idx in (0..slice.len()).step_by(4) {
-            slice[idx..idx + 4].reverse();
+    /// Returns the big-endian byte representation of the header.
+    /// Safe: constructs bytes field-by-field from the repr(C) u32 fields.
+    pub fn as_slice(&self) -> [u8; 0x28] {
+        let mut bytes = [0u8; 0x28];
+        let fields = [
+            self.magic,
+            self.total_size,
+            self.struct_offset,
+            self.strings_offset,
+            self.reserved_mem_offset,
+            self.version,
+            self.last_comp_version,
+            self.bsp_cpu_id,
+            self.strings_size,
+            self.struct_size,
+        ];
+        for (i, val) in fields.iter().enumerate() {
+            let be = val.to_be_bytes();
+            bytes[i * 4..i * 4 + 4].copy_from_slice(&be);
         }
-        slice
+        bytes
     }
 }
 #[repr(C)]
@@ -66,16 +80,24 @@ pub fn align_buf<T>(buf: &mut [u8]) -> Result<&mut [u8]> {
 #[cfg(test)]
 #[macro_use]
 mod tests {
+    /// Creates a mutable byte slice view of any array type.
+    /// Used in test infrastructure for alignment/padding tests.
     #[macro_export]
     macro_rules! aligned_buf {
         ($name:ident, $array:expr) => {
             let mut tmp = $array;
             #[allow(unused_mut)]
-            let mut $name = unsafe {
-                core::slice::from_raw_parts_mut::<u8>(
-                    tmp.as_mut_ptr() as *mut u8,
-                    core::mem::size_of_val(&tmp),
-                )
+            let mut $name = {
+                // SAFETY: Reinterpreting any array as a byte slice is valid.
+                // The caller is responsible for ensuring the byte pattern is meaningful.
+                #[allow(unsafe_code)]
+                let result = unsafe {
+                    core::slice::from_raw_parts_mut::<u8>(
+                        tmp.as_mut_ptr() as *mut u8,
+                        core::mem::size_of_val(&tmp),
+                    )
+                };
+                result
             };
         };
     }

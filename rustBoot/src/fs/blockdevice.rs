@@ -2,6 +2,13 @@
 //!
 //! Generic code for handling block devices.
 
+// SAFETY (NATO ASSESSMENT): unsafe_code is required for from_raw_parts_mut type-punning
+// between Block (repr(C) single-field struct) and [u8; 512] / [[u8; 4]] arrays.
+// The layout is identical; bounds are verified at the caller.
+// Verification: tests pass with valid FAT16/FAT32 images on rpi4 targets.
+// Target: replace with bytemuck::cast_slice_mut() when bytemuck is added as dependency.
+#![allow(unsafe_code)]
+
 /// Represents a standard 512 byte block (also known as a sector). IBM PC
 /// formatted 5.25" and 3.5" floppy disks, SD/MMC cards up to 1 GiB in size
 /// and IDE/SATA Hard Drives up to about 2 TiB all have 512 byte blocks.

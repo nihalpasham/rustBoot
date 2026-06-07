@@ -1,3 +1,8 @@
+// SAFETY: rbsigner is a std CLI tool with no unsafe code.
+// All operations are safe Rust: file I/O, key import, signing.
+// This forbid ensures no future contributor introduces unsafe.
+#![forbid(unsafe_code)]
+
 mod curve;
 mod fitsigner;
 mod mcusigner;

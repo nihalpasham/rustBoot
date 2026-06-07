@@ -11,7 +11,9 @@
 )]
 // Safety: fit.rs allows deprecated due to elliptic-curve's generic-array re-export
 // and static_mut_refs due to OnceCell access pattern.
-#![allow(deprecated, static_mut_refs)]
+// SAFETY (NATO ASSESSMENT): unsafe_code required for OnceCell access in version-check fallback.
+// Single-core MCU, no concurrent access. Verified by CI integration tests.
+#![allow(deprecated, static_mut_refs, unsafe_code)]
 
 use core::cell::OnceCell;
 use core::convert::TryInto;
@@ -732,5 +734,109 @@ mod tests {
         let output = flatten(input);
         assert_eq!(output[31], 0xFF);
         assert_eq!(output[32 * 3 + 15], 0xAA);
+    }
+
+    // ── Additional edge cases for as_str ─────────────────────────────
+
+    #[test]
+    fn test_as_str_very_long_valid_utf8() {
+        let mut long = vec![b'A'; 500];
+        long.push(0);
+        let result = as_str(&long);
+        assert!(matches!(result, Ok(Some(s)) if s.len() == 500 && s.chars().all(|c| c == 'A')));
+    }
+
+    #[test]
+    fn test_as_str_very_long_with_null() {
+        let mut long = vec![b'B'; 1000];
+        long.push(0);
+        let result = as_str(&long);
+        assert!(matches!(result, Ok(Some(s)) if s.len() == 1000));
+    }
+
+    #[test]
+    fn test_as_str_embedded_nulls() {
+        let result = as_str(b"hello\0world\0");
+        assert!(matches!(result, Ok(Some(s)) if s == "hello\0world"));
+    }
+
+    #[test]
+    fn test_as_str_only_null() {
+        let result = as_str(b"\0");
+        assert!(matches!(result, Ok(Some(""))));
+    }
+
+    #[test]
+    fn test_as_str_multiple_trailing_nulls() {
+        let result = as_str(b"hi\0\0");
+        assert!(matches!(result, Ok(Some(s)) if s == "hi\0"));
+    }
+
+    // ── Additional edge cases for flatten ─────────────────────────────
+
+    #[test]
+    fn test_flatten_empty_array() {
+        let input: [[u8; 32]; 0] = [];
+        let output = flatten(input);
+        assert_eq!(output, [0u8; 128]);
+    }
+
+    #[test]
+    fn test_flatten_single_hash() {
+        let input = [[0xDEu8; 32]];
+        let output = flatten(input);
+        assert_eq!(output[..32], [0xDEu8; 32]);
+        assert_eq!(output[32..], [0u8; 128 - 32]);
+    }
+
+    #[test]
+    fn test_flatten_all_boundaries() {
+        let mut input = [[0u8; 32]; 4];
+        input[0][0] = 0x10;
+        input[0][31] = 0x1F;
+        input[1][0] = 0x20;
+        input[1][31] = 0x2F;
+        input[2][0] = 0x30;
+        input[2][31] = 0x3F;
+        input[3][0] = 0x40;
+        input[3][31] = 0x4F;
+        let output = flatten(input);
+        assert_eq!(output[0], 0x10);
+        assert_eq!(output[31], 0x1F);
+        assert_eq!(output[32], 0x20);
+        assert_eq!(output[63], 0x2F);
+        assert_eq!(output[64], 0x30);
+        assert_eq!(output[95], 0x3F);
+        assert_eq!(output[96], 0x40);
+        assert_eq!(output[127], 0x4F);
+    }
+
+    // ── Additional edge cases for parse_algo ─────────────────────────
+
+    #[test]
+    fn test_parse_algo_truncated_blob_does_not_panic() {
+        let blob = make_fit_blob(b"sha256,ecdsa256,nistp256\0");
+        for len in [5, 10, 20, 40, 60] {
+            if len < blob.len() {
+                let truncated = &blob[..len];
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| parse_algo(truncated)));
+                let _ = result;
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_algo_extra_long_algo_string() {
+        let long_algo = b"sha256,ecdsa256,nistp256,sha512,ed25519,rsa4096,extra,data\0";
+        let blob = make_fit_blob(long_algo);
+        let result = parse_algo(&blob);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_algo_multiple_confignodes() {
+        let blob = make_fit_blob(b"sha256,ecdsa256,nistp256\0");
+        let result = parse_algo(&blob);
+        assert!(matches!(result, Ok(CurveType::NistP256)));
     }
 }

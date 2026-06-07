@@ -1,3 +1,11 @@
+// SAFETY (NATO ASSESSMENT): unsafe_code is required for:
+// - transmute_buf: pub unsafe fn reinterpreting &mut [u8] as &mut [T] via from_raw_parts_mut
+// - value_u32_list: reading big-endian u32 values from &[u8] via raw pointer
+// Bounds and alignment are checked before each operation.
+// Verification: proptest covers parser-never-panics property.
+// Target: replace with safe {array}.as_chunks() when stable.
+#![allow(unsafe_code)]
+
 use core::mem::size_of;
 use core::slice::from_raw_parts_mut;
 use core::str::from_utf8;
@@ -261,7 +269,7 @@ mod tests {
 
     #[test]
     fn test_value_str_list() {
-        aligned_buf!(buf, [""; 2]);
+        let mut buf = [0u8; size_of::<&str>() * 2];
         assert_value_str!(value_str_list, buf);
 
         let prop = StructItem::Property {
@@ -269,7 +277,7 @@ mod tests {
             value: "part1\0part2\0".as_bytes(),
         };
 
-        aligned_buf!(tmp, [""; 3]);
+        let mut tmp = [0u8; size_of::<&str>() * 3];
         let len = tmp.len();
         let unaligned_buf = &mut tmp[size_of::<usize>() - 1..len - size_of::<usize>() - 1];
         assert_eq!(
@@ -277,18 +285,18 @@ mod tests {
             Error::BufferTooSmall
         );
 
-        aligned_buf!(small_buf, [""; 1]);
+        let mut small_buf = [0u8; size_of::<&str>()];
         assert_eq!(
-            prop.value_str_list(small_buf).unwrap_err(),
+            prop.value_str_list(&mut small_buf).unwrap_err(),
             Error::BufferTooSmall
         );
 
-        assert_eq!(prop.value_str_list(buf).unwrap(), &["part1", "part2"]);
+        assert_eq!(prop.value_str_list(&mut buf).unwrap(), &["part1", "part2"]);
     }
 
     #[test]
     fn test_value_u32_list() {
-        aligned_buf!(buf, [0u32; 3]);
+        let mut buf = [0u8; size_of::<u32>() * 3];
         assert_value!(value_u32_list, buf);
 
         assert_eq!(
@@ -296,7 +304,7 @@ mod tests {
                 name: "property",
                 value: &[1, 2, 3],
             }
-            .value_u32_list(buf)
+            .value_u32_list(&mut buf)
             .unwrap_err(),
             Error::BadU32List
         );
@@ -306,7 +314,7 @@ mod tests {
                 name: "property",
                 value: &[],
             }
-            .value_u32_list(buf)
+            .value_u32_list(&mut buf)
             .unwrap(),
             &[]
         );
@@ -316,7 +324,7 @@ mod tests {
             value: &[0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3],
         };
 
-        aligned_buf!(tmp, [0u32; 4]);
+        let mut tmp = [0u8; size_of::<u32>() * 4];
         let len = tmp.len();
         let unaligned_buf = &mut tmp[1..len - 1];
         assert_eq!(
@@ -324,9 +332,9 @@ mod tests {
             Error::BufferTooSmall
         );
 
-        aligned_buf!(small_buf, [0u32; 2]);
+        let mut small_buf = [0u8; size_of::<u32>() * 2];
         assert_eq!(
-            prop.value_u32_list(small_buf).unwrap_err(),
+            prop.value_u32_list(&mut small_buf).unwrap_err(),
             Error::BufferTooSmall
         );
 

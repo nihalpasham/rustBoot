@@ -1,3 +1,10 @@
+// SAFETY (NATO ASSESSMENT): unsafe_code is required for:
+// - raw pointer cast from *const u8 (memory-mapped partition header) to &[u8; IMAGE_HEADER_SIZE]
+// This is inherent to embedded firmware: headers live at fixed MMIO addresses.
+// Each deref is guarded by partition open validation (magic + size checks).
+// Verification: proptest covers parser_never_panics property on arbitrary data.
+// Target: abstract behind a safe PartitionHeaderView when the HAL supports it.
+#![allow(unsafe_code)]
 #![allow(
     clippy::indexing_slicing,
     clippy::needless_lifetimes,
