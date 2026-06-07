@@ -64,9 +64,9 @@ jobs:
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --locked
       - name: Generate line/branch coverage
-        run: cargo llvm-cov --package rustBoot --all-features --lcov --output-path lcov.info
+        run: cargo llvm-cov --package rustBoot --features "nrf52840,nistp256,sha256" --lcov --output-path lcov.info --fail-under-linenum 26
       - name: Generate MC/DC coverage
-        run: cargo llvm-cov --package rustBoot --all-features --mcdc --output-path mcdc.json
+        run: cargo llvm-cov --package rustBoot --features "nrf52840,nistp256,sha256" --mcdc --output-path mcdc.json
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:

@@ -1,4 +1,3 @@
-use as_slice::AsSlice;
 use core::mem::align_of;
 
 use super::common::*;
@@ -34,10 +33,8 @@ impl Header {
     }
 }
 
-impl AsSlice for Header {
-    type Element = u8;
-
-    fn as_slice(&self) -> &[Self::Element] {
+impl Header {
+    pub fn as_slice(&self) -> &[u8] {
         let hdr = self as *const Header;
         let slice = unsafe { core::slice::from_raw_parts_mut(hdr as *mut u8, self.len()) };
         for idx in (0..slice.len()).step_by(4) {

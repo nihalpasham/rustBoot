@@ -3,7 +3,6 @@ use log::info;
 use sha2::Sha256;
 use signature::DigestSigner;
 
-use as_slice::AsSlice;
 use rustBoot::dt::{prepare_img_hash, update_dtb_header, Reader};
 use rustBoot::dt::Error as DtError;
 

@@ -272,8 +272,10 @@ where
     Interface: FlashInterface,
 {
     fn rustboot_start(self) -> ! {
-        let mut boot = PartDescriptor::open_partition(Boot, self).unwrap();
-        let updt = PartDescriptor::open_partition(Update, self).unwrap();
+        let mut boot = PartDescriptor::open_partition(Boot, self)
+            .expect("boot partition must exist for boot to proceed");
+        let updt = PartDescriptor::open_partition(Update, self)
+            .expect("update partition must exist for boot to proceed");
 
         // Check the BOOT partition for state - if it is still in TESTING, trigger rollback.
         if let ImageType::BootInTestingState(_v) = boot {
@@ -281,7 +283,7 @@ where
             match self.rustboot_update(true) {
                 Ok(_v) => {}
                 Err(_e) => {
-                    panic!("rollback failed.")
+                    panic!("FATAL: rollback failed - boot partition in testing state but could not revert")
                 }
             }
         // Check the UPDATE partition for state - if it is marked as UPDATING, trigger update.
@@ -289,7 +291,7 @@ where
             match self.rustboot_update(false) {
                 Ok(_v) => {}
                 Err(_e) => {
-                    panic!("update-swap failed.")
+                    panic!("FATAL: update swap failed - update partition in updating state but swap could not complete")
                 }
             }
         } else {
@@ -300,16 +302,13 @@ where
                     {
                         match self.rustboot_update(true) {
                             Err(_v) => {
-                                // #[cfg(feature = "defmt")]
-                                panic!("all boot options exhausted")
-                            } // all boot options exhausted
+                                panic!("FATAL: all boot options exhausted - emergency update also failed for BootInNewState image")
+                            }
                             Ok(ref mut img) => {
-                                // Emergency update successful, try to re-authenticate boot image.
                                 if (img.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                                     || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                                 {
-                                    panic!("something went wrong after the emergency update")
-                                    // something went wrong after the emergency update
+                                    panic!("FATAL: boot image still fails integrity/authenticity checks after emergency update for BootInNewState image")
                                 }
                             }
                         }
@@ -321,22 +320,19 @@ where
                     {
                         match self.rustboot_update(true) {
                             Err(_v) => {
-                                // #[cfg(feature = "defmt")]
-                                panic!("all boot options exhausted")
-                            } // all boot options exhausted
+                                panic!("FATAL: all boot options exhausted - emergency update also failed for BootInSuccessState image")
+                            }
                             Ok(ref mut img) => {
-                                // Emergency update successful, try to re-authenticate boot image.
                                 if (img.verify_integrity::<SHA256_DIGEST_SIZE>().is_err()
                                     || img.verify_authenticity::<HDR_IMG_TYPE_AUTH>().is_err())
                                 {
-                                    panic!("something went wrong after the emergency update")
-                                    // something went wrong after the emergency update
+                                    panic!("FATAL: boot image still fails integrity/authenticity checks after emergency update for BootInSuccessState image")
                                 }
                             }
                         }
                     }
                 }
-                _ => unreachable!(),
+                _ => unreachable!("all boot states are covered by previous match arms"),
             }
         }
 
@@ -344,10 +340,12 @@ where
         // Note: Swapping moves the image in the update partition to the boot partition.
         // TODO: As we're using singletons (i.e. BOOT, UPDT), swap the following `rustBoot header` fields -
         //       size, sha_hash, signature_ok, sha_ok, hdr_ok.
-        let boot = PartDescriptor::open_partition(Boot, self).unwrap();
+        let boot = PartDescriptor::open_partition(Boot, self)
+            .expect("boot partition must exist after update/rollback");
         match boot {
             ImageType::BootInNewState(img) => {
-                let boot_part = img.part_desc.get().unwrap();
+                let boot_part = img.part_desc.get()
+                    .expect("partition descriptor must be present in valid boot image");
                 let base_img_addr = RefinedUsize::<0, 0, BOOT_FWBASE>::single_valued_int(
                     boot_part.fw_base as usize,
                 )
@@ -356,7 +354,8 @@ where
                 hal_boot_from(base_img_addr)
             }
             ImageType::BootInSuccessState(img) => {
-                let boot_part = img.part_desc.get().unwrap();
+                let boot_part = img.part_desc.get()
+                    .expect("partition descriptor must be present in valid boot image");
                 let base_img_addr = RefinedUsize::<0, 0, BOOT_FWBASE>::single_valued_int(
                     boot_part.fw_base as usize,
                 )
@@ -366,7 +365,8 @@ where
             }
             // If an update is successful, this is the state of the boot partition.
             ImageType::BootInTestingState(img) => {
-                let boot_part = img.part_desc.get().unwrap();
+                let boot_part = img.part_desc.get()
+                    .expect("partition descriptor must be present in valid boot image");
                 let base_img_addr = RefinedUsize::<0, 0, BOOT_FWBASE>::single_valued_int(
                     boot_part.fw_base as usize,
                 )
@@ -374,7 +374,7 @@ where
                 hal_preboot();
                 hal_boot_from(base_img_addr)
             }
-            _ => panic!("reached an unreachable state"),
+            _ => panic!("FATAL: boot partition in unknown state - no valid boot image found"),
         }
     }
 

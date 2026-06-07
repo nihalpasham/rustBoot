@@ -5,7 +5,6 @@ use super::{
     Error, PropertyValue, RawNodeConstructor, RawPropertyConstructor, Reader, Result,
     SerializedBuffer, StringsBlock, StructItem, TOKEN_SIZE,
 };
-use as_slice::AsSlice;
 use core::convert::TryInto;
 
 pub fn make_new_strings_block_with<'a, const M: usize>(
