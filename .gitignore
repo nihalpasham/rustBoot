@@ -26,4 +26,5 @@ test.md
 **/*.bin
 **/*.elf
 **/*.hex
-**/*.imgfuzz/target/
+**/*.img
+fuzz/target/
