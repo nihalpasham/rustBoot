@@ -52,7 +52,7 @@ pub struct PropertyDesc {
     pub name_offset: u32,
 }
 
-pub fn align_buf<'a, T>(buf: &'a mut [u8]) -> Result<&'a mut [u8]> {
+pub fn align_buf<T>(buf: &mut [u8]) -> Result<&mut [u8]> {
     let off = buf.as_ptr() as usize % align_of::<T>();
     if off == 0 {
         return Ok(buf);

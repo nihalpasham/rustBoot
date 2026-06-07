@@ -10,9 +10,9 @@ pub fn verify_authenticity(itb_blob: &[u8], itb_version: u32) -> bool {
     let total_size = header.total_size;
     let val = match verify_fit::<32, 64, 4>(&itb_blob[..total_size as usize], itb_version) {
         Ok(val) => {
-            print!(
+            println!(
                 "######## \x1b[33mecdsa signature\x1b[0m checks out, \
-                \x1b[92mimage is authentic\x1b[0m ########\n"
+                \x1b[92mimage is authentic\x1b[0m ########"
             );
             val
         }

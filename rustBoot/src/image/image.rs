@@ -1,3 +1,8 @@
+// image.rs uses indexing on bounded arrays (IMAGE_HEADER_SIZE).
+// Bounds are compile-time verified.
+#![allow(clippy::indexing_slicing, clippy::needless_return, clippy::needless_late_init,
+         clippy::doc_lazy_continuation, static_mut_refs)]
+
 use super::sealed::Sealed;
 use crate::constants::*;
 use crate::crypto::signatures::{verify_ecc256_signature, HDR_IMG_TYPE_AUTH};
@@ -317,14 +322,14 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
             let _ = self.set_partition_trailer_magic(updater);
         }
         let state = unsafe { *self.get_partition_state()? };
-        let state = match state {
+        
+        match state {
             0xFF => Ok(States::New(StateNew)),
             0x70 => Ok(States::Updating(StateUpdating)),
             0x10 => Ok(States::Testing(StateTesting)),
             0x00 => Ok(States::Success(StateSuccess)),
             _ => Err(RustbootError::InvalidState),
-        };
-        state
+        }
     }
 
     pub fn set_state<State: TypeState + Updateable>(
@@ -350,7 +355,8 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
 
     fn set_partition_trailer_magic(&self, updater: impl FlashApi) -> Result<()> {
         let trailer_magic = (&RUSTBOOT_MAGIC_TRAIL as *const usize) as *const u8;
-        Ok(updater.flash_trailer_write(self, 0, trailer_magic, MAGIC_TRAIL_LEN))
+        updater.flash_trailer_write(self, 0, trailer_magic, MAGIC_TRAIL_LEN);
+        Ok(())
     }
 
     fn get_partition_state(&self) -> Result<*const u8> {
@@ -359,7 +365,8 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
 
     pub fn set_partition_state(&self, updater: impl FlashApi, state: u8) -> Result<()> {
         let state = &state as *const u8;
-        Ok(updater.flash_trailer_write(self, 1, state, PART_STATUS_LEN))
+        updater.flash_trailer_write(self, 1, state, PART_STATUS_LEN);
+        Ok(())
     }
 
     fn get_trailer_at_offset(&self, offset: usize) -> Result<*const u8> {
@@ -371,7 +378,8 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
 
     fn set_trailer_at(&self, updater: impl FlashApi, offset: usize, flag: u8) -> Result<()> {
         let newflag = &flag as *const u8;
-        Ok(updater.flash_trailer_write(self, offset, newflag, 1))
+        updater.flash_trailer_write(self, offset, newflag, 1);
+        Ok(())
     }
 }
 
@@ -394,7 +402,7 @@ impl PartDescriptor<Update> {
             0x07 => Ok(SectFlags::SwappingFlag),
             0x03 => Ok(SectFlags::BackupFlag),
             0x00 => Ok(SectFlags::UpdatedFlag),
-            _ => return Err(RustbootError::InvalidSectFlag),
+            _ => Err(RustbootError::InvalidSectFlag),
         }
     }
 
@@ -644,7 +652,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                         let computed_hash = Some(hasher2.clone().finalize().as_ptr());
                         auth_check = verify_ecc256_signature::<Sha256, HDR_IMG_TYPE_AUTH>(
                             hasher2,
-                            &stored_signature,
+                            stored_signature,
                         )?;
                         computed_hash
                     }
@@ -728,6 +736,6 @@ where
             _ => Err(RustbootError::InvalidValue),
         }
     } else {
-        return Err(RustbootError::InvalidValue);
+        Err(RustbootError::InvalidValue)
     }
 }

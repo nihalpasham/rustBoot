@@ -18,7 +18,7 @@ fn remove_trailing_path_component(url: &str) -> &str {
 }
 
 fn bytes_to_u32(bytes: &[u8]) -> Result<Vec<u32>, &'static str> {
-    if bytes.len() % 4 != 0 {
+    if !bytes.len().is_multiple_of(4) {
         return Err("invalid 'reg' entry: must be a multiple of 4");
     }
     let mut reg_addrs = Vec::new();
@@ -89,7 +89,7 @@ fn main() {
                                                     );
                                                     print!("<");
                                                     addr.iter().for_each(|x| print!("0x{:x}, ", x));
-                                                    print!("\u{8}\u{8}>\n");
+                                                    println!("\u{8}\u{8}>");
                                                 }
                                                 Err(e) => {
                                                     println!("{}", e)
@@ -111,8 +111,7 @@ fn main() {
                 if node_depth > 0 {
                     node_depth -= 1;
                     node_str = remove_trailing_path_component(node_str);
-                } else {
-                }
+                } 
             }
             StructItem::Property { name: _, value: _ } => {}
             _ => {

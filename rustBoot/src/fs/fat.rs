@@ -2,7 +2,11 @@
 //!
 //! Implements the File Allocation Table file system. Supports FAT16 and FAT32 volumes.
 
-#![allow(clippy::panic, clippy::unimplemented, clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
+#![allow(clippy::panic, clippy::unimplemented, clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing,
+         clippy::integer_division, clippy::let_unit_value, clippy::manual_rotate,
+         clippy::needless_range_loop, clippy::needless_return,
+         clippy::doc_lazy_continuation,
+         static_mut_refs, mismatched_lifetime_syntaxes)]
 
 use super::blockdevice::{Block, BlockCount, BlockDevice, BlockIdx};
 use super::controller::{Controller, Error, VolumeType};
@@ -126,7 +130,7 @@ impl<'a> Bpb<'a> {
     const FOOTER_VALUE: u16 = 0xAA55;
 
     /// Attempt to parse a Boot Parameter Block from a 512 byte sector.
-    pub fn create_from_bytes(data: &[u8; 512]) -> Result<Bpb, &'static str> {
+    pub fn create_from_bytes(data: &[u8; 512]) -> Result<Bpb<'_>, &'static str> {
         let mut bpb = Bpb {
             data,
             fat_type: FatType::Fat16,
@@ -136,9 +140,7 @@ impl<'a> Bpb<'a> {
             return Err("Bad BPB footer");
         }
 
-        let root_dir_blocks = ((u32::from(bpb.root_entries_count()) * OnDiskDirEntry::LEN_U32)
-            + (Block::LEN_U32 - 1))
-            / Block::LEN_U32;
+        let root_dir_blocks = (u32::from(bpb.root_entries_count()) * OnDiskDirEntry::LEN_U32).div_ceil(Block::LEN_U32);
         let data_blocks = bpb.total_blocks()
             - (u32::from(bpb.reserved_block_count())
                 + (u32::from(bpb.num_fats()) * bpb.fat_size())
@@ -256,7 +258,7 @@ impl<'a> InfoSector<'a> {
     const TRAIL_SIG: u32 = 0xAA55_0000;
 
     /// Try and create a new Info Sector from a block.
-    pub fn create_from_bytes(data: &[u8; 512]) -> Result<InfoSector, &'static str> {
+    pub fn create_from_bytes(data: &[u8; 512]) -> Result<InfoSector<'_>, &'static str> {
         let info = InfoSector { data };
         if info.lead_sig() != Self::LEAD_SIG {
             return Err("Bad lead signature on InfoSector");
@@ -347,7 +349,7 @@ impl<'a> OnDiskDirEntry<'a> {
 
     /// Create a new on-disk directory entry from a block of 32 bytes read
     /// from a directory file.
-    pub fn new(data: &[u8]) -> OnDiskDirEntry {
+    pub fn new(data: &[u8]) -> OnDiskDirEntry<'_> {
         OnDiskDirEntry { data }
     }
 
@@ -554,7 +556,7 @@ impl FatVolume {
             }
             FatSpecificInfo::Fat32(_fat32_info) => {
                 // FAT32 => 4 bytes per entry
-                let fat_offset = cluster.0 as u32 * 4;
+                let fat_offset = cluster.0 * 4;
                 this_fat_block_num = self.lba_start + self.fat_start.offset_bytes(fat_offset);
                 let this_fat_ent_offset = (fat_offset % Block::LEN_U32) as usize;
                 controller
@@ -610,7 +612,7 @@ impl FatVolume {
             .read(&mut blocks, self.lba_start, "read_bpb")
             .map_err(Error::DeviceError)?;
         let block = &blocks[0];
-        let bpb = Bpb::create_from_bytes(&block).map_err(Error::FormatError)?;
+        let bpb = Bpb::create_from_bytes(block).map_err(Error::FormatError)?;
 
         // retrieve the block idx where the `fat` starts
         let fat_start_blockidx = self.lba_start + self.fat_start;
@@ -799,8 +801,7 @@ impl FatVolume {
 
                 let dir_size = match dir.cluster {
                     Cluster::ROOT_DIR => BlockCount(
-                        ((u32::from(fat16_info.root_entries_count) * 32) + (Block::LEN as u32 - 1))
-                            / Block::LEN as u32,
+                        (u32::from(fat16_info.root_entries_count) * 32).div_ceil(Block::LEN as u32),
                     ),
                     _ => BlockCount(u32::from(self.blocks_per_cluster)),
                 };
@@ -934,8 +935,7 @@ impl FatVolume {
                 let mut current_cluster = Some(dir.cluster);
                 let dir_size = match dir.cluster {
                     Cluster::ROOT_DIR => BlockCount(
-                        ((u32::from(fat16_info.root_entries_count) * 32) + (Block::LEN as u32 - 1))
-                            / Block::LEN as u32,
+                        (u32::from(fat16_info.root_entries_count) * 32).div_ceil(Block::LEN as u32),
                     ),
                     _ => BlockCount(u32::from(self.blocks_per_cluster)),
                 };
@@ -1003,10 +1003,7 @@ impl FatVolume {
                             }
                         }
                     }
-                    current_cluster = match self.next_cluster(controller, cluster) {
-                        Ok(n) => Some(n),
-                        _ => None,
-                    };
+                    current_cluster = self.next_cluster(controller, cluster).ok();
                 }
                 Ok(())
             }
@@ -1034,8 +1031,7 @@ impl FatVolume {
                 };
                 let dir_size = match dir.cluster {
                     Cluster::ROOT_DIR => BlockCount(
-                        ((u32::from(fat16_info.root_entries_count) * 32) + (Block::LEN as u32 - 1))
-                            / Block::LEN as u32,
+                        (u32::from(fat16_info.root_entries_count) * 32).div_ceil(Block::LEN as u32),
                     ),
                     _ => BlockCount(u32::from(self.blocks_per_cluster)),
                 };
@@ -1084,10 +1080,7 @@ impl FatVolume {
                             x => return x,
                         }
                     }
-                    current_cluster = match self.next_cluster(controller, cluster) {
-                        Ok(n) => Some(n),
-                        _ => None,
-                    }
+                    current_cluster = self.next_cluster(controller, cluster).ok()
                 }
                 Err(Error::FileNotFound)
             }
@@ -1115,15 +1108,12 @@ impl FatVolume {
                 while let Some(cluster) = current_cluster {
                     let block_idx = self.cluster_to_block(cluster);
                     for block in block_idx.range(BlockCount(u32::from(self.blocks_per_cluster))) {
-                        match self.find_sfn_in_block(controller, &supplied_lfn, block) {
+                        match self.find_sfn_in_block(controller, supplied_lfn, block) {
                             Err(Error::NotInBlock) => continue,
                             x => return x,
                         }
                     }
-                    current_cluster = match self.next_cluster(controller, cluster) {
-                        Ok(n) => Some(n),
-                        _ => None,
-                    }
+                    current_cluster = self.next_cluster(controller, cluster).ok()
                 }
                 Err(Error::FileNotFound)
             }
@@ -1168,8 +1158,8 @@ impl FatVolume {
                         let checksum = dir_entry.get_checksum();
                         // calculate checksum
                         let mut sum = sfn[0];
-                        let _ = sfn[1..].iter().for_each(|char| {
-                            sum = ((sum >> 1) | (sum << 7)).wrapping_add(*char);
+                        sfn[1..].iter().for_each(|char| {
+                            sum = sum.rotate_right(1).wrapping_add(*char);
                         });
                         // checksum should be equal to computed sum
                         if checksum == sum {
@@ -1206,7 +1196,7 @@ impl FatVolume {
             if dir_entry.is_end() {
                 // Can quit early
                 return Err(Error::FileNotFound);
-            } else if dir_entry.matches(&match_name) {
+            } else if dir_entry.matches(match_name) {
                 // Found it
                 // Safe, since Block::LEN always fits on a u32
                 let start = u32::try_from(start).unwrap();
@@ -1237,8 +1227,7 @@ impl FatVolume {
                 };
                 let dir_size = match dir.cluster {
                     Cluster::ROOT_DIR => BlockCount(
-                        ((u32::from(fat16_info.root_entries_count) * 32) + (Block::LEN as u32 - 1))
-                            / Block::LEN as u32,
+                        (u32::from(fat16_info.root_entries_count) * 32).div_ceil(Block::LEN as u32),
                     ),
                     _ => BlockCount(u32::from(self.blocks_per_cluster)),
                 };
@@ -1277,10 +1266,7 @@ impl FatVolume {
                             x => return x,
                         }
                     }
-                    current_cluster = match self.next_cluster(controller, cluster) {
-                        Ok(n) => Some(n),
-                        _ => None,
-                    }
+                    current_cluster = self.next_cluster(controller, cluster).ok()
                 }
                 Err(Error::FileNotFound)
             }
@@ -1310,7 +1296,7 @@ impl FatVolume {
             if dir_entry.is_end() {
                 // Can quit early
                 return Err(Error::FileNotFound);
-            } else if dir_entry.matches(&match_name) {
+            } else if dir_entry.matches(match_name) {
                 let mut blocks = blocks;
                 blocks[0].contents[start] = 0xE5;
                 controller
@@ -1549,16 +1535,14 @@ where
         .read(&mut blocks, lba_start, "read_bpb")
         .map_err(Error::DeviceError)?;
     let block = &blocks[0];
-    let bpb = Bpb::create_from_bytes(&block).map_err(Error::FormatError)?;
+    let bpb = Bpb::create_from_bytes(block).map_err(Error::FormatError)?;
     match bpb.fat_type {
         FatType::Fat16 => {
             if bpb.bytes_per_block() as usize != Block::LEN {
                 return Err(Error::BadBlockSize(bpb.bytes_per_block()));
             }
             // FirstDataSector = BPB_ResvdSecCnt + (BPB_NumFATs * FATSz) + RootDirSectors;
-            let root_dir_blocks = ((u32::from(bpb.root_entries_count()) * OnDiskDirEntry::LEN_U32)
-                + (Block::LEN_U32 - 1))
-                / Block::LEN_U32;
+            let root_dir_blocks = (u32::from(bpb.root_entries_count()) * OnDiskDirEntry::LEN_U32).div_ceil(Block::LEN_U32);
             let fat_start = BlockCount(u32::from(bpb.reserved_block_count()));
             let first_root_dir_block =
                 fat_start + BlockCount(u32::from(bpb.num_fats()) * bpb.fat_size());
@@ -1599,7 +1583,7 @@ where
                 .map_err(Error::DeviceError)?;
             let info_block = &info_blocks[0];
             let info_sector =
-                InfoSector::create_from_bytes(&info_block).map_err(Error::FormatError)?;
+                InfoSector::create_from_bytes(info_block).map_err(Error::FormatError)?;
 
             let mut volume = FatVolume {
                 lba_start,
@@ -1797,8 +1781,8 @@ mod tests {
                                         let checksum = dir_entry.get_checksum();
                                         // calculate checksum
                                         let mut sum = sfn[0];
-                                        let _ = sfn[1..].iter().for_each(|char| {
-                                            sum = ((sum >> 1) | (sum << 7)).wrapping_add(*char);
+                                        sfn[1..].iter().for_each(|char| {
+                                            sum = sum.rotate_right(1).wrapping_add(*char);
                                         });
                                         // checksum should be equal to computed sum
                                         if checksum == sum {
@@ -1821,7 +1805,6 @@ mod tests {
                     current_cluster = 2;
                 }
                 info!("root directory does not contain the entry");
-                return;
             })
     }
 }

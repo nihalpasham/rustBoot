@@ -91,7 +91,7 @@ impl Block {
 
     pub fn to_fat_entries(blocks: &mut [Block]) -> &mut [[u8; 4]] {
         let len = MAX_FAT_ENTRIES as usize;
-        let ptr = (&mut blocks[0].contents).as_mut_ptr() as *mut [u8; 4];
+        let ptr = blocks[0].contents.as_mut_ptr() as *mut [u8; 4];
         let buff;
         unsafe {
             // there is no way to turn a slice of arrays into a slice of bytes i.e.
@@ -192,7 +192,7 @@ impl core::fmt::Debug for Block {
             }
             write!(fmt, " ")?;
             for &b in line {
-                if b >= 0x20 && b <= 0x7F {
+                if (0x20..=0x7F).contains(&b) {
                     write!(fmt, "{}", b as char)?;
                 } else {
                     write!(fmt, ".")?;

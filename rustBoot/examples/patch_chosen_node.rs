@@ -34,7 +34,7 @@ fn main() {
     dump(patched_dtb_blob);
 }
 
-pub fn dump<'a>(dtb_blob: &'a [u8]) {
+pub fn dump(dtb_blob: &[u8]) {
     println!("test");
     let header = Reader::get_header(dtb_blob).unwrap();
     let hdr_total_size = header.total_size;

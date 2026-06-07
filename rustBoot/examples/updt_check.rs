@@ -14,14 +14,14 @@ fn main() {
     let passive_img_name;
 
     // Load update config
-    let num_read;
+    
     let mut cfg = Vec::new();
     println!("\x1b[5m\x1b[34mloading update config...\x1b[0m");
     let args = env::args().collect::<Vec<_>>();
     let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
 
     let mut file = fs::File::open(args[1]).expect("Need path to updt.txt file as argument");
-    num_read = file.read_to_end(&mut cfg).unwrap();
+    let num_read = file.read_to_end(&mut cfg).unwrap();
 
     // parse `updt.txt` cfg
     if let Ok((_, (active_conf, passive_conf))) = cfgparser::parse_config(

@@ -30,16 +30,16 @@ impl<const M: usize> SerializedBuffer<M> {
         unsafe { core::slice::from_raw_parts(self.buffer.as_ptr() as *const u8, self.len) }
     }
 
-    pub fn as_str<'a>(&'a self) -> Result<&'a str> {
+    pub fn as_str(&self) -> Result<&str> {
         let val = core::str::from_utf8(self.as_slice())
-            .map_err(|val| Error::BadStrEncoding(val))?
+            .map_err(Error::BadStrEncoding)?
             .strip_suffix("\u{0}");
         Ok(val.unwrap())
     }
 
-    pub fn as_str_no_suffix<'a>(&'a self) -> Result<&'a str> {
+    pub fn as_str_no_suffix(&self) -> Result<&str> {
         let val =
-            core::str::from_utf8(self.as_slice()).map_err(|val| Error::BadStrEncoding(val))?;
+            core::str::from_utf8(self.as_slice()).map_err(Error::BadStrEncoding)?;
         Ok(val)
     }
 }
@@ -68,7 +68,7 @@ pub trait Concat {
     fn concat<const N: usize>(self, slice_2: &[u8]) -> SerializedBuffer<N>;
 }
 
-impl<'a> Concat for &'a str {
+impl Concat for &str {
     /// Concatenates a slice of bytes with `self` and converts the result to a [`SerializedBuffer`]  
     ///
     /// Note:
@@ -79,7 +79,7 @@ impl<'a> Concat for &'a str {
         let mut buffer = [0u8; N];
         let slice_1 = self.as_bytes();
 
-        let _ = slice_1
+        slice_1
             .iter()
             .chain(slice_2.iter())
             .enumerate()
@@ -110,8 +110,8 @@ impl<'a> RawNodeConstructor<'a> {
         // calculate `raw node size and count` in bytes. size includes null + padding bytes
         let node_size_in_bytes;
         let count;
-        let name_len = name.as_bytes().len();
-        match (TOKEN_SIZE + name_len) % 2 == 0 {
+        let name_len = name.len();
+        match (TOKEN_SIZE + name_len).is_multiple_of(2) {
             true => {
                 // if even
                 node_size_in_bytes = (TOKEN_SIZE + name_len) + ((TOKEN_SIZE + name_len) % 4);
@@ -245,6 +245,7 @@ impl<'a> AsRef<[u8]> for PropertyValue<'a> {
 ///
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
+#[derive(Default)]
 pub struct RawPropertyConstructor<'a> {
     fdt_prop: u32,
     prop_len: u32,
@@ -252,16 +253,6 @@ pub struct RawPropertyConstructor<'a> {
     prop_val: &'a [u8],
 }
 
-impl Default for RawPropertyConstructor<'_> {
-    fn default() -> Self {
-        Self {
-            fdt_prop: Default::default(),
-            prop_len: Default::default(),
-            name_off: Default::default(),
-            prop_val: Default::default(),
-        }
-    }
-}
 
 impl<'a> RawPropertyConstructor<'a> {
     pub fn new(fdt_prop: u32, prop_len: u32, name_off: u32, prop_val: &'a [u8]) -> Self {
@@ -287,7 +278,7 @@ impl<'a> RawPropertyConstructor<'a> {
         let prop_size_in_bytes;
         let count;
         let prop_val_len = prop_val.as_ref().len();
-        match (TOKEN_SIZE * 3 + prop_val_len) % 2 == 0 {
+        match (TOKEN_SIZE * 3 + prop_val_len).is_multiple_of(2) {
             true => {
                 // if even
                 prop_size_in_bytes =
@@ -548,7 +539,7 @@ mod tests {
 
     #[test]
     fn test_reserved_mem() {
-        assert_reserved_mem(|buf| ReservedMem::from_buf(buf));
+        assert_reserved_mem(ReservedMem::from_buf);
 
         aligned_buf!(buf, [0u32; HEADER_U32_NUM]);
         let mut reserved_mem = ReservedMem::from_buf(buf).unwrap();
@@ -568,7 +559,7 @@ mod tests {
 
     #[test]
     fn test_new_writer() {
-        assert_reserved_mem(|buf| Writer::from_buf(buf));
+        assert_reserved_mem(Writer::from_buf);
 
         aligned_buf!(buf, [0u32; HEADER_U32_NUM]);
         assert_eq!(Writer::from_buf(buf).unwrap_err(), Error::BufferTooSmall);

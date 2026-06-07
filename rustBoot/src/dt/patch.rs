@@ -16,7 +16,7 @@ pub fn make_new_strings_block_with<'a, const M: usize>(
     let header = Reader::get_header(dtb_blob)?;
     let strings_block_len = header.strings_size as usize;
 
-    let offset_list = new_strings_block.make_new_strings_block_with(&name_list)?;
+    let offset_list = new_strings_block.make_new_strings_block_with(name_list)?;
     let new_strings_block = new_strings_block.finalize();
 
     let mut offset_list: [usize; M] = offset_list[..M]
@@ -25,7 +25,7 @@ pub fn make_new_strings_block_with<'a, const M: usize>(
     // add strings_block_len to each offset in the list
     offset_list
         .iter_mut()
-        .for_each(|offset| *offset = *offset + strings_block_len);
+        .for_each(|offset| *offset += strings_block_len);
     Ok((new_strings_block, offset_list))
 }
 
@@ -39,7 +39,7 @@ pub fn make_node_with_props<const N: usize>(
         &mut buf[..],
         node_name,
         offset_list,
-        &prop_val_list,
+        prop_val_list,
     )?;
     Ok((node_size, buf))
 }
@@ -176,7 +176,7 @@ pub fn update_dtb_header(
     new_node_len: usize,
     len_to_be_subtracted: usize,
 ) -> &Header {
-    header.strings_size = header.strings_size + appended_strings_block_len as u32;
+    header.strings_size += appended_strings_block_len as u32;
     header.struct_size = (header.struct_size + new_node_len as u32) - len_to_be_subtracted as u32;
     header.strings_offset =
         (header.strings_offset + new_node_len as u32) - len_to_be_subtracted as u32;
@@ -190,8 +190,8 @@ pub fn get_padded_node_len<'a>(reader: &Reader<'a>, node_name: &str) -> usize {
     let (node, _) = root.path_struct_items(node_name).next().unwrap();
 
     let node_len = TOKEN_SIZE + node.node_name().unwrap().len();
-    let padded_node_len = node_len + (node_len % 4);
-    padded_node_len
+    
+    node_len + (node_len % 4)
 }
 
 pub fn get_node_start_and_end<'a>(
@@ -208,7 +208,7 @@ pub fn get_node_start_and_end<'a>(
 
     let node_len = TOKEN_SIZE + node.node_name().unwrap().len();
     let padded_node_len = node_len + (node_len % 4);
-    let node_start = (node_iter.get_offset() + struct_offset as usize) - padded_node_len;
+    let node_start = (node_iter.get_offset() + struct_offset) - padded_node_len;
     let node_end = node_start + padded_node_len + node_size;
     Ok((node_start, node_end))
 }
@@ -241,7 +241,7 @@ pub fn patch_dtb_node<'a, const N: usize>(
             + patch_bytes_1_slice
             + patch_bytes_2_slice
             + remaining_bytes
-            + strings_block_patch_len as usize;
+            + strings_block_patch_len;
 
     patched_dtb_blob[..header_len].copy_from_slice(header.as_slice());
     patched_dtb_blob[slice_0].copy_from_slice(&dtb_blob[header_len..node_start]);
@@ -269,7 +269,7 @@ pub fn patch_chosen_node<'a, const N: usize>(
 
     let node_name = "chosen";
     let prop_val_list = prop_val_list;
-    let res = make_node_with_props::<200>(node_name, &prop_val_list, &offset_list);
+    let res = make_node_with_props::<200>(node_name, prop_val_list, &offset_list);
     let (patch_bytes_1_len, patch_bytes_1) = match res {
         Ok((patch_bytes_1_len, patch_bytes_1)) => (patch_bytes_1_len, patch_bytes_1),
         Err(e) => panic!("error: {:?}", e),
@@ -308,7 +308,7 @@ pub fn patch_chosen_node<'a, const N: usize>(
             Err(e) => panic!("error: {:?}", e),
         };
 
-    let _ = patch_dtb_node::<N>(
+    patch_dtb_node::<N>(
         &header,
         node_start,
         node_end,
@@ -329,6 +329,6 @@ pub fn correct_endianess(val: u32) -> u32 {
     let byte_2 = val << 8 & 0xff0000;
     let byte_1 = val << 24 & 0xff000000;
 
-    let res = byte_1 | byte_2 | byte_3 | byte_4;
-    res
+    
+    byte_1 | byte_2 | byte_3 | byte_4
 }

@@ -53,12 +53,12 @@ impl<'a> StructItems<'a> {
     }
 
     fn set_offset(&mut self, offset: usize) {
-        self.offset = ((offset + TOKEN_SIZE - 1) / TOKEN_SIZE) * TOKEN_SIZE;
+        self.offset = offset.div_ceil(TOKEN_SIZE) * TOKEN_SIZE;
     }
 
     fn read_begin_node(&mut self) -> Result<StructItem<'a>> {
         let offset = self.offset + TOKEN_SIZE;
-        for (i, chr) in (&self.struct_block[offset..]).iter().enumerate() {
+        for (i, chr) in self.struct_block[offset..].iter().enumerate() {
             if *chr != 0 {
                 continue;
             }
@@ -88,7 +88,7 @@ impl<'a> StructItems<'a> {
         self.assert_enough_struct(offset, desc_size)?;
 
         let desc_be = unsafe {
-            &*((&self.struct_block[offset..]).as_ptr() as *const PropertyDesc) as &PropertyDesc
+            &*(self.struct_block[offset..].as_ptr() as *const PropertyDesc) as &PropertyDesc
         };
         offset += desc_size;
 
@@ -123,7 +123,7 @@ impl<'a> StructItems<'a> {
             self.assert_enough_struct(self.offset, TOKEN_SIZE)?;
 
             let token = u32::from_be(unsafe {
-                *((&self.struct_block[self.offset..]).as_ptr() as *const u32)
+                *(self.struct_block[self.offset..].as_ptr() as *const u32)
             });
 
             if token == TOK_NOP {
@@ -168,7 +168,7 @@ impl<'a> StructItems<'a> {
             } else if item.is_begin_node() {
                 sub_node_end = true;
             } else if item.is_end_node() {
-                if sub_node_end == true {
+                if sub_node_end {
                     sub_node_end = false;
                     continue;
                 } else {
@@ -183,7 +183,7 @@ impl<'a> StructItems<'a> {
     pub fn path_struct_items<'b>(&self, path: &'b str) -> PathStructItems<'a, 'b> {
         PathStructItems {
             error: None,
-            iter: self.clone(),
+            iter: *self,
             path: PathSplit::new(path),
             level: 0,
         }
@@ -194,10 +194,7 @@ impl<'a> Iterator for StructItems<'a> {
     type Item = StructItem<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.next_item() {
-            Ok(item) => Some(item),
-            Err(_) => None,
-        }
+        self.next_item().ok()
     }
 }
 
@@ -277,7 +274,7 @@ impl<'a, 'b> PathStructItems<'a, 'b> {
     /// Advances the iterator and returns a next structure item for a given
     /// path (with a corresponding StructItems-iterator) or error.
     pub fn next_item(&mut self) -> Result<(StructItem<'a>, StructItems<'a>)> {
-        if self.error != None {
+        if self.error.is_some() {
             return Err(self.error.unwrap());
         }
 
@@ -290,13 +287,13 @@ impl<'a, 'b> PathStructItems<'a, 'b> {
                         && !self.path.move_next()
                     {
                         self.level += 1;
-                        return Ok((item, self.iter.clone()));
+                        return Ok((item, self.iter));
                     }
                     self.level += 1;
                 }
                 StructItem::Property { name, .. } => {
                     if self.level == self.path.level() && self.path.component() == name {
-                        return Ok((item, self.iter.clone()));
+                        return Ok((item, self.iter));
                     }
                 }
                 StructItem::EndNode {} => {
@@ -316,10 +313,7 @@ impl<'a, 'b> Iterator for PathStructItems<'a, 'b> {
     type Item = (StructItem<'a>, StructItems<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.next_item() {
-            Ok(item) => Some(item),
-            Err(_) => None,
-        }
+        self.next_item().ok()
     }
 }
 
@@ -336,7 +330,7 @@ pub struct Reader<'a> {
 impl<'a> Reader<'a> {
     #[allow(clippy::cast_ptr_alignment)]
     pub fn get_header(blob: &'a [u8]) -> Result<Header> {
-        if blob.as_ptr() as usize % size_of::<u64>() != 0 {
+        if !(blob.as_ptr() as usize).is_multiple_of(size_of::<u64>()) {
             return Err(Error::UnalignedBlob);
         }
 
@@ -378,7 +372,7 @@ impl<'a> Reader<'a> {
             return Err(Error::OverlappingReservedMem);
         }
 
-        if header.reserved_mem_offset % 8 != 0 {
+        if !header.reserved_mem_offset.is_multiple_of(8) {
             return Err(Error::UnalignedReservedMem);
         }
 
@@ -393,7 +387,7 @@ impl<'a> Reader<'a> {
 
         let index = reserved
             .iter()
-            .position(|ref e| e.address == 0 && e.size == 0);
+            .position(|e| e.address == 0 && e.size == 0);
         if index.is_none() {
             return Err(Error::NoZeroReservedMemEntry);
         }
@@ -402,7 +396,7 @@ impl<'a> Reader<'a> {
     }
 
     fn get_struct_block(blob: &'a [u8], header: &Header) -> Result<&'a [u8]> {
-        if header.struct_offset % 4 != 0 || header.struct_size % 4 != 0 {
+        if !header.struct_offset.is_multiple_of(4) || !header.struct_size.is_multiple_of(4) {
             return Err(Error::UnalignedStruct);
         }
 
@@ -561,7 +555,7 @@ mod tests {
         assert_eq!(entry.address, 0x34567);
         assert_eq!(entry.size, 0x45678);
 
-        assert!(!iter.next().is_some());
+        assert!(iter.next().is_none());
     }
 
     fn assert_node<'a>(iter: &mut StructItems<'a>, name: &str) {

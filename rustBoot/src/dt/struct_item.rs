@@ -139,7 +139,7 @@ impl<'a> StructItem<'a> {
 
         for (i, val) in buf.iter_mut().enumerate().take(len) {
             // unsafe { libc_println!("pointer: {:?}, idx: {:?}", value.as_ptr().add(4 * i as usize) as *const u32, i) };
-            *val = u32::from_be(unsafe { *(value.as_ptr().add(4 * i as usize) as *const u32) });
+            *val = u32::from_be(unsafe { *(value.as_ptr().add(4 * i) as *const u32) });
         }
 
         Ok(&buf[..len])
@@ -152,30 +152,28 @@ mod tests {
 
     #[test]
     fn test_is_begin_node() {
-        assert_eq!(StructItem::BeginNode { name: "" }.is_begin_node(), true);
-        assert_eq!(
-            StructItem::Property {
+        assert!(StructItem::BeginNode { name: "" }.is_begin_node());
+        assert!(
+            !StructItem::Property {
                 name: "",
                 value: &[],
             }
-            .is_begin_node(),
-            false
+            .is_begin_node()
         );
-        assert_eq!(StructItem::EndNode.is_begin_node(), false);
+        assert!(!StructItem::EndNode.is_begin_node());
     }
 
     #[test]
     fn test_is_property() {
-        assert_eq!(StructItem::BeginNode { name: "" }.is_property(), false);
-        assert_eq!(
+        assert!(!StructItem::BeginNode { name: "" }.is_property());
+        assert!(
             StructItem::Property {
                 name: "",
                 value: &[],
             }
-            .is_property(),
-            true
+            .is_property()
         );
-        assert_eq!(StructItem::EndNode.is_property(), false);
+        assert!(!StructItem::EndNode.is_property());
     }
 
     #[test]
@@ -277,19 +275,19 @@ mod tests {
 
         aligned_buf!(tmp, [""; 3]);
         let len = tmp.len();
-        let mut unaligned_buf = &mut tmp[size_of::<usize>() - 1..len - size_of::<usize>() - 1];
+        let unaligned_buf = &mut tmp[size_of::<usize>() - 1..len - size_of::<usize>() - 1];
         assert_eq!(
-            prop.value_str_list(&mut unaligned_buf).unwrap_err(),
+            prop.value_str_list(unaligned_buf).unwrap_err(),
             Error::BufferTooSmall
         );
 
         aligned_buf!(small_buf, [""; 1]);
         assert_eq!(
-            prop.value_str_list(&mut small_buf).unwrap_err(),
+            prop.value_str_list(small_buf).unwrap_err(),
             Error::BufferTooSmall
         );
 
-        assert_eq!(prop.value_str_list(&mut buf).unwrap(), &["part1", "part2"]);
+        assert_eq!(prop.value_str_list(buf).unwrap(), &["part1", "part2"]);
     }
 
     #[test]
@@ -302,7 +300,7 @@ mod tests {
                 name: "property",
                 value: &[1, 2, 3],
             }
-            .value_u32_list(&mut buf)
+            .value_u32_list(buf)
             .unwrap_err(),
             Error::BadU32List
         );
@@ -312,7 +310,7 @@ mod tests {
                 name: "property",
                 value: &[],
             }
-            .value_u32_list(&mut buf)
+            .value_u32_list(buf)
             .unwrap(),
             &[]
         );
@@ -324,15 +322,15 @@ mod tests {
 
         aligned_buf!(tmp, [0u32; 4]);
         let len = tmp.len();
-        let mut unaligned_buf = &mut tmp[1..len - 1];
+        let unaligned_buf = &mut tmp[1..len - 1];
         assert_eq!(
-            prop.value_u32_list(&mut unaligned_buf).unwrap_err(),
+            prop.value_u32_list(unaligned_buf).unwrap_err(),
             Error::BufferTooSmall
         );
 
         aligned_buf!(small_buf, [0u32; 2]);
         assert_eq!(
-            prop.value_u32_list(&mut small_buf).unwrap_err(),
+            prop.value_u32_list(small_buf).unwrap_err(),
             Error::BufferTooSmall
         );
 

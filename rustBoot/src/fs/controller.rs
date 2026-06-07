@@ -338,7 +338,7 @@ where
         }
 
         // Check it's not already open
-        for (_i, dir_table_row) in self.open_dirs.iter().enumerate() {
+        for dir_table_row in self.open_dirs.iter() {
             if *dir_table_row == (volume.idx, dir_entry.cluster) {
                 return Err(Error::DirAlreadyOpen);
             }
@@ -567,8 +567,8 @@ where
         }
 
         match &volume.volume_type {
-            VolumeType::Fat(fat) => return fat.delete_directory_entry(self, dir, name),
-        };
+            VolumeType::Fat(fat) => fat.delete_directory_entry(self, dir, name),
+        }
     }
 
     /// Populates a static cache with the `file allocation table` contents (of the supplied volume).
@@ -658,7 +658,7 @@ where
         let mut block_read_counter = 0;
         let mut starting_cluster = file.starting_cluster;
         let mut file_blocks;
-        if (file.length % Block::LEN as u32) == 0 {
+        if file.length.is_multiple_of(Block::LEN as u32) {
             file_blocks = file.length / Block::LEN as u32;
         } else {
             file_blocks = (file.length / Block::LEN as u32) + 1;
@@ -682,11 +682,7 @@ where
                 .read(Block::from_array_slice(blocks), block_idx, "read_multi")
                 .map_err(Error::DeviceError)?;
 
-            file_blocks = match file_blocks.checked_sub(blocks_to_read) {
-                // checked integer subtraction
-                Some(val) => val,
-                None => 0,
-            };
+            file_blocks = file_blocks.saturating_sub(blocks_to_read);
             let next_cluster = match &volume.volume_type {
                 VolumeType::Fat(fat) => {
                     match fat.next_cluster_in_fat_cache(starting_cluster + contiguous_cluster_count)

@@ -1,5 +1,7 @@
 //! A nom-based config parser for rustBoot, compatible with `no_std` environments.
 
+#![allow(mismatched_lifetime_syntaxes)]
+
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -75,7 +77,7 @@ fn config_keys(input: &str) -> IResult<&str, ConfigKeys> {
         .map(|(next_input, res)| (next_input, res.into()))
 }
 
-fn image_name(input: &str) -> IResult<&str, ImageLabel> {
+fn image_name(input: &str) -> IResult<&str, ImageLabel<'_>> {
     preceded(
         tag("image_name="),
         tuple((alphanumericwithhypen, tag(".itb"))),
@@ -118,7 +120,7 @@ fn ready_for_update(input: &str) -> IResult<&str, bool> {
     })
 }
 
-fn active_config(input: &str) -> IResult<&str, ActiveConf> {
+fn active_config(input: &str) -> IResult<&str, ActiveConf<'_>> {
     tuple((
         multispace0,
         config_keys,
@@ -141,7 +143,7 @@ fn active_config(input: &str) -> IResult<&str, ActiveConf> {
     })
 }
 
-fn passive_config(input: &str) -> IResult<&str, PassiveConf> {
+fn passive_config(input: &str) -> IResult<&str, PassiveConf<'_>> {
     tuple((
         multispace0,
         config_keys,
@@ -196,7 +198,7 @@ fn passive_config(input: &str) -> IResult<&str, PassiveConf> {
 ///
 /// **note:** for an example of what constitutes a `valid config file`, please see the `updt.txt`
 /// in the rpi4 example.
-pub fn parse_config(input: &str) -> IResult<&str, (ActiveConf, PassiveConf)> {
+pub fn parse_config(input: &str) -> IResult<&str, (ActiveConf<'_>, PassiveConf<'_>)> {
     tuple((active_config, passive_config))(input)
 }
 

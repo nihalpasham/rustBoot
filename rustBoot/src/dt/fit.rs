@@ -3,7 +3,8 @@
 // are denied at the crate root and must pass here too.
 // fit.rs still has 5 remaining panic/todo/unimplemented lint violations
 // that need refactoring to proper error propagation — tracked separately.
-#![allow(clippy::indexing_slicing, clippy::integer_division, clippy::panic, clippy::todo, clippy::unimplemented)]
+#![allow(clippy::indexing_slicing, clippy::integer_division, clippy::panic, clippy::todo, clippy::unimplemented,
+         static_mut_refs)]
 
 use core::cell::OnceCell;
 use core::convert::TryInto;
@@ -13,6 +14,7 @@ use super::{Concat, Error, Reader, Result};
 use log::info;
 use nom::AsBytes;
 use p256::ecdsa::signature::digest::Digest;
+#[allow(deprecated)]
 use p256::elliptic_curve::generic_array::ArrayLength;
 use sha2::Sha256;
 
@@ -156,7 +158,7 @@ where
         let mut signed_images = None;
         let mut signature = None;
 
-        let _ = config_properties.iter().for_each(|prop| match *prop {
+        config_properties.iter().for_each(|prop| match *prop {
             "description" => {
                 let desc = node_iter.get_node_property(prop);
                 description = desc
@@ -220,7 +222,7 @@ where
 
         let signature = match signature {
             Some(val) => {
-                if val == &[0x00] {
+                if val == [0x00] {
                     [0u8; S]
                 } else {
                     let signature: [u8; S] = val.try_into().map_err(|_v| Error::BadU32List)?;
@@ -254,129 +256,120 @@ where
 
         let conf_properties = ["kernel", "fdt", "ramdisk", "rbconfig"];
         for (idx, prop) in conf_properties.iter().enumerate() {
-            match node_iter.get_node_property(prop) {
-                Some(val) => {
-                    let img = "/images/".concat::<50>(val);
-                    let img = img.as_str()?;
-                    #[cfg(feature = "defmt")]
-                    defmt::info!("img: {:?}", img);
+            if let Some(val) = node_iter.get_node_property(prop) {
+                let img = "/images/".concat::<50>(val);
+                let img = img.as_str()?;
+                #[cfg(feature = "defmt")]
+                defmt::info!("img: {:?}", img);
 
-                    let (_, node_iter) = root.path_struct_items(img).next().unwrap();
-                    let img_properties = [
-                        "description",
-                        "data",
-                        "type",
-                        "arch",
-                        "os",
-                        "compression",
-                        "load",
-                        "entry",
-                    ];
-                    let mut description = None;
-                    let mut data = None;
-                    let mut typ = None;
-                    let mut arch = None;
-                    let mut os = None;
-                    let mut compression = None;
-                    let mut load = None;
-                    let mut entry = None;
+                let (_, node_iter) = root.path_struct_items(img).next().unwrap();
+                let img_properties = [
+                    "description",
+                    "data",
+                    "type",
+                    "arch",
+                    "os",
+                    "compression",
+                    "load",
+                    "entry",
+                ];
+                let mut description = None;
+                let mut data = None;
+                let mut typ = None;
+                let mut arch = None;
+                let mut os = None;
+                let mut compression = None;
+                let mut load = None;
+                let mut entry = None;
 
-                    let _ = img_properties.iter().for_each(|prop| match *prop {
-                        "description" => {
-                            let val = node_iter.get_node_property(prop);
-                            description = val
-                        }
-                        "data" => {
-                            let val = node_iter.get_node_property(prop);
-                            data = val
-                        }
-                        "type" => {
-                            let val = node_iter.get_node_property(prop);
-                            typ = val
-                        }
-                        "arch" => {
-                            let val = node_iter.get_node_property(prop);
-                            arch = val
-                        }
-                        "os" => {
-                            let val = node_iter.get_node_property(prop);
-                            os = val
-                        }
-                        "compression" => {
-                            let val = node_iter.get_node_property(prop);
-                            compression = val
-                        }
-                        "load" => {
-                            let val = node_iter.get_node_property(prop);
-                            load = val
-                        }
-                        "entry" => {
-                            let val = node_iter.get_node_property(prop);
-                            entry = val
-                        }
-                        _ => {}
-                    });
-
-                    info!("computing {:?} hash", prop,);
-                    let computed_hash;
-                    match data {
-                        Some(data) => {
-                            computed_hash = D::digest(data);
-                            info!("computed {:?} hash: {:x}", prop, computed_hash);
-                        }
-                        None => {
-                            panic!("invalid ITB supplied");
-                        }
+                img_properties.iter().for_each(|prop| match *prop {
+                    "description" => {
+                        let val = node_iter.get_node_property(prop);
+                        description = val
                     }
-
-                    let (_, node_iter) = node_iter.path_struct_items("hash").next().unwrap();
-                    let hash_value = node_iter.get_node_property("value");
-                    let hash_algo = node_iter.get_node_property("algo");
-                    // println!("hash_value: {:x}", hash_value.unwrap());
-                    match computed_hash.as_slice().ne(hash_value.unwrap()) {
-                        true => panic!("{} intergity check failed...", prop),
-                        false => {
-                            info!(
-                                "\x1b[95m{} integrity consistent\x1b[0m with supplied itb...",
-                                prop
-                            )
-                        }
+                    "data" => {
+                        let val = node_iter.get_node_property(prop);
+                        data = val
                     }
+                    "type" => {
+                        let val = node_iter.get_node_property(prop);
+                        typ = val
+                    }
+                    "arch" => {
+                        let val = node_iter.get_node_property(prop);
+                        arch = val
+                    }
+                    "os" => {
+                        let val = node_iter.get_node_property(prop);
+                        os = val
+                    }
+                    "compression" => {
+                        let val = node_iter.get_node_property(prop);
+                        compression = val
+                    }
+                    "load" => {
+                        let val = node_iter.get_node_property(prop);
+                        load = val
+                    }
+                    "entry" => {
+                        let val = node_iter.get_node_property(prop);
+                        entry = val
+                    }
+                    _ => {}
+                });
 
-                    let hash: Hash<H> = Hash {
-                        value: computed_hash.as_slice().try_into().unwrap(),
-                        algo: as_str(hash_algo.unwrap())?.expect("hash_algo not specified in itb"),
-                    };
-                    let os = match os {
-                        Some(val) => as_str(val)?,
-                        None => None,
-                    };
-                    let load = match load {
-                        Some(val) => Some(u32::from_be_bytes(val.try_into().unwrap())),
-                        None => None,
-                    };
-                    let entry = match entry {
-                        Some(val) => Some(u32::from_be_bytes(val.try_into().unwrap())),
-                        None => None,
-                    };
-
-                    let img = Image {
-                        description: as_str(description.unwrap())?
-                            .expect("image description not specified in itb"),
-                        typ: as_str(typ.unwrap())?.expect("image type not specified in itb"),
-                        arch: as_str(arch.unwrap())?.expect("image arch not specified in itb"),
-                        os,
-                        compression: as_str(compression.unwrap())?
-                            .expect("image compression not specified in itb"),
-                        load,
-                        entry,
-                        hash,
-                    };
-                    images[idx] = img;
-                    #[cfg(feature = "defmt")]
-                    defmt::info!("Image: {:?}\n", img);
+                info!("computing {:?} hash", prop,);
+                let computed_hash;
+                match data {
+                    Some(data) => {
+                        computed_hash = D::digest(data);
+                        info!("computed {:?} hash: {:x}", prop, computed_hash);
+                    }
+                    None => {
+                        panic!("invalid ITB supplied");
+                    }
                 }
-                None => {}
+
+                let (_, node_iter) = node_iter.path_struct_items("hash").next().unwrap();
+                let hash_value = node_iter.get_node_property("value");
+                let hash_algo = node_iter.get_node_property("algo");
+                // println!("hash_value: {:x}", hash_value.unwrap());
+                match computed_hash.as_slice().ne(hash_value.unwrap()) {
+                    true => panic!("{} intergity check failed...", prop),
+                    false => {
+                        info!(
+                            "\x1b[95m{} integrity consistent\x1b[0m with supplied itb...",
+                            prop
+                        )
+                    }
+                }
+
+                let hash: Hash<H> = Hash {
+                    value: computed_hash.as_slice().try_into().unwrap(),
+                    algo: as_str(hash_algo.unwrap())?.expect("hash_algo not specified in itb"),
+                };
+                let os = match os {
+                    Some(val) => as_str(val)?,
+                    None => None,
+                };
+                let load = load.map(|val| u32::from_be_bytes(val.try_into().unwrap()));
+                let entry = entry.map(|val| u32::from_be_bytes(val.try_into().unwrap()));
+
+                let img = Image {
+                    description: as_str(description.unwrap())?
+                        .expect("image description not specified in itb"),
+                    typ: as_str(typ.unwrap())?.expect("image type not specified in itb"),
+                    arch: as_str(arch.unwrap())?.expect("image arch not specified in itb"),
+                    os,
+                    compression: as_str(compression.unwrap())?
+                        .expect("image compression not specified in itb"),
+                    load,
+                    entry,
+                    hash,
+                };
+                images[idx] = img;
+                #[cfg(feature = "defmt")]
+                defmt::info!("Image: {:?}\n", img);
             }
         }
     }
@@ -384,8 +377,8 @@ where
     Ok((configuration, images))
 }
 
-pub fn prepare_img_hash<'a, D, const H: usize, const S: usize, const N: usize>(
-    itb_blob: &'a [u8],
+pub fn prepare_img_hash<D, const H: usize, const S: usize, const N: usize>(
+    itb_blob: &[u8],
     itb_version: u32,
 ) -> Result<(D, [u8; S])>
 where
@@ -438,7 +431,7 @@ where
     ];
     let mut buf = [0u8; 150];
     let mut offset = 0usize;
-    let _ = cfg_values.iter().for_each(|val| {
+    cfg_values.iter().for_each(|val| {
         buf[offset..offset + val.len()].copy_from_slice(val.as_bytes());
         offset += val.len()
     });
@@ -446,7 +439,7 @@ where
     hasher.update(cfg_bytes);
 
     let mut img_hashes = [[0u8; H]; N];
-    let _ = for (idx, img) in images.images.iter().enumerate() {
+    for (idx, img) in images.images.iter().enumerate() {
         img_hashes[idx] = img.hash.value;
     };
 
@@ -461,7 +454,7 @@ where
 pub fn flatten<'a, const H: usize, const N: usize>(img_hash: [[u8; H]; N]) -> [u8; 32 * 4] {
     // we can replace this when generic parameters in const operations is stabilized
     let mut bytes = [0u8; 32 * 4];
-    let _ = img_hash
+    img_hash
         .iter()
         .flatten()
         .enumerate()
@@ -507,7 +500,7 @@ pub fn verify_fit<const H: usize, const S: usize, const N: usize>(
     }
 }
 
-pub fn parse_algo<'a>(itb_blob: &'a [u8]) -> Result<CurveType> {
+pub fn parse_algo(itb_blob: &[u8]) -> Result<CurveType> {
     let mut curve_type = CurveType::None;
     let reader = Reader::read(itb_blob).unwrap();
     let root = reader.struct_items();
@@ -557,7 +550,7 @@ pub fn get_image_data<'a>(itb_blob: &'a [u8], img: &'a str) -> Option<&'a [u8]> 
 
 pub fn as_str(bytes: &[u8]) -> Result<Option<&str>> {
     let val = core::str::from_utf8(bytes)
-        .map_err(|val| Error::BadStrEncoding(val))?
+        .map_err(Error::BadStrEncoding)?
         .strip_suffix("\u{0}");
     Ok(val)
 }

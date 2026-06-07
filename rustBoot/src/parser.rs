@@ -1,3 +1,7 @@
+#![allow(clippy::indexing_slicing, clippy::needless_lifetimes, clippy::redundant_slicing,
+         clippy::extra_unused_lifetimes)]
+#![allow(clippy::legacy_numeric_constants)]
+
 use core::usize;
 
 use crate::constants::*;
@@ -158,6 +162,8 @@ impl Tags {
     }
 }
 
+
+
 use nom::bytes::complete::take_while;
 use nom::bytes::complete::{tag, take};
 use nom::{
@@ -179,7 +185,7 @@ pub fn check_for_padding(input: &[u8]) -> IResult<&[u8], &[u8]> {
     Ok(res)
 }
 
-pub fn extract_version<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_version(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (input, _) = check_for_eof(input)?;
     let (input, _) = check_for_padding(input)?;
     let (remainder, version) = take(8u32)(input)?;
@@ -193,7 +199,7 @@ pub fn extract_version<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     }
 }
 
-pub fn extract_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_timestamp(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (remainder, _) = extract_version(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
@@ -208,7 +214,7 @@ pub fn extract_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     }
 }
 
-pub fn extract_img_type<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_img_type(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (remainder, _) = extract_timestamp(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
@@ -223,7 +229,7 @@ pub fn extract_img_type<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     }
 }
 
-pub fn extract_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_digest(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (remainder, _) = extract_img_type(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
@@ -234,13 +240,13 @@ pub fn extract_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     if (digest_check == Tags::Digest256.get_id() && len == SHA256_DIGEST_SIZE)
         || (digest_check == Tags::Digest384.get_id() && len == SHA384_DIGEST_SIZE)
     {
-        Ok((remainder, &digest[..]))
+        Ok((remainder, digest))
     } else {
         Err(Err::Error(Error::new(input, ErrorKind::Tag)))
     }
 }
 
-pub fn extract_pubkey_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_pubkey_digest(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (remainder, _) = extract_digest(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
@@ -251,13 +257,13 @@ pub fn extract_pubkey_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]>
     if (digest_check == Tags::PubkeyDigest.get_id() && len == SHA256_DIGEST_SIZE)
         || (digest_check == Tags::PubkeyDigest.get_id() && len == SHA384_DIGEST_SIZE)
     {
-        Ok((remainder, &digest[..]))
+        Ok((remainder, digest))
     } else {
         Err(Err::Error(Error::new(input, ErrorKind::Tag)))
     }
 }
 
-pub fn extract_signature<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_signature(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (remainder, _) = extract_pubkey_digest(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
@@ -266,7 +272,7 @@ pub fn extract_signature<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, signature) = take(len)(remainder)?;
     let (_, signature_check) = take(2u32)(typelen)?;
     if signature_check == Tags::Signature.get_id() && len == ECC_SIGNATURE_SIZE {
-        Ok((remainder, &signature[..]))
+        Ok((remainder, signature))
     } else {
         Err(Err::Error(Error::new(input, ErrorKind::Tag)))
     }
