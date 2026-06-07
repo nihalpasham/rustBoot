@@ -1,19 +1,21 @@
 use crate::{Result, RustbootError};
 use core::convert::TryFrom;
 use core::ops::Add;
+use ecdsa::signature::DigestVerifier;
+use sha2::digest::{Digest, FixedOutput};
 
 #[cfg(feature = "secp256k1")]
 use k256::{
-    ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
+    ecdsa::{Signature, VerifyingKey},
     elliptic_curve::consts::U32,
+    Secp256k1,
 };
 #[cfg(feature = "nistp256")]
-#[allow(deprecated)]
 use p256::{
-    ecdsa::signature::digest::Digest,
-    ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
+    ecdsa::{Signature, VerifyingKey},
     elliptic_curve::consts::U32,
-    elliptic_curve::{generic_array::GenericArray, FieldSize},
+    elliptic_curve::generic_array::typenum::U64,
+    elliptic_curve::generic_array::GenericArray,
     EncodedPoint, NistP256,
 };
 
@@ -21,13 +23,9 @@ use p256::{
 #[cfg(feature = "nistp256")]
 pub const HDR_IMG_TYPE_AUTH: u16 = 0x0200;
 // ECC-SECPK1 constants
-#[cfg(feature = "secp256k1")]
-pub const HDR_IMG_TYPE_AUTH: u16 = 0x0000;
-// ED25519 constants
 #[cfg(feature = "ed25519")]
 pub const HDR_IMG_TYPE_AUTH: u16 = 0x0100;
 
-/// A type to represent an ECDSA-SHA256 Signature
 #[cfg(feature = "nistp256")]
 pub struct NistP256Signature {
     pub verify_key: VerifyingKey,
@@ -35,24 +33,16 @@ pub struct NistP256Signature {
 
 #[cfg(feature = "nistp256")]
 impl NistP256Signature {
-    /// Verifies an ECDSA signature. This method is intended to take as
-    /// argument, a pre-updated [`Digest`] instance thats needs to be finalized.
-    ///
-    /// Returns a `bool` if successful else an error.
-    pub fn verify<D: Digest<OutputSize = U32>>(self, digest: D, signature: &[u8]) -> Result<bool> {
-        let res = self
-            .verify_key
-            .verify_digest(
-                digest,
-                &Signature::try_from(signature).map_err(|_| RustbootError::BadSignature)?,
-            )
-            .is_ok();
-
+    pub fn verify<D>(self, digest: D, signature: &[u8]) -> Result<bool>
+    where
+        D: Digest + FixedOutput<OutputSize = U32>,
+    {
+        let sig = Signature::try_from(signature).map_err(|_| RustbootError::BadSignature)?;
+        let res = <ecdsa::VerifyingKey<NistP256> as ecdsa::signature::DigestVerifier<D, ecdsa::Signature<NistP256>>>::verify_digest(&self.verify_key, digest, &sig).is_ok();
         Ok(res)
     }
 }
 
-/// A type to represent an ECDSA-SHA256 Signature
 #[cfg(feature = "secp256k1")]
 pub struct Secp256k1Signature {
     pub verify_key: VerifyingKey,
@@ -60,28 +50,19 @@ pub struct Secp256k1Signature {
 
 #[cfg(feature = "secp256k1")]
 impl Secp256k1Signature {
-    /// Verifies an ECDSA signature. This method is intended to take as
-    /// argument, a pre-updated [`Digest`] instance thats needs to be finalized.
-    ///
-    /// Returns a `bool` if successful else an error.
-    pub fn verify<D: Digest<OutputSize = U32>>(self, digest: D, signature: &[u8]) -> Result<bool> {
-        let res = self
-            .verify_key
-            .verify_digest(
-                digest,
-                &Signature::try_from(signature).map_err(|_| RustbootError::BadSignature)?,
-            )
-            .is_ok();
+    pub fn verify<D>(self, digest: D, signature: &[u8]) -> Result<bool>
+    where
+        D: Digest + FixedOutput<OutputSize = U32>,
+    {
+        let sig = Signature::try_from(signature).map_err(|_| RustbootError::BadSignature)?;
+        let res = <ecdsa::VerifyingKey<k256::Secp256k1> as ecdsa::signature::DigestVerifier<D, ecdsa::Signature<k256::Secp256k1>>>::verify_digest(&self.verify_key, digest, &sig).is_ok();
         Ok(res)
     }
 }
 
-/// Performs the signature verification; take as argument, a pre-updated
-/// [`Digest`] instance thats needs to be finalized and the associated signature
-/// to be verified.
 pub fn verify_ecc256_signature<D, const N: u16>(digest: D, signature: &[u8]) -> Result<bool>
 where
-    D: Digest<OutputSize = U32>,
+    D: Digest + FixedOutput<OutputSize = U32>,
 {
     match N {
         #[cfg(feature = "nistp256")]
@@ -135,28 +116,20 @@ pub enum VerifyingKeyTypes {
     VKeyNistP384,
 }
 
-/// Imports a raw public key embedded in the bootloader.
-///
-/// *Note: this function can be extended to add support for HW
-/// secure elements*
 pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
     match pk {
         #[cfg(feature = "secp256k1")]
         PubkeyTypes::Secp256k1 => {
-            #[allow(deprecated)]
             let embedded_pubkey = [0u8; 64];
-            #[allow(deprecated)]
-            let untagged_bytes: &GenericArray<u8, <FieldSize<Secp256k1> as Add>::Output> =
-                GenericArray::from_slice(&embedded_pubkey[..]);
+            let untagged_bytes: &GenericArray<u8, U64> =
+                GenericArray::<u8, U64>::from_slice(&embedded_pubkey[..]);
             let sec1_encoded_pubkey = EncodedPoint::from_untagged_bytes(untagged_bytes);
-            // `from_encoded_point` is fallible i.e. it will check to see if the point (i.e. pubkey) is on the curve.
             let secp256k1_vk = VerifyingKey::from_encoded_point(&sec1_encoded_pubkey)
                 .map_err(|_| RustbootError::ECCError);
             Ok(VerifyingKeyTypes::VKey256k1(secp256k1_vk?))
         }
         #[cfg(feature = "nistp256")]
         PubkeyTypes::NistP256 => {
-            #[allow(deprecated)]
             let embedded_pubkey = [
                 0x74, 0xBF, 0x5D, 0xE9, 0xF8, 0x69, 0x69, 0x44, 0x35, 0xAE, 0xB7, 0x39, 0x6F, 0xA1,
                 0x40, 0x11, 0xB6, 0xA1, 0x7F, 0x2D, 0x8A, 0x86, 0xB9, 0x58, 0xBC, 0x4A, 0x51, 0xF7,
@@ -164,11 +137,9 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
                 0x34, 0x23, 0xFE, 0x63, 0x05, 0x15, 0x30, 0x43, 0xBB, 0x9E, 0x75, 0x63, 0xE0, 0x41,
                 0x6A, 0x70, 0xCE, 0x16, 0x0A, 0x60, 0x2A, 0x38,
             ];
-            #[allow(deprecated)]
-            let untagged_bytes: &GenericArray<u8, <FieldSize<NistP256> as Add>::Output> =
-                GenericArray::from_slice(&embedded_pubkey[..]);
+            let untagged_bytes: &GenericArray<u8, U64> =
+                GenericArray::<u8, U64>::from_slice(&embedded_pubkey[..]);
             let sec1_encoded_pubkey = EncodedPoint::from_untagged_bytes(untagged_bytes);
-            // `from_encoded_point` is fallible i.e. it will check to see if the point (i.e. pubkey) is on the curve.
             let p256_vk = VerifyingKey::from_encoded_point(&sec1_encoded_pubkey)
                 .map_err(|_| RustbootError::ECCError);
             Ok(VerifyingKeyTypes::VKeyNistP256(p256_vk?))

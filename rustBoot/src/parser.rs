@@ -168,29 +168,29 @@ use nom::bytes::complete::take_while;
 use nom::bytes::complete::{tag, take};
 use nom::{
     error::{Error, ErrorKind},
-    Err, IResult,
+    Err, IResult, Parser,
 };
 
 // use libc_print::libc_println;
 
 pub fn check_for_eof(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    match tag::<_, _, Error<&[u8]>>(Tags::EndOfHeader.get_id())(input) {
+    match tag::<&[u8], &[u8], Error<&[u8]>>(Tags::EndOfHeader.get_id()).parse(input) {
         Ok((_remainder, _eof)) => Err(Err::Error(Error::new(input, ErrorKind::Eof))),
         Err(_e) => Ok((input, &[])),
     }
 }
 
 pub fn check_for_padding(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    let res = take_while::<_, _, Error<&[u8]>>(|pad_byte| pad_byte == 0xff)(input)?;
+    let res = take_while(|pad_byte: u8| pad_byte == 0xff).parse(input)?;
     Ok(res)
 }
 
 pub fn extract_version(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (input, _) = check_for_eof(input)?;
     let (input, _) = check_for_padding(input)?;
-    let (remainder, version) = take(8u32)(input)?;
-    let (lengthvalue, version_check) = take(2u32)(version)?;
-    let (value, version_len) = take(2u32)(lengthvalue)?;
+    let (remainder, version) = take(8usize).parse(input)?;
+    let (lengthvalue, version_check) = take(2usize).parse(version)?;
+    let (value, version_len) = take(2usize).parse(lengthvalue)?;
     let len = (version_len[0] as u16 | (version_len[1] as u16) << 8) as usize;
     if version_check == Tags::Version.get_id() && len == HDR_VERSION_LEN {
         Ok((remainder, value))
@@ -203,9 +203,9 @@ pub fn extract_timestamp(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (remainder, _) = extract_version(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
-    let (remainder, timestamp) = take(12u32)(remainder)?;
-    let (lengthvalue, timestamp_check) = take(2u32)(timestamp)?;
-    let (value, timestamp_len) = take(2u32)(lengthvalue)?;
+    let (remainder, timestamp) = take(12usize).parse(remainder)?;
+    let (lengthvalue, timestamp_check) = take(2usize).parse(timestamp)?;
+    let (value, timestamp_len) = take(2usize).parse(lengthvalue)?;
     let len = (timestamp_len[0] as u16 | (timestamp_len[1] as u16) << 8) as usize;
     if timestamp_check == Tags::TimeStamp.get_id() && len == HDR_TIMESTAMP_LEN {
         Ok((remainder, value))
@@ -218,9 +218,9 @@ pub fn extract_img_type(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (remainder, _) = extract_timestamp(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
-    let (remainder, img_type) = take(6u32)(remainder)?;
-    let (lengthvalue, img_type_check) = take(2u32)(img_type)?;
-    let (value, timestamp_len) = take(2u32)(lengthvalue)?;
+    let (remainder, img_type) = take(6usize).parse(remainder)?;
+    let (lengthvalue, img_type_check) = take(2usize).parse(img_type)?;
+    let (value, timestamp_len) = take(2usize).parse(lengthvalue)?;
     let len = (timestamp_len[0] as u16 | (timestamp_len[1] as u16) << 8) as usize;
     if img_type_check == Tags::ImgType.get_id() && len == HDR_IMG_TYPE_LEN {
         Ok((remainder, value))
@@ -233,10 +233,10 @@ pub fn extract_digest(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (remainder, _) = extract_img_type(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
-    let (remainder, typelen) = take(4u32)(remainder)?;
+    let (remainder, typelen) = take(4usize).parse(remainder)?;
     let len = (typelen[2] as u16 | (typelen[3] as u16) << 8) as usize;
-    let (remainder, digest) = take(len)(remainder)?;
-    let (_, digest_check) = take(2u32)(typelen)?;
+    let (remainder, digest) = take(len).parse(remainder)?;
+    let (_, digest_check) = take(2usize).parse(typelen)?;
     if (digest_check == Tags::Digest256.get_id() && len == SHA256_DIGEST_SIZE)
         || (digest_check == Tags::Digest384.get_id() && len == SHA384_DIGEST_SIZE)
     {
@@ -250,10 +250,10 @@ pub fn extract_pubkey_digest(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (remainder, _) = extract_digest(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
-    let (remainder, typelen) = take(4u32)(remainder)?;
+    let (remainder, typelen) = take(4usize).parse(remainder)?;
     let len = (typelen[2] as u16 | (typelen[3] as u16) << 8) as usize;
-    let (remainder, digest) = take(len)(remainder)?;
-    let (_, digest_check) = take(2u32)(typelen)?;
+    let (remainder, digest) = take(len).parse(remainder)?;
+    let (_, digest_check) = take(2usize).parse(typelen)?;
     if (digest_check == Tags::PubkeyDigest.get_id() && len == SHA256_DIGEST_SIZE)
         || (digest_check == Tags::PubkeyDigest.get_id() && len == SHA384_DIGEST_SIZE)
     {
@@ -267,10 +267,10 @@ pub fn extract_signature(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let (remainder, _) = extract_pubkey_digest(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
-    let (remainder, typelen) = take(4u32)(remainder)?;
+    let (remainder, typelen) = take(4usize).parse(remainder)?;
     let len = (typelen[2] as u16 | (typelen[3] as u16) << 8) as usize;
-    let (remainder, signature) = take(len)(remainder)?;
-    let (_, signature_check) = take(2u32)(typelen)?;
+    let (remainder, signature) = take(len).parse(remainder)?;
+    let (_, signature_check) = take(2usize).parse(typelen)?;
     if signature_check == Tags::Signature.get_id() && len == ECC_SIGNATURE_SIZE {
         Ok((remainder, signature))
     } else {

@@ -122,8 +122,8 @@ pub fn parse_fit<D, const H: usize, const S: usize, const N: usize>(
 ) -> Result<(Config<S>, Images<H, N>)>
 where
     D: Digest,
-    <D as Digest>::OutputSize: Add,
-    <<D as Digest>::OutputSize as Add>::Output: ArrayLength<u8>,
+    D::OutputSize: Add,
+    <D::OutputSize as Add>::Output: ArrayLength<u8>,
 {
     let mut configuration = Config::default();
     let mut images = [Image::default(); N];

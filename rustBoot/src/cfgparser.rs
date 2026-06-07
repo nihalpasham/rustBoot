@@ -7,9 +7,9 @@ use nom::{
     bytes::complete::tag,
     character::complete::{digit0, multispace0, multispace1},
     combinator::opt,
-    error::ErrorKind,
+    error::{Error, ErrorKind},
     sequence::{preceded, separated_pair, tuple},
-    AsChar, IResult, InputTakeAtPosition,
+    IResult, Parser,
 };
 
 use core::str::FromStr;
@@ -73,7 +73,7 @@ impl From<&str> for UpdateStatus {
 }
 
 fn config_keys(input: &str) -> IResult<&str, ConfigKeys> {
-    alt((tag("[active]"), tag("[passive]")))(input)
+    alt((tag("[active]"), tag("[passive]"))).parse(input)
         .map(|(next_input, res)| (next_input, res.into()))
 }
 
@@ -81,7 +81,7 @@ fn image_name(input: &str) -> IResult<&str, ImageLabel<'_>> {
     preceded(
         tag("image_name="),
         tuple((alphanumericwithhypen, tag(".itb"))),
-    )(input)
+    ).parse(input)
 }
 
 #[allow(clippy::expect_used)]
@@ -89,7 +89,7 @@ fn image_version(input: &str) -> IResult<&str, u32> {
     preceded(
         tag("image_version="),
         separated_pair(tag("ts"), tag("_"), tuple((digit0, multispace1))),
-    )(input)
+    ).parse(input)
     .map(|(next_input, res)| {
         (
             next_input,
@@ -102,7 +102,7 @@ fn update_status(input: &str) -> IResult<&str, UpdateStatus> {
     preceded(
         tag("update_status="),
         alt((tag("updating"), tag("testing"), tag("success"))),
-    )(input)
+    ).parse(input)
     .map(|(next_input, res)| (next_input, res.into()))
 }
 
@@ -111,7 +111,7 @@ fn ready_for_update(input: &str) -> IResult<&str, bool> {
     preceded(
         tag("ready_for_update_flag="),
         alt((tag("true"), tag("false"))),
-    )(input)
+    ).parse(input)
     .map(|(next_input, res)| {
         (
             next_input,
@@ -129,7 +129,7 @@ fn active_config(input: &str) -> IResult<&str, ActiveConf<'_>> {
         multispace1,
         image_version,
         // multispace1,
-    ))(input)
+    )).parse(input)
     .map(|(next_input, res)| {
         let (_crlf0, active_config, _crlf1, image_name, _crlf2, image_version) = res;
         (
@@ -156,7 +156,7 @@ fn passive_config(input: &str) -> IResult<&str, PassiveConf<'_>> {
         // multispace1,
         opt(update_status),
         multispace0,
-    ))(input)
+    )).parse(input)
     .map(|(next_input, res)| {
         let (
             _crlf0,
@@ -199,27 +199,22 @@ fn passive_config(input: &str) -> IResult<&str, PassiveConf<'_>> {
 /// **note:** for an example of what constitutes a `valid config file`, please see the `updt.txt`
 /// in the rpi4 example.
 pub fn parse_config(input: &str) -> IResult<&str, (ActiveConf<'_>, PassiveConf<'_>)> {
-    tuple((active_config, passive_config))(input)
+    tuple((active_config, passive_config)).parse(input)
 }
 
-fn alphanumericwithhypen<T>(i: T) -> IResult<T, T>
-where
-    T: InputTakeAtPosition,
-    <T as InputTakeAtPosition>::Item: AsChar,
-{
-    i.split_at_position1_complete(
-        |item| {
-            let char_item = item.as_char();
-            char_item != '-' && !char_item.is_alphanum()
-        },
-        ErrorKind::AlphaNumeric,
-    )
+fn alphanumericwithhypen(i: &str) -> IResult<&str, &str> {
+    let bytes = i.as_bytes();
+    let pred = |&c: &u8| c != b'-' && !c.is_ascii_alphanumeric();
+    match bytes.iter().position(pred) {
+        Some(pos) if pos > 0 => Ok((&i[pos..], &i[..pos])),
+        _ => Err(nom::Err::Error(Error::new(i, ErrorKind::AlphaNumeric))),
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use libc_print::libc_println;
+    use super::*;
     use nom::{error::Error, Err};
 
     #[test]
