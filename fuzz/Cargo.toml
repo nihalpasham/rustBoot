@@ -9,7 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-rustBoot = {path = "..", features = ["nrf52840"]}
+rustBoot = {path = "../rustBoot", features = ["nrf52840"]}
 
 # Prevent this from interfering with workspaces
 [workspace]
@@ -21,3 +21,11 @@ path = "fuzz_targets/image_header_parser.rs"
 [[bin]]
 name = "config_parser"
 path = "fuzz_targets/config_parser.rs"
+
+[[bin]]
+name = "fit_parser"
+path = "fuzz_targets/fit_parser.rs"
+
+[[bin]]
+name = "dtb_parser"
+path = "fuzz_targets/dtb_parser.rs"
