@@ -98,10 +98,14 @@ impl<'a> StructItems<'a> {
 
         let desc_bytes = &self.struct_block[offset..offset + desc_size];
         let value_size = u32::from_be_bytes(
-            desc_bytes[0..4].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            desc_bytes[0..4]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         ) as usize;
         let name_offset = u32::from_be_bytes(
-            desc_bytes[4..8].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            desc_bytes[4..8]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         ) as usize;
         offset += desc_size;
 
@@ -350,39 +354,55 @@ impl<'a> Reader<'a> {
             return Err(Error::UnexpectedEndOfBlob);
         }
 
-        let magic = u32::from_be_bytes(
-            blob[0..4].try_into().map_err(|_| Error::BadMagic)?,
-        );
+        let magic = u32::from_be_bytes(blob[0..4].try_into().map_err(|_| Error::BadMagic)?);
         if magic != DTB_MAGIC {
             return Err(Error::BadMagic);
         }
 
         let total_size = u32::from_be_bytes(
-            blob[4..8].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            blob[4..8]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         );
         let struct_offset = u32::from_be_bytes(
-            blob[8..12].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            blob[8..12]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         );
         let strings_offset = u32::from_be_bytes(
-            blob[12..16].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            blob[12..16]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         );
         let reserved_mem_offset = u32::from_be_bytes(
-            blob[16..20].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            blob[16..20]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         );
         let version = u32::from_be_bytes(
-            blob[20..24].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            blob[20..24]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         );
         let last_comp_version = u32::from_be_bytes(
-            blob[24..28].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            blob[24..28]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         );
         let bsp_cpu_id = u32::from_be_bytes(
-            blob[28..32].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            blob[28..32]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         );
         let strings_size = u32::from_be_bytes(
-            blob[32..36].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            blob[32..36]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         );
         let struct_size = u32::from_be_bytes(
-            blob[36..40].try_into().map_err(|_| Error::UnexpectedEndOfBlob)?,
+            blob[36..40]
+                .try_into()
+                .map_err(|_| Error::UnexpectedEndOfBlob)?,
         );
 
         Ok(Header {

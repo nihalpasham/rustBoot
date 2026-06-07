@@ -638,10 +638,16 @@ mod tests {
         assert!(result.is_ok());
         let items = result.unwrap();
         // We expect: bootargs, linux,initrd-start, linux,initrd-end, other-prop
-        let non_empty: Vec<_> = items.iter().filter(|(name, _, _)| !name.is_empty()).collect();
+        let non_empty: Vec<_> = items
+            .iter()
+            .filter(|(name, _, _)| !name.is_empty())
+            .collect();
         assert_eq!(non_empty.len(), 4);
         assert_eq!(non_empty[0].0, "bootargs");
-        assert!(matches!(non_empty[0].1, NodeItems::RawPropertyConstructor(_)));
+        assert!(matches!(
+            non_empty[0].1,
+            NodeItems::RawPropertyConstructor(_)
+        ));
     }
 
     #[test]
@@ -668,18 +674,34 @@ mod tests {
         let reader = Reader::read(&dtb).unwrap();
         let result = parse_raw_node::<10>(&reader, "/chosen", &dtb);
         let items = result.unwrap();
-        let non_empty: Vec<_> = items.iter().filter(|(name, _, _)| !name.is_empty()).collect();
+        let non_empty: Vec<_> = items
+            .iter()
+            .filter(|(name, _, _)| !name.is_empty())
+            .collect();
         // Debug: print names to understand the DTB layout
         eprintln!("Found {} non-empty items:", non_empty.len());
         for (name, _, _) in non_empty.iter() {
             eprintln!("  name: '{:?}'", name);
         }
-        assert!(non_empty.len() >= 4, "expected at least 4 properties, found {}", non_empty.len());
+        assert!(
+            non_empty.len() >= 4,
+            "expected at least 4 properties, found {}",
+            non_empty.len()
+        );
         let property_names: Vec<&str> = non_empty.iter().map(|(n, _, _)| *n).collect();
         assert!(property_names.contains(&"bootargs"), "bootargs not found");
-        assert!(property_names.contains(&"linux,initrd-start"), "linux,initrd-start not found");
-        assert!(property_names.contains(&"linux,initrd-end"), "linux,initrd-end not found");
-        assert!(property_names.contains(&"other-prop"), "other-prop not found");
+        assert!(
+            property_names.contains(&"linux,initrd-start"),
+            "linux,initrd-start not found"
+        );
+        assert!(
+            property_names.contains(&"linux,initrd-end"),
+            "linux,initrd-end not found"
+        );
+        assert!(
+            property_names.contains(&"other-prop"),
+            "other-prop not found"
+        );
     }
 
     // ── check_chosen_node ──────────────────────────────────────────────
@@ -838,7 +860,8 @@ mod tests {
             PropertyValue::U32(0x20000000u32.to_be_bytes()),
         ];
         let mut new_dtb_buffer = [0u8; 1024];
-        let (result, _total_size) = patch_chosen_node(reader, &dtb, &prop_val_list, &mut new_dtb_buffer);
+        let (result, _total_size) =
+            patch_chosen_node(reader, &dtb, &prop_val_list, &mut new_dtb_buffer);
         let magic = u32::from_be_bytes(result[..4].try_into().unwrap());
         assert_eq!(magic, DTB_MAGIC);
         // Verify the patched blob is a valid DTB
@@ -869,7 +892,8 @@ mod tests {
             PropertyValue::U32(0x40000000u32.to_be_bytes()),
         ];
         let mut buf_b = [0u8; 1024];
-        let (result_b, _) = patch_chosen_node(reader2, patched_slice_a, &prop_val_list2, &mut buf_b);
+        let (result_b, _) =
+            patch_chosen_node(reader2, patched_slice_a, &prop_val_list2, &mut buf_b);
         let hdr_b = Reader::get_header(result_b).unwrap();
         let len_b = hdr_b.total_size as usize;
         let slice_a = &result_a[..len_a.min(100)];

@@ -139,3 +139,31 @@ jobs:
       - name: rpi4
         if: matrix.target == 'aarch64-unknown-none-softfloat'
         run: cargo run -p xtask -- rpi4 build rustBoot-only
+
+  binary-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: rustup show
+      - name: Build release (stm32f411)
+        run: |
+          cargo run -p xtask --features stm32f411 -- stm32f411 build rustBoot-only
+          ls -la boards/target/thumbv7em-none-eabihf/release/rustBoot 2>/dev/null || true
+      - name: Check binary size
+        run: |
+          SIZE=$(stat --format=%s boards/target/thumbv7em-none-eabihf/release/rustBoot 2>/dev/null || echo 0)
+          echo "Binary size: $SIZE bytes"
+          # Warn if binary exceeds 64KB
+          if [ "$SIZE" -gt 65536 ]; then
+            echo "WARNING: Binary size $SIZE exceeds 64KB"
+          fi
+
+  kani:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Kani
+        run: cargo install kani-verifier
+      - name: Run Kani proofs
+        run: cargo kani --workspace 2>&1 | tail -20

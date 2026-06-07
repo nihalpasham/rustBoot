@@ -819,7 +819,9 @@ mod tests {
         for len in [5, 10, 20, 40, 60] {
             if len < blob.len() {
                 let truncated = &blob[..len];
-                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| parse_algo(truncated)));
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    parse_algo(truncated)
+                }));
                 let _ = result;
             }
         }

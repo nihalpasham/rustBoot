@@ -8,7 +8,6 @@
 // Verification: read_multi integration test on rpi4 validates FAT32 traversal.
 // Target: replace with atomic OnceCell<FatCache> or sync::OnceLock.
 #![allow(unsafe_code)]
-
 #![allow(
     clippy::panic,
     clippy::unimplemented,

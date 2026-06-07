@@ -1026,20 +1026,56 @@ mod tests {
 
     #[test]
     fn test_sect_flags_all_has_flags_mutually_exclusive() {
-        for flag in &[SectFlags::NewFlag, SectFlags::SwappingFlag, SectFlags::BackupFlag, SectFlags::UpdatedFlag] {
-            let count = [flag.has_new_flag(), flag.has_swapping_flag(), flag.has_backup_flag(), flag.has_updated_flag()]
-                .iter().filter(|&&b| b).count();
-            assert_eq!(count, 1, "{:?} should match exactly one has_* predicate", flag);
+        for flag in &[
+            SectFlags::NewFlag,
+            SectFlags::SwappingFlag,
+            SectFlags::BackupFlag,
+            SectFlags::UpdatedFlag,
+        ] {
+            let count = [
+                flag.has_new_flag(),
+                flag.has_swapping_flag(),
+                flag.has_backup_flag(),
+                flag.has_updated_flag(),
+            ]
+            .iter()
+            .filter(|&&b| b)
+            .count();
+            assert_eq!(
+                count, 1,
+                "{:?} should match exactly one has_* predicate",
+                flag
+            );
         }
     }
 
     #[test]
     fn test_sect_flags_mutation_from_each_state() {
         for (start, expected_swap, expected_backup, expected_update) in [
-            (SectFlags::NewFlag,     SectFlags::SwappingFlag, SectFlags::BackupFlag, SectFlags::UpdatedFlag),
-            (SectFlags::SwappingFlag,SectFlags::SwappingFlag, SectFlags::BackupFlag, SectFlags::UpdatedFlag),
-            (SectFlags::BackupFlag,  SectFlags::SwappingFlag, SectFlags::BackupFlag, SectFlags::UpdatedFlag),
-            (SectFlags::UpdatedFlag, SectFlags::SwappingFlag, SectFlags::BackupFlag, SectFlags::UpdatedFlag),
+            (
+                SectFlags::NewFlag,
+                SectFlags::SwappingFlag,
+                SectFlags::BackupFlag,
+                SectFlags::UpdatedFlag,
+            ),
+            (
+                SectFlags::SwappingFlag,
+                SectFlags::SwappingFlag,
+                SectFlags::BackupFlag,
+                SectFlags::UpdatedFlag,
+            ),
+            (
+                SectFlags::BackupFlag,
+                SectFlags::SwappingFlag,
+                SectFlags::BackupFlag,
+                SectFlags::UpdatedFlag,
+            ),
+            (
+                SectFlags::UpdatedFlag,
+                SectFlags::SwappingFlag,
+                SectFlags::BackupFlag,
+                SectFlags::UpdatedFlag,
+            ),
         ] {
             let mut f = start;
             assert_eq!(f.set_swapping_flag(), expected_swap);
@@ -1122,9 +1158,9 @@ mod tests {
 
     #[test]
     fn test_sect_flags_from_all_variants() {
-        assert_eq!(SectFlags::NewFlag.from(),     Some(0x0F));
+        assert_eq!(SectFlags::NewFlag.from(), Some(0x0F));
         assert_eq!(SectFlags::SwappingFlag.from(), Some(0x07));
-        assert_eq!(SectFlags::BackupFlag.from(),   Some(0x03));
-        assert_eq!(SectFlags::UpdatedFlag.from(),  Some(0x00));
+        assert_eq!(SectFlags::BackupFlag.from(), Some(0x03));
+        assert_eq!(SectFlags::UpdatedFlag.from(), Some(0x00));
     }
 }
