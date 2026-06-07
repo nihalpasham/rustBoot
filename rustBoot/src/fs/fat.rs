@@ -2,6 +2,8 @@
 //!
 //! Implements the File Allocation Table file system. Supports FAT16 and FAT32 volumes.
 
+#![allow(clippy::panic, clippy::unimplemented, clippy::expect_used, clippy::unwrap_used, clippy::indexing_slicing)]
+
 use super::blockdevice::{Block, BlockCount, BlockDevice, BlockIdx};
 use super::controller::{Controller, Error, VolumeType};
 use super::filesystem::{

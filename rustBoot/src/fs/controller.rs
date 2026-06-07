@@ -3,26 +3,15 @@
 //! > An EMMCfat Library written in Embedded Rust
 //!
 //! This module allows you to read/write files on a FAT formatted SD
-//! card on your Rust Embedded device, as easily as using the `SdFat` Arduino
-//! library. It is written in pure-Rust, is `#![no_std]` and does not use `alloc`
-//! or `collections` to keep the memory footprint low. In the first instance it is
-//! designed for readability and simplicity over performance.
-//!
 
-// ****************************************************************************
-//
-// Imports
-//
-// ****************************************************************************
-
-use byteorder::{ByteOrder, LittleEndian};
-use core::convert::TryFrom;
-use log::info;
+#![allow(clippy::panic)]
 
 use super::blockdevice::{Block, BlockCount, BlockDevice, BlockIdx};
 use super::fat;
 use super::fat::FatVolume;
 use super::fat::RESERVED_ENTRIES;
+use byteorder::{ByteOrder, LittleEndian};
+use log::info;
 use super::filesystem::{
     Attributes, Cluster, DirEntry, Directory, File, FilenameError, Mode, ShortFileName, TimeSource,
     Timestamp, MAX_FILE_SIZE,

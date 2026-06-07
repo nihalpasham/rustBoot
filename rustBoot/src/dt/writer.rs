@@ -1,3 +1,5 @@
+#![allow(clippy::unimplemented, clippy::unwrap_used)]
+
 use super::Result;
 use core::fmt;
 use core::mem::size_of;

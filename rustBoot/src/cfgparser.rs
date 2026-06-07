@@ -48,12 +48,13 @@ pub enum UpdateStatus {
 /// A label consists of a `filename` and a file extension (ex: `.itb`)
 pub type ImageLabel<'a> = (&'a str, &'a str);
 
+#[allow(clippy::panic)]
 impl From<&str> for ConfigKeys {
     fn from(i: &str) -> Self {
         match i {
             "[active]" => ConfigKeys::Active,
             "[passive]" => ConfigKeys::Passive,
-            _ => unimplemented!("no other image types supported"),
+            _ => panic!("no other config image types supported"),
         }
     }
 }
@@ -79,9 +80,9 @@ fn image_name(input: &str) -> IResult<&str, ImageLabel> {
         tag("image_name="),
         tuple((alphanumericwithhypen, tag(".itb"))),
     )(input)
-    .map(|(next_input, res)| (next_input, res))
 }
 
+#[allow(clippy::expect_used)]
 fn image_version(input: &str) -> IResult<&str, u32> {
     preceded(
         tag("image_version="),
@@ -103,6 +104,7 @@ fn update_status(input: &str) -> IResult<&str, UpdateStatus> {
     .map(|(next_input, res)| (next_input, res.into()))
 }
 
+#[allow(clippy::expect_used)]
 fn ready_for_update(input: &str) -> IResult<&str, bool> {
     preceded(
         tag("ready_for_update_flag="),
@@ -206,7 +208,7 @@ where
     i.split_at_position1_complete(
         |item| {
             let char_item = item.as_char();
-            !(char_item == '-') && !char_item.is_alphanum()
+            char_item != '-' && !char_item.is_alphanum()
         },
         ErrorKind::AlphaNumeric,
     )

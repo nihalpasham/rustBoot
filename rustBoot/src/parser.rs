@@ -12,17 +12,13 @@ pub(crate) fn parse_tlv<'a, Part: ValidPart + Swappable, State: TypeState>(
     img: &RustbootImage<Part, State>,
     type_field: Tags,
 ) -> Result<&'a [u8]> {
-    let part_desc = img.part_desc.get().unwrap();
+    let part_desc = img.part_desc.get().ok_or(RustbootError::FieldNotSet)?;
     if let Some(val) = part_desc.hdr {
         let mut header_bytes: &[u8] = (unsafe { (val as *const [u8; IMAGE_HEADER_SIZE]).as_ref() })
             .ok_or(RustbootError::__Nonexhaustive)?;
         // we've checked `magic` and `size` fields of the header during init
         // start parsing from the 8th byte of the header
         header_bytes = &header_bytes[8..];
-        // EndOfHeader is a pseudo-tag — return early since the value is meaningless
-        if matches!(type_field, Tags::EndOfHeader) {
-            return Err(RustbootError::TLVNotFound);
-        }
         let value = match type_field {
             Tags::Version => {
                 let (_, version) =
@@ -59,6 +55,7 @@ pub(crate) fn parse_tlv<'a, Part: ValidPart + Swappable, State: TypeState>(
                     extract_signature(header_bytes).map_err(|_| RustbootError::InvalidValue)?;
                 signature
             }
+            Tags::EndOfHeader => return Err(RustbootError::TLVNotFound),
         };
         Ok(value)
     } else {
@@ -73,7 +70,7 @@ pub(crate) fn get_tlv_offset<'a, Part: ValidPart + Swappable, State: TypeState>(
     img: &RustbootImage<Part, State>,
     type_field: Tags,
 ) -> Result<usize> {
-    let part_desc = img.part_desc.get().unwrap();
+    let part_desc = img.part_desc.get().ok_or(RustbootError::FieldNotSet)?;
     if let Some(val) = part_desc.hdr {
         let mut header_bytes: &[u8] = (unsafe { (val as *const [u8; IMAGE_HEADER_SIZE]).as_ref() })
             .ok_or(RustbootError::__Nonexhaustive)?;
@@ -168,48 +165,21 @@ use nom::{
     Err, IResult,
 };
 
-// Public test wrappers for fuzz testing — these exist so the fuzz crate
-// can call the parser functions without depending on internal module layout.
-pub fn test_check_for_eof(input: &[u8]) -> bool {
-    check_for_eof(input).is_err()
-}
-pub fn test_check_for_padding(input: &[u8]) -> bool {
-    check_for_padding(input).is_ok()
-}
-pub fn test_extract_version(input: &[u8]) -> Option<Vec<u8>> {
-    extract_version(input).ok().map(|(_, v)| v.to_vec())
-}
-pub fn test_extract_timestamp(input: &[u8]) -> Option<Vec<u8>> {
-    extract_timestamp(input).ok().map(|(_, v)| v.to_vec())
-}
-pub fn test_extract_img_type(input: &[u8]) -> Option<Vec<u8>> {
-    extract_img_type(input).ok().map(|(_, v)| v.to_vec())
-}
-pub fn test_extract_digest(input: &[u8]) -> Option<Vec<u8>> {
-    extract_digest(input).ok().map(|(_, v)| v.to_vec())
-}
-pub fn test_extract_pubkey_digest(input: &[u8]) -> Option<Vec<u8>> {
-    extract_pubkey_digest(input).ok().map(|(_, v)| v.to_vec())
-}
-pub fn test_extract_signature(input: &[u8]) -> Option<Vec<u8>> {
-    extract_signature(input).ok().map(|(_, v)| v.to_vec())
-}
-
 // use libc_print::libc_println;
 
-fn check_for_eof(input: &[u8]) -> IResult<&[u8], &[u8]> {
+pub fn check_for_eof(input: &[u8]) -> IResult<&[u8], &[u8]> {
     match tag::<_, _, Error<&[u8]>>(Tags::EndOfHeader.get_id())(input) {
         Ok((_remainder, _eof)) => Err(Err::Error(Error::new(input, ErrorKind::Eof))),
         Err(_e) => Ok((input, &[])),
     }
 }
 
-fn check_for_padding(input: &[u8]) -> IResult<&[u8], &[u8]> {
+pub fn check_for_padding(input: &[u8]) -> IResult<&[u8], &[u8]> {
     let res = take_while::<_, _, Error<&[u8]>>(|pad_byte| pad_byte == 0xff)(input)?;
     Ok(res)
 }
 
-fn extract_version<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_version<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (input, _) = check_for_eof(input)?;
     let (input, _) = check_for_padding(input)?;
     let (remainder, version) = take(8u32)(input)?;
@@ -223,7 +193,7 @@ fn extract_version<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     }
 }
 
-fn extract_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = extract_version(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
@@ -238,7 +208,7 @@ fn extract_timestamp<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     }
 }
 
-fn extract_img_type<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_img_type<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = extract_timestamp(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
@@ -253,7 +223,7 @@ fn extract_img_type<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     }
 }
 
-fn extract_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = extract_img_type(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
@@ -270,7 +240,7 @@ fn extract_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     }
 }
 
-fn extract_pubkey_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_pubkey_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = extract_digest(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
@@ -287,7 +257,7 @@ fn extract_pubkey_digest<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     }
 }
 
-fn extract_signature<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
+pub fn extract_signature<'a>(input: &'a [u8]) -> IResult<&'a [u8], &'a [u8]> {
     let (remainder, _) = extract_pubkey_digest(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;

@@ -345,12 +345,12 @@ mod tests {
         expected: &'static str,
     ) {
         assert_eq!(
-            accessor(StructItem::BeginNode { name: name }).unwrap(),
+            accessor(StructItem::BeginNode { name }).unwrap(),
             expected
         );
         assert_eq!(
             accessor(StructItem::Property {
-                name: name,
+                name,
                 value: &[],
             })
             .unwrap_err(),

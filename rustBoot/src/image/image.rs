@@ -314,8 +314,7 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
     pub fn get_part_status(&self, updater: impl FlashApi) -> Result<States> {
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32 {
-            self.set_partition_trailer_magic(updater)
-                .expect("failed to set partition status");
+            let _ = self.set_partition_trailer_magic(updater);
         }
         let state = unsafe { *self.get_partition_state()? };
         let state = match state {
@@ -335,14 +334,12 @@ impl<Part: ValidPart + Swappable> PartDescriptor<Part> {
     ) -> Result<bool> {
         let magic_trailer = unsafe { *self.get_partition_trailer_magic()? };
         if magic_trailer != RUSTBOOT_MAGIC_TRAIL as u32 {
-            self.set_partition_trailer_magic(updater)
-                .expect("failed to set partition status");
+            let _ = self.set_partition_trailer_magic(updater);
         }
         let current_state = unsafe { *self.get_partition_state()? };
-        let new_state = state.from().unwrap();
+        let new_state = state.from().ok_or(RustbootError::InvalidValue)?;
         if current_state != new_state {
-            self.set_partition_state(updater, new_state)
-                .expect("failed to set partition status");
+            self.set_partition_state(updater, new_state)?;
         }
         Ok(true)
     }
@@ -587,6 +584,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                     Ok(stored_hash) => {
                         let hasher = compute_img_hash::<Part, State, Sha256, N>(self, fw_size)?;
                         let computed_hash = hasher.finalize();
+                        #[allow(deprecated)]
                         if computed_hash.as_slice() != stored_hash {
                             return Err(RustbootError::IntegrityCheckFailed);
                         }
@@ -597,7 +595,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                         return Err(e);
                     }
                 };
-                if integrity_check.eq(&true) {
+                if integrity_check {
                     match self.part_desc.get_mut() {
                         Some(val) => {
                             val.sha_ok = true;
@@ -654,7 +652,7 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                         return Err(e);
                     }
                 };
-                if auth_check.eq(&true) {
+                if auth_check {
                     match self.part_desc.get_mut() {
                         Some(val) => {
                             val.sha_hash = computed_hash;

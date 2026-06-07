@@ -25,7 +25,8 @@ version = "0.1.0"
 as-slice = "0.2.1"
 byteorder = {version = "1.4.3", default-features = false}
 defmt = {version = "0.3.1", optional = true}
-log = {version = "0.4", default-features = false, optional = true}
+# log is required by dt/fit.rs; marked non-optional to avoid cfg gating every call
+log = {version = "0.4", default-features = false}
 # rustBoot parser dependencies
 nom = {version = "7.1.0", default-features = false}
 # crypto dependencies
@@ -45,7 +46,7 @@ tracing-subscriber = {version = "0.3", default-features = false, features = ["en
 proptest = {version = "1.4", default-features = false, features = ["std"]}
 
 [features]
-default = ["sha256", "nistp256", "log"]
+default = ["sha256", "nistp256"]
 ed25519 = ["sha256"]
 ext_flash = []
 nistp256 = ["p256/ecdsa", "sha256"]

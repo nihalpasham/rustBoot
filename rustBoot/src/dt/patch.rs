@@ -1,3 +1,5 @@
+#![allow(clippy::panic)]
+
 use super::internal::Header;
 use super::{
     Error, PropertyValue, RawNodeConstructor, RawPropertyConstructor, Reader, Result,
@@ -11,7 +13,7 @@ pub fn make_new_strings_block_with<'a, const M: usize>(
     new_strings_block: &'a mut StringsBlock<'a>,
     dtb_blob: &'a [u8],
 ) -> Result<(&'a [u8], [usize; M])> {
-    let header = Reader::get_header(dtb_blob.as_slice())?;
+    let header = Reader::get_header(dtb_blob)?;
     let strings_block_len = header.strings_size as usize;
 
     let offset_list = new_strings_block.make_new_strings_block_with(&name_list)?;

@@ -8,9 +8,9 @@ use k256::{
     elliptic_curve::consts::U32,
 };
 #[cfg(feature = "nistp256")]
+#[allow(deprecated)]
 use p256::{
     ecdsa::signature::digest::Digest,
-    ecdsa::signature::digest::{FixedOutputDirty, Reset, Update},
     ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
     elliptic_curve::consts::U32,
     elliptic_curve::{generic_array::GenericArray, FieldSize},
@@ -109,8 +109,8 @@ where
             }
         }
         #[cfg(feature = "ed25519")]
-        HDR_IMG_TYPE_AUTH => todo!(),
-        _ => todo!(),
+        HDR_IMG_TYPE_AUTH => Err(RustbootError::InvalidValue),
+        _ => Err(RustbootError::InvalidValue),
     }
 }
 
@@ -143,7 +143,9 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
     match pk {
         #[cfg(feature = "secp256k1")]
         PubkeyTypes::Secp256k1 => {
+            #[allow(deprecated)]
             let embedded_pubkey = [0u8; 64];
+            #[allow(deprecated)]
             let untagged_bytes: &GenericArray<u8, <FieldSize<Secp256k1> as Add>::Output> =
                 GenericArray::from_slice(&embedded_pubkey[..]);
             let sec1_encoded_pubkey = EncodedPoint::from_untagged_bytes(untagged_bytes);
@@ -154,6 +156,7 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
         }
         #[cfg(feature = "nistp256")]
         PubkeyTypes::NistP256 => {
+            #[allow(deprecated)]
             let embedded_pubkey = [
                 0x74, 0xBF, 0x5D, 0xE9, 0xF8, 0x69, 0x69, 0x44, 0x35, 0xAE, 0xB7, 0x39, 0x6F, 0xA1,
                 0x40, 0x11, 0xB6, 0xA1, 0x7F, 0x2D, 0x8A, 0x86, 0xB9, 0x58, 0xBC, 0x4A, 0x51, 0xF7,
@@ -161,6 +164,7 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
                 0x34, 0x23, 0xFE, 0x63, 0x05, 0x15, 0x30, 0x43, 0xBB, 0x9E, 0x75, 0x63, 0xE0, 0x41,
                 0x6A, 0x70, 0xCE, 0x16, 0x0A, 0x60, 0x2A, 0x38,
             ];
+            #[allow(deprecated)]
             let untagged_bytes: &GenericArray<u8, <FieldSize<NistP256> as Add>::Output> =
                 GenericArray::from_slice(&embedded_pubkey[..]);
             let sec1_encoded_pubkey = EncodedPoint::from_untagged_bytes(untagged_bytes);
@@ -169,6 +173,6 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
                 .map_err(|_| RustbootError::ECCError);
             Ok(VerifyingKeyTypes::VKeyNistP256(p256_vk?))
         }
-        _ => todo!(),
+        _ => Err(RustbootError::InvalidValue),
     }
 }

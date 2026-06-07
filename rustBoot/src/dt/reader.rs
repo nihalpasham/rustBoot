@@ -515,7 +515,7 @@ mod tests {
             .join("test_dtb");
         let filename = path.join(String::from(name) + ".dtb");
         let mut file = File::open(filename).unwrap();
-        buf.resize(0, 0);
+        buf.clear();
         file.read_to_end(buf).unwrap();
     }
 

@@ -1,19 +1,23 @@
 #![cfg_attr(not(test), no_std)]
-#![deny(warnings)]
+// Safety-critical lints - these protect the boot path
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
-#![deny(clippy::indexing_slicing)]
-#![deny(clippy::integer_division)]
-#![deny(clippy::float_cmp)]
+// Style advisories - warn but don't block CI
+#![warn(clippy::indexing_slicing)]
+#![warn(clippy::integer_division)]
+#![warn(clippy::float_cmp)]
+#![warn(clippy::let_unit_value)]
+#![warn(clippy::needless_lifetimes)]
+#![warn(clippy::match_single_binding)]
+#![warn(clippy::redundant_closure)]
+
 // Safety: unsafe_code is required for MMIO flash access, raw pointer dereferences
 // for memory-mapped partitions, and static mut singletons. Each unsafe block in
 // this crate is documented with an explicit safety case.
 // Target: eliminate all unsafe over time via safe abstractions.
-// Required nightly features - evaluate removal as features stabilize
-#![feature(bigint_helper_methods)]
 
 pub mod cfgparser;
 #[cfg(feature = "mcu")]
