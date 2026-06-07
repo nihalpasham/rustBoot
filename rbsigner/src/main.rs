@@ -12,166 +12,119 @@ use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::process;
 
 fn main() {
-    // let _ = log_init();
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 5 {
+        eprintln!("Usage: rbsigner <fit-image|mcu-image> <input_path> <curve_type> <key_path> [version]");
+        process::exit(1);
+    }
 
-    let args = env::args().collect::<Vec<_>>();
-    let args = args.iter().map(|s| &**s).collect::<Vec<_>>();
+    let result = run(&args);
+    if let Err(e) = result {
+        eprintln!("Error: {}", e);
+        process::exit(1);
+    }
+}
 
+fn run(args: &[String]) -> Result<(), String> {
     let mut key_file = Vec::new();
-    let mut kf = fs::File::open(args[4]).expect("Need path to key_file as argument");
-    kf.read_to_end(&mut key_file).unwrap();
-    let sk: SigningKeyType;
+    let mut kf = fs::File::open(&args[4]).map_err(|e| format!("Cannot open key file '{}': {}", args[4], e))?;
+    kf.read_to_end(&mut key_file).map_err(|e| format!("Cannot read key file: {}", e))?;
 
-    match args[3] {
+    let sk = match args[3].as_str() {
         "nistp256" => {
             let signing_key = &key_file.as_slice()[0x40..];
             if signing_key.len() != 32 {
-                panic!("invalid nistp256 key: length is not 32 bytes")
+                return Err("invalid nistp256 key: length is not 32 bytes".into());
             }
-            sk = import_signing_key(CurveType::NistP256, signing_key).unwrap();
+            import_signing_key(CurveType::NistP256, signing_key)
+                .map_err(|e| format!("Failed to import signing key: {}", e))?
         }
-        _ => {
-            unimplemented!()
-        }
-    }
+        other => return Err(format!("Unsupported curve type: {}", other)),
+    };
 
     let mut image_blob = Vec::new();
-    match args[1] {
-        "fit-image" => {
-            let mut itb = fs::File::open(args[2]).expect("Need path to itb_blob as argument");
-            itb.read_to_end(&mut image_blob).unwrap();
-
-            // get the timestamp
-            let reader = Reader::read(&image_blob.as_slice()).unwrap();
-            let root = &reader.struct_items();
-            let (_, node_iter) = root.path_struct_items("/").next().unwrap();
-
-            let timestamp = match node_iter.get_node_property("timestamp") {
-                Some(ts) => u32::from_be_bytes(ts.try_into().unwrap()),
-                None => panic!("bad itb file, doesnt contain a timestamp"),
-            };
-
-            let version_string = timestamp.to_string();
-            let version = timestamp;
-            let output_itb_name = String::from(format!("signed-v{version_string}.itb").as_str());
-
-            println!("\nImage type:       fit-image");
-            println!("Curve type:       {}", args[3]);
-            #[rustfmt::skip]
-            println!("Input image:      {}.itb", String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
-            println!("fit version:      {:?}", version);
-            #[rustfmt::skip]
-            println!("Public key:       {}.der", String::from(args[4].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
-            println!("Output image:     {}", output_itb_name);
-
-            let signed_fit = sign_fit(image_blob, version, sk);
-            match signed_fit {
-                Ok(val) => {
-                    // println!(
-                    //     "signed_fit: {:?}",
-                    //     &val.as_slice()[(val.len() - 1071)..(val.len() - 800)]
-                    // );
-                    let out_file = args[2].rsplit_once('/');
-                    match out_file {
-                        Some((f, _)) => {
-                            let file = File::create(format!("{f}/{output_itb_name}").as_str());
-                            match file {
-                                Ok(mut file) => {
-                                    let bytes_written = file.write(val.as_slice());
-                                    if let Ok(val) = bytes_written {
-                                        println!("\nbytes_written: {:?}", val);
-                                    }
-                                }
-                                Err(e) => panic!("error: {:?}", e),
-                            }
-                        }
-                        None => {
-                            panic!("something's wrong with your file_path to itb_blob ")
-                        }
-                    }
-                }
-                Err(_e) => {}
-            }
-        }
-        "mcu-image" => {
-            //String concatenation
-            let image_version_args = String::from(args[5]);
-            #[rustfmt::skip]
-            let input_image_args = String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]);
-            let output_image = input_image_args + "_v" + &image_version_args + "_signed";
-
-            println!("\nImage type:       mcu-image");
-            println!("Curve type:       {}", args[3]);
-            #[rustfmt::skip]
-            println!("Input image:      {}.bin", String::from(args[2].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
-            #[rustfmt::skip]
-            println!("Public key:       {}.der", String::from(args[4].rsplit_terminator(&['/', '.'][..]).collect::<Vec<_>>()[1]));
-            println!("Image version:    {}", args[5]);
-            println!("Output image:     {}.bin", output_image);
-
-            //firmware version
-            let image_version_value: u32 = args[5].parse().unwrap();
-            let version: [u8; 4] = image_version_value.to_le_bytes();
-
-            let mut mcu_image =
-                fs::File::open(args[2]).expect("Need path to mcu_image binary as argument");
-            mcu_image.read_to_end(&mut image_blob).unwrap();
-
-            let mcu_image = sign_mcu_image(image_blob, args[2], sk, version);
-            match mcu_image {
-                Ok(val) => {
-                    let file = File::create(
-                        "../boards/sign_images/signed_images/{output_image}.bin"
-                            .replace("{output_image}", &output_image),
-                    );
-                    match file {
-                        Ok(mut file) => {
-                            let bytes_written = file.write(val.as_slice());
-                            if let Ok(val) = bytes_written {
-                                println!("Output image successfully created with {} bytes.\n", val);
-                            }
-                        }
-                        Err(e) => panic!("error: {:?}", e),
-                    }
-                }
-                Err(_e) => {}
-            }
-        }
-        _ => {}
+    match args[1].as_str() {
+        "fit-image" => sign_fit_image(args, &mut image_blob, sk),
+        "mcu-image" => sign_mcu(args, &mut image_blob, sk),
+        other => Err(format!("Unknown image type: {}. Use 'fit-image' or 'mcu-image'.", other)),
     }
 }
 
-use log::{Level, Metadata, Record};
-use log::{LevelFilter, SetLoggerError};
+fn sign_fit_image(args: &[String], image_blob: &mut Vec<u8>, sk: SigningKeyType) -> Result<(), String> {
+    let mut itb = fs::File::open(&args[2]).map_err(|e| format!("Cannot open itb '{}': {}", args[2], e))?;
+    itb.read_to_end(image_blob).map_err(|e| format!("Cannot read itb: {}", e))?;
 
-struct SimpleLogger;
+    let reader = Reader::read(image_blob.as_slice()).map_err(|e| format!("Cannot parse ITB: {:?}", e))?;
+    let root = &reader.struct_items();
+    let (_, node_iter) = root.path_struct_items("/").next().ok_or("ITB has no root node")?;
 
-impl log::Log for SimpleLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Info
-    }
+    let timestamp = match node_iter.get_node_property("timestamp") {
+        Some(ts) => u32::from_be_bytes(ts.try_into().map_err(|_| "Invalid timestamp in ITB")?),
+        None => return Err("ITB does not contain a timestamp field".into()),
+    };
 
-    fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            println!("\x1b[93m[{}]\x1b[0m  {}", record.level(), record.args());
-            match (record.module_path(), record.line()) {
-                (Some(file), Some(line)) => {
-                    println!("\t \u{2a3d} {} @ line:{}", file, line);
-                }
-                (Some(file), None) => println!("\t  \u{2a3d} @ {}", file),
-                (_, None) => {
-                    println!("... ")
-                }
-                (_, Some(line)) => println!("\t  \u{2a3d} {} @ line:{}", record.target(), line),
-            }
-        }
-    }
+    let version_string = timestamp.to_string();
+    let output_itb_name = format!("signed-v{version_string}.itb");
 
-    fn flush(&self) {}
+    println!("\nImage type:       fit-image");
+    println!("Curve type:       {}", args[3]);
+    println!("fit version:      {:?}", timestamp);
+    println!("Public key:       {}", args[4]);
+    println!("Output image:     {}", output_itb_name);
+
+    let signed_fit = sign_fit(image_blob.clone(), timestamp, sk)
+        .map_err(|e| format!("Signing failed: {}", e))?;
+
+    let out_dir = match args[2].rsplit_once('/') {
+        Some((f, _)) => f,
+        None => ".",
+    };
+    let out_path = format!("{}/{}", out_dir, output_itb_name);
+    let mut file = File::create(&out_path)
+        .map_err(|e| format!("Cannot create output file '{}': {}", out_path, e))?;
+    let written = file.write(signed_fit.as_slice())
+        .map_err(|e| format!("Cannot write output: {}", e))?;
+    println!("\nbytes_written: {:?}", written);
+    Ok(())
 }
 
-pub fn log_init() -> core::result::Result<(), SetLoggerError> {
-    log::set_boxed_logger(Box::new(SimpleLogger)).map(|()| log::set_max_level(LevelFilter::Info))
+fn sign_mcu(args: &[String], image_blob: &mut Vec<u8>, sk: SigningKeyType) -> Result<(), String> {
+    if args.len() < 6 {
+        return Err("MCU image signing requires a version argument (arg 6)".into());
+    }
+
+    let image_version_args = &args[5];
+    let input_image_args = args[2].rsplit_terminator(&['/', '.'][..])
+        .collect::<Vec<_>>().get(1).cloned().unwrap_or("image");
+    let output_image = format!("{}_v{}_signed", input_image_args, image_version_args);
+
+    println!("\nImage type:       mcu-image");
+    println!("Curve type:       {}", args[3]);
+    println!("Input image:      {}.bin", input_image_args);
+    println!("Public key:       {}", args[4]);
+    println!("Image version:    {}", args[5]);
+    println!("Output image:     {}.bin", output_image);
+
+    let image_version_value: u32 = args[5].parse()
+        .map_err(|_| format!("Invalid version number '{}'", args[5]))?;
+    let version: [u8; 4] = image_version_value.to_le_bytes();
+
+    let mut mcu_image = fs::File::open(&args[2])
+        .map_err(|e| format!("Cannot open '{}': {}", args[2], e))?;
+    mcu_image.read_to_end(image_blob)
+        .map_err(|e| format!("Cannot read image: {}", e))?;
+
+    let signed = sign_mcu_image(std::mem::take(image_blob), &args[2], sk, version)
+        .map_err(|e| format!("Signing failed: {}", e))?;
+
+    let out_path = format!("../boards/sign_images/signed_images/{}.bin", output_image);
+    let mut file = File::create(&out_path)
+        .map_err(|e| format!("Cannot create '{}': {}", out_path, e))?;
+    let written = file.write(signed.as_slice())
+        .map_err(|e| format!("Cannot write output: {}", e))?;
+    println!("Output image successfully created with {} bytes.\n", written);
+    Ok(())
 }

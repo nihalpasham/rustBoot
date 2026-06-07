@@ -1,6 +1,7 @@
 use crate::curve::*;
 use field::*;
-use p256::ecdsa::signature::{digest::Digest, DigestSigner};
+use p256::ecdsa::signature::digest::Digest;
+use signature::DigestSigner;
 use rustBoot::rbconstants::*;
 use sha2::Sha256;
 
@@ -86,12 +87,12 @@ pub fn sign_mcu_image(
                     tag_len[idx] = *byte;
                 });
             header.set_pubkey_tag_len(u32::from_be_bytes(tag_len));
-            header.set_pubkey_digest_value(pubkey_digest.as_slice())?;
+            header.set_pubkey_digest_value(pubkey_digest.as_ref())?;
 
             // set signature type, len and value
-            let signature = sk
+            let signature: p256::ecdsa::Signature = sk
                 .try_sign_digest(prehashed_digest)
-                .map_err(|v| RbSignerError::SignatureError(v))?;
+                .map_err(RbSignerError::SignatureError)?;
             println!("Signing the firmware...");
             // println!("signature:\t{:?}", signature);
             println!("Done.");
@@ -106,24 +107,22 @@ pub fn sign_mcu_image(
                     tag_len[idx] = *byte;
                 });
             header.set_signature_tag_len(u32::from_be_bytes(tag_len));
-            header.set_signatue_value(signature.as_ref())?;
+            header.set_signatue_value(signature.to_bytes().as_ref())?;
 
             //set end of header
             header.set_end_of_header(SIGNATURE_VALUE.end);
             // prepend header and return fw_blob
-            let _ = fw_blob.insert_from_slice(0, header.as_slice());
+            fw_blob.insert_from_slice(0, header.as_slice());
             Ok(fw_blob)
         }
-        #[cfg(feature = "ed25519")]
-        SigningKeyType::Ed25519 => {
-            todo!()
-        }
-        _ => return Err(RbSignerError::InvalidKeyType),
+        #[allow(dead_code)]
+        SigningKeyType::Ed25519 => Err(RbSignerError::InvalidKeyType),
+        _ => Err(RbSignerError::InvalidKeyType),
     }
 }
 
-fn construct_img_header<'a, D, const H: usize>(
-    fw_blob: &'a [u8],
+fn construct_img_header<D, const H: usize>(
+    fw_blob: &[u8],
     path: &str,
     version: [u8; 4],
 ) -> Result<(McuImageHeader<[u8; 256]>, D)>
@@ -153,13 +152,14 @@ where
     header.set_version_value(&version)?;
 
     // set timestamp type, len and value
-    let metadata =
-        fs::metadata(path).expect("something's wrong with your file path for your image");
+    let metadata = fs::metadata(path)?;
 
     let mtime = FileTime::from_last_modification_time(&metadata);
     // println!("\nimage timestamp: {}", mtime.unix_seconds()); // unix seconds values can be interpreted across platforms
     let atime = FileTime::from_last_access_time(&metadata);
-    assert!(mtime < atime);
+    if mtime >= atime {
+        return Err(RbSignerError::InvalidTimestampOrdering);
+    }
 
     let hdr_timestamp_len = (HDR_TIMESTAMP_LEN as u16).to_be_bytes();
     let timestamp_tag = Tags::TimeStamp.get_id();
@@ -208,9 +208,9 @@ where
                 });
             println!("Calculating sha256 digest...");
             header.set_digest_tag_len(u32::from_be_bytes(tag_len));
-            header.set_sha256_digest_value(digest.as_slice())?;
+            header.set_sha256_digest_value(digest.as_ref())?;
         }
-        _ => unimplemented!(),
+        _ => return Err(RbSignerError::BadHashValue),
     }
 
     Ok((header, hasher))
@@ -233,7 +233,7 @@ impl<T: AsRef<[u8]>> McuImageHeader<T> {
     pub fn new_checked(buffer: T) -> Result<McuImageHeader<T>> {
         let hdr = Self::new_unchecked(buffer);
         if hdr.inner_ref().as_ref().len() != IMAGE_HEADER_SIZE {
-            panic!("rustBoot header error: rustBoot-images must have a 256-byte header.")
+            return Err(RbSignerError::InvalidHeaderSize);
         }
         Ok(hdr)
     }
@@ -285,7 +285,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     pub fn set_version_value(&mut self, value: &[u8]) -> Result<()> {
         let len = value.len();
         if len != HDR_VERSION_LEN {
-            panic!("invalid image-version: length of image-version is a 4 byte value.")
+            return Err(RbSignerError::InvalidVersionLength);
         }
 
         let header = self.buffer.as_mut();
@@ -302,7 +302,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
                     .copy_from_slice(&padding[..PAD_LEN]);
             }
             _ => {
-                panic!("image-version are 4-byte values")
+                return Err(RbSignerError::InvalidVersionLength);
             }
         }
         Ok(())
@@ -322,10 +322,11 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     pub fn set_timestamp_value(&mut self, value: &[u8]) -> Result<()> {
         let len = value.len();
         if len != HDR_TIMESTAMP_LEN {
-            panic!("invalid image-timestamp: length of image-timestamp is an 8 byte value.")
+            return Err(RbSignerError::InvalidTimestampLength);
         }
         let header = self.buffer.as_mut();
-        Ok(header[TIMESTAMP_VALUE].copy_from_slice(value))
+        header[TIMESTAMP_VALUE].copy_from_slice(value);
+        Ok(())
     }
 
     /// Sets the tag and length for `image` field.
@@ -345,7 +346,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     pub fn set_image_value(&mut self, value: &[u8]) -> Result<()> {
         let len = value.len();
         if len != HDR_IMG_TYPE_LEN {
-            panic!("invalid image-type: image-type is a 2 byte value.")
+            return Err(RbSignerError::InvalidImageTypeLength);
         }
         let header = self.buffer.as_mut();
         header[IMAGE_VALUE].copy_from_slice(value);
@@ -361,7 +362,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
                     .copy_from_slice(&padding[..PAD_LEN]);
             }
             _ => {
-                panic!("image-type is a 2-byte value")
+                return Err(RbSignerError::InvalidImageTypeLength);
             }
         }
         Ok(())
@@ -380,10 +381,11 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     #[inline]
     pub fn set_sha256_digest_value(&mut self, value: &[u8]) -> Result<()> {
         if value.len() != SHA256_DIGEST_SIZE {
-            panic!("invalid sha256 digest length")
+            return Err(RbSignerError::InvalidDigestLength);
         };
         let header = self.buffer.as_mut();
-        Ok(header[SHA256_DIGEST].copy_from_slice(value))
+        header[SHA256_DIGEST].copy_from_slice(value);
+        Ok(())
     }
 
     /// Sets the tag and length for the `pubkey` field.
@@ -399,10 +401,11 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     #[inline]
     pub fn set_pubkey_digest_value(&mut self, value: &[u8]) -> Result<()> {
         if value.len() != PUBKEY_DIGEST_SIZE {
-            panic!("invalid sha256 digest length")
+            return Err(RbSignerError::InvalidPubkeyDigestLength);
         };
         let header = self.buffer.as_mut();
-        Ok(header[PUBKEY_DIGEST_VALUE].copy_from_slice(value))
+        header[PUBKEY_DIGEST_VALUE].copy_from_slice(value);
+        Ok(())
     }
 
     /// Sets the tag and length for the `signature` field.
@@ -417,23 +420,8 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
     /// Sets the signature value.
     #[inline]
     pub fn set_signatue_value(&mut self, value: &[u8]) -> Result<()> {
-        // let len = value.len();
-
         let header = self.buffer.as_mut();
         header[SIGNATURE_VALUE].copy_from_slice(value);
-
-        // pad the remaining bytes barring the last 2.
-        // match len % 4 {
-        //     0 => {
-        //         let padding_offset = field::SIGNATURE_VALUE.end;
-        //         for byte in padding_offset..(IMAGE_HEADER_SIZE - 2) {
-        //             header[byte] = 0xff;
-        //         }
-        //     }
-        //     _ => {
-        //         panic!("image-signatures are 4-byte multiple")
-        //     }
-        // }
         Ok(())
     }
 
@@ -447,6 +435,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> McuImageHeader<T> {
 }
 
 #[cfg(test)]
+#[allow(clippy::let_unit_value)]
 mod tests {
     use p256::{elliptic_curve::sec1::EncodedPoint, NistP256};
     use rustBoot::crypto::signatures::{import_pubkey, PubkeyTypes, VerifyingKeyTypes};
@@ -529,7 +518,7 @@ mod tests {
                 );
             }
             _ => {
-                unimplemented!()
+                panic!("unexpected key type")
             }
         }
         let pk_type = import_pubkey(PubkeyTypes::NistP256).unwrap();
@@ -538,7 +527,7 @@ mod tests {
                 let imported_pk = pk.to_encoded_point(false);
                 assert_eq!(derived_pk, imported_pk);
             }
-            _ => unreachable!(),
+            _ => panic!("unexpected pubkey type"),
         }
     }
 

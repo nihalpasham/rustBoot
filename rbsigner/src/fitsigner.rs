@@ -5,6 +5,7 @@ use signature::DigestSigner;
 
 use as_slice::AsSlice;
 use rustBoot::dt::{prepare_img_hash, update_dtb_header, Reader};
+use rustBoot::dt::Error as DtError;
 
 /// Retruns a signed fit-image, given a image tree blob, a signing key and the curve type. Only supports `elliptic curve crypto`
 ///
@@ -20,14 +21,12 @@ pub fn sign_fit(itb_blob: Vec<u8>, itb_version: u32, sk_type: SigningKeyType) ->
                     .map_err(|_v| RbSignerError::BadHashValue)?;
             let signature = sk
                 .try_sign_digest(prehashed_digest)
-                .map_err(|v| RbSignerError::SignatureError(v))?;
+                .map_err(RbSignerError::SignatureError)?;
             println!("signature: {:?}", signature);
             set_config_signature(itb_blob, SignatureType::NistP256(signature), "bootconfig")
         }
-        #[cfg(feature = "ed25519")]
-        SigningKeyType::Ed25519 => {
-            todo!()
-        }
+        #[allow(dead_code)]
+        SigningKeyType::Ed25519 => Err(RbSignerError::InvalidKeyType),
         _ => return Err(RbSignerError::InvalidKeyType),
     };
     signed_itb_blob
@@ -38,15 +37,16 @@ fn set_config_signature(
     signature: SignatureType,
     config_name: &str,
 ) -> Result<Vec<u8>> {
-    let reader = Reader::read(itb_blob.as_slice()).unwrap();
+    let reader = Reader::read(itb_blob.as_slice())
+        .map_err(RbSignerError::BadImageHeader)?;
     let root = reader.struct_items();
     let (_node, node_iter) = root
         .path_struct_items(format!("/configurations/{}/signature/value", config_name).as_str())
         .next()
-        .expect("config_name does not exist");
+        .ok_or(RbSignerError::BadImageHeader(DtError::NonExhaustive))?;
 
     let mut header =
-        Reader::get_header(itb_blob.as_slice()).map_err(|e| RbSignerError::BadImageHeader(e))?;
+        Reader::get_header(itb_blob.as_slice()).map_err(RbSignerError::BadImageHeader)?;
     let struct_offset = header.struct_offset as usize;
     let offset = node_iter.get_offset() + struct_offset;
     // the len component of the signature node's `value` property is located at this offset
@@ -56,7 +56,7 @@ fn set_config_signature(
 
     match signature {
         SignatureType::NistP256(sig) => {
-            let bytes = sig.as_ref();
+            let bytes = sig.to_bytes();
             // as per DTS spec, all `length fields` are 4 bytes in size
             let sig_len: [u8; 4] = (bytes.len() as u32).to_be_bytes();
             // update len field for signature's value property
@@ -68,7 +68,7 @@ fn set_config_signature(
             // set the signature bytes i.e. the signature node's value property is set.
             let remaining = itb_blob.split_off(offset);
             let _ = itb_blob.split_off(offset - 4);
-            itb_blob.extend_from_slice(bytes);
+            itb_blob.extend_from_slice(bytes.as_ref());
             itb_blob.extend_from_slice(remaining.as_slice());
             // update itb header
             let _ = update_dtb_header(&mut header, 0, 64, 4);
@@ -77,12 +77,8 @@ fn set_config_signature(
                 .iter_mut()
                 .enumerate()
                 .for_each(|(idx, byte)| *byte = header_slice[idx]);
-            // let x = &itb_blob.as_slice()[(sig_len_offset - 4)..];
-            // println!("blob_bytes: {:?}", x);
             Ok(itb_blob)
         }
-        _ => {
-            todo!()
-        }
+        _ => Err(RbSignerError::InvalidKeyType),
     }
 }
