@@ -893,4 +893,120 @@ mod tests {
         ];
         assert_eq!(variants.len(), 6);
     }
+
+    #[test]
+    fn test_typestate_from_values() {
+        assert_eq!(StateNew.from(), Some(0xFF));
+        assert_eq!(StateUpdating.from(), Some(0x70));
+        assert_eq!(StateTesting.from(), Some(0x10));
+        assert_eq!(StateSuccess.from(), Some(0x00));
+        assert_eq!(NoState.from(), None);
+    }
+
+    #[test]
+    fn test_sect_flags_from_valid() {
+        assert_eq!(SectFlags::NewFlag.from(), Some(0x0F));
+        assert_eq!(SectFlags::SwappingFlag.from(), Some(0x07));
+        assert_eq!(SectFlags::BackupFlag.from(), Some(0x03));
+        assert_eq!(SectFlags::UpdatedFlag.from(), Some(0x00));
+    }
+
+    #[test]
+    fn test_sect_flags_from_invalid() {
+        assert_eq!(SectFlags::None.from(), None);
+    }
+
+    #[test]
+    fn test_sect_flags_helpers() {
+        assert!(SectFlags::NewFlag.has_new_flag());
+        assert!(SectFlags::SwappingFlag.has_swapping_flag());
+        assert!(SectFlags::BackupFlag.has_backup_flag());
+        assert!(SectFlags::UpdatedFlag.has_updated_flag());
+        assert!(!SectFlags::NewFlag.has_swapping_flag());
+        assert!(!SectFlags::NewFlag.has_backup_flag());
+        assert!(!SectFlags::SwappingFlag.has_new_flag());
+        assert!(!SectFlags::SwappingFlag.has_updated_flag());
+        assert!(!SectFlags::BackupFlag.has_new_flag());
+        assert!(!SectFlags::BackupFlag.has_updated_flag());
+        assert!(!SectFlags::UpdatedFlag.has_new_flag());
+        assert!(!SectFlags::UpdatedFlag.has_swapping_flag());
+    }
+
+    #[test]
+    fn test_sect_flags_mutation() {
+        let mut flag = SectFlags::NewFlag;
+        assert_eq!(flag.set_swapping_flag(), SectFlags::SwappingFlag);
+        assert_eq!(flag, SectFlags::SwappingFlag);
+
+        let mut flag = SectFlags::NewFlag;
+        assert_eq!(flag.set_backup_flag(), SectFlags::BackupFlag);
+        assert_eq!(flag, SectFlags::BackupFlag);
+
+        let mut flag = SectFlags::NewFlag;
+        assert_eq!(flag.set_updated_flag(), SectFlags::UpdatedFlag);
+        assert_eq!(flag, SectFlags::UpdatedFlag);
+    }
+
+    #[test]
+    fn test_part_id_values() {
+        assert_eq!(Boot.part_id(), PartId::PartBoot);
+        assert_eq!(Update.part_id(), PartId::PartUpdate);
+        assert_eq!(Swap.part_id(), PartId::PartSwap);
+    }
+
+    #[test]
+    fn test_part_id_equality() {
+        assert_eq!(PartId::PartBoot, PartId::PartBoot);
+        assert_eq!(PartId::PartUpdate, PartId::PartUpdate);
+        assert_eq!(PartId::PartSwap, PartId::PartSwap);
+        assert_ne!(PartId::PartBoot, PartId::PartUpdate);
+        assert_ne!(PartId::PartBoot, PartId::PartSwap);
+        assert_ne!(PartId::PartUpdate, PartId::PartSwap);
+    }
+
+    #[test]
+    fn test_image_type_match_exhaustive() {
+        let _ = |img: ImageType| match img {
+            ImageType::BootInNewState(_) => {}
+            ImageType::UpdateInNewState(_) => {}
+            ImageType::NoStateSwap(_) => {}
+            ImageType::UpdateInUpdatingState(_) => {}
+            ImageType::BootInTestingState(_) => {}
+            ImageType::BootInSuccessState(_) => {}
+        };
+    }
+
+    #[test]
+    fn test_states_debug_derive() {
+        let _ = format!("{:?}", StateNew);
+        let _ = format!("{:?}", StateUpdating);
+        let _ = format!("{:?}", StateTesting);
+        let _ = format!("{:?}", StateSuccess);
+        let _ = format!("{:?}", NoState);
+    }
+
+    #[test]
+    fn test_part_boot_debug_and_eq() {
+        assert_eq!(Boot, Boot);
+        assert_eq!(Update, Update);
+        assert_eq!(Swap, Swap);
+        assert_eq!(Boot.part_id(), PartId::PartBoot);
+        assert_eq!(Update.part_id(), PartId::PartUpdate);
+        assert_eq!(Swap.part_id(), PartId::PartSwap);
+        assert_ne!(Boot.part_id(), Update.part_id());
+        assert_ne!(Update.part_id(), Swap.part_id());
+        assert_ne!(Boot.part_id(), Swap.part_id());
+    }
+
+    #[test]
+    fn test_sect_flags_debug_clone_copy() {
+        let f = SectFlags::NewFlag;
+        let f2 = f;
+        assert_eq!(f, f2);
+        assert_eq!(format!("{:?}", SectFlags::NewFlag), "NewFlag");
+        assert_eq!(format!("{:?}", SectFlags::SwappingFlag), "SwappingFlag");
+        assert_eq!(format!("{:?}", SectFlags::BackupFlag), "BackupFlag");
+        assert_eq!(format!("{:?}", SectFlags::UpdatedFlag), "UpdatedFlag");
+        assert_eq!(format!("{:?}", SectFlags::None), "None");
+    }
 }

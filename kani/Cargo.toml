@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-rustBoot = {path = "..", features = ["nrf52840"]}
+rustBoot = {path = "../rustBoot", features = ["stm32f411", "nistp256", "sha256"]}
 
 # Prevent this from interfering with workspace
 [workspace]

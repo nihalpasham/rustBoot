@@ -266,4 +266,32 @@ mod tests {
         let result = verify_ecc256_signature::<Sha256, { HDR_IMG_TYPE_AUTH }>(digest, &bad_sig);
         assert!(matches!(result, Err(RustbootError::FwAuthFailed)));
     }
+
+    #[test]
+    fn import_pubkey_nistp384_returns_error() {
+        let result = import_pubkey(PubkeyTypes::NistP384);
+        assert!(matches!(result, Err(RustbootError::InvalidValue)));
+    }
+
+    #[test]
+    fn import_pubkey_secp256k1_returns_error() {
+        let result = import_pubkey(PubkeyTypes::Secp256k1);
+        assert!(matches!(result, Err(RustbootError::InvalidValue)));
+    }
+
+    #[test]
+    fn verify_ecc256_zero_length_signature() {
+        let empty_sig = [];
+        let digest = Sha256::new().chain_update(b"test");
+        let result = verify_ecc256_signature::<Sha256, { HDR_IMG_TYPE_AUTH }>(digest, &empty_sig);
+        assert!(matches!(result, Err(RustbootError::BadSignature)));
+    }
+
+    #[test]
+    fn verify_ecc256_invalid_algorithm_id() {
+        let sig = [0xabu8; 64];
+        let digest = Sha256::new().chain_update(b"test");
+        let result = verify_ecc256_signature::<Sha256, 0xFFFF>(digest, &sig);
+        assert!(matches!(result, Err(RustbootError::InvalidValue)));
+    }
 }

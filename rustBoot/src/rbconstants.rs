@@ -71,3 +71,59 @@ impl Tags {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_constants_values() {
+        assert_eq!(IMAGE_HEADER_SIZE, 0x100);
+        assert_eq!(IMAGE_HEADER_OFFSET, 0x8);
+        assert_eq!(HDR_VERSION, 0x01);
+        assert_eq!(HDR_VERSION_LEN, 0x4);
+        assert_eq!(HDR_TIMESTAMP_LEN, 0x8);
+        assert_eq!(HDR_IMG_TYPE, 0x4);
+        assert_eq!(HDR_IMG_TYPE_LEN, 0x2);
+        assert_eq!(HDR_IMG_TYPE_APP, 0x0001);
+        assert_eq!(HDR_MASK_LOWBYTE, 0x00FF);
+        assert_eq!(HDR_MASK_HIGHBYTE, 0xFF00);
+        assert_eq!(HDR_SIGNATURE, 0x20);
+        assert_eq!(HDR_PADDING, 0xFF);
+        assert_eq!(RUSTBOOT_MAGIC, 0x54535552);
+        assert_eq!(RUSTBOOT_MAGIC_TRAIL, 0x544F4F42);
+        assert_eq!(HDR_SHA256, 0x0003);
+        assert_eq!(SHA256_DIGEST_SIZE, 32);
+        assert_eq!(HDR_SHA384, 0x0013);
+        assert_eq!(SHA384_DIGEST_SIZE, 48);
+        assert_eq!(HDR_PUBKEY_DIGEST, 0x0010);
+        assert_eq!(ECC_SIGNATURE_SIZE, 64);
+    }
+
+    #[test]
+    fn test_tags_get_id() {
+        assert_eq!(Tags::Version.get_id(), &[0x01, 0x00]);
+        assert_eq!(Tags::TimeStamp.get_id(), &[0x02, 0x00]);
+        assert_eq!(Tags::ImgType.get_id(), &[0x04, 0x00]);
+        assert_eq!(Tags::Digest256.get_id(), &[0x03, 0x00]);
+        assert_eq!(Tags::Digest384.get_id(), &[0x13, 0x00]);
+        assert_eq!(Tags::PubkeyDigest.get_id(), &[0x10, 0x00]);
+        assert_eq!(Tags::Signature.get_id(), &[0x20, 0x00]);
+        assert_eq!(Tags::EndOfHeader.get_id(), &[0x00, 0x00]);
+    }
+
+    #[test]
+    fn test_tags_match_exhaustive() {
+        let _ = |t: Tags| match t {
+            Tags::Version => {}
+            Tags::TimeStamp => {}
+            Tags::ImgType => {}
+            Tags::Digest256 => {}
+            Tags::Digest384 => {}
+            Tags::PubkeyDigest => {}
+            Tags::Signature => {}
+            Tags::EndOfHeader => {}
+        };
+    }
+}

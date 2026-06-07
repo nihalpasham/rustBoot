@@ -28,3 +28,4 @@ test.md
 **/*.hex
 **/*.img
 fuzz/target/
+kani/target/

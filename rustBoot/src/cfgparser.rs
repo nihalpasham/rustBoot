@@ -493,4 +493,70 @@ mod tests {
             let _ = parse_config(&data);
         }
     }
+
+    #[test]
+    fn test_update_status_all_variants() {
+        assert_eq!(
+            update_status("update_status=updating"),
+            Ok(("", UpdateStatus::Updating))
+        );
+        assert_eq!(
+            update_status("update_status=testing"),
+            Ok(("", UpdateStatus::Testing))
+        );
+        assert_eq!(
+            update_status("update_status=success"),
+            Ok(("", UpdateStatus::Success))
+        );
+    }
+
+    #[test]
+    fn test_ready_for_update_both_values() {
+        assert_eq!(
+            ready_for_update("ready_for_update_flag=true"),
+            Ok(("", true))
+        );
+        assert_eq!(
+            ready_for_update("ready_for_update_flag=false"),
+            Ok(("", false))
+        );
+    }
+
+    #[test]
+    fn test_alphanumericwithhypen_variants() {
+        // Function extracts prefix of alphanumeric + hyphens until a non-matching char
+        assert_eq!(
+            alphanumericwithhypen("name123.itb"),
+            Ok((".itb", "name123"))
+        );
+        assert_eq!(alphanumericwithhypen("a.b"), Ok((".b", "a")));
+        assert!(alphanumericwithhypen("").is_err());
+    }
+
+    #[test]
+    fn test_config_keys_edge_cases() {
+        assert_eq!(config_keys("[active]"), Ok(("", ConfigKeys::Active)));
+        assert_eq!(config_keys("[passive]"), Ok(("", ConfigKeys::Passive)));
+        assert!(config_keys("").is_err());
+        assert!(config_keys("[]").is_err());
+        assert!(config_keys("[unknown]").is_err());
+    }
+
+    #[test]
+    fn test_image_name_edge_cases() {
+        assert_eq!(image_name("image_name=a.itb"), Ok(("", ("a", ".itb"))));
+        assert_eq!(
+            image_name("image_name=no-dot-itb"),
+            Err(Err::Error(Error::new(
+                "no-dot-itb",
+                ErrorKind::AlphaNumeric
+            )))
+        );
+    }
+
+    #[test]
+    fn test_parse_config_empty_passive() {
+        assert!(parse_config("").is_err());
+        assert!(parse_config("[active]\nimage_name=x.itb\n").is_err());
+    }
 }
