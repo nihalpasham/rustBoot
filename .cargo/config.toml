@@ -1,11 +1,11 @@
 [target.thumbv7em-none-eabihf]
-rustflags = ["-C", "panic=abort", "-C", "link-arg=-nostartfiles"]
+rustflags = ["-C", "panic=abort"]
 
 [target.thumbv7m-none-eabi]
-rustflags = ["-C", "panic=abort", "-C", "link-arg=-nostartfiles"]
+rustflags = ["-C", "panic=abort"]
 
 [target.thumbv6m-none-eabi]
-rustflags = ["-C", "panic=abort", "-C", "link-arg=-nostartfiles"]
+rustflags = ["-C", "panic=abort"]
 
 [target.aarch64-unknown-none-softfloat]
 rustflags = ["-C", "panic=abort"]

@@ -1176,7 +1176,7 @@ mod tests {
     #[test]
     fn test_combined_boot_flow_scenario() {
         // Step 1: Verify TypeState encodes the correct state byte
-        assert_eq!(StateNew.from(), Some(0xFF));   // 255 = new
+        assert_eq!(StateNew.from(), Some(0xFF)); // 255 = new
         assert_eq!(StateUpdating.from(), Some(0x70)); // 112 = updating
         assert_eq!(StateTesting.from(), Some(0x10)); // 16 = testing
         assert_eq!(StateSuccess.from(), Some(0x00)); // 0 = success
@@ -1187,22 +1187,22 @@ mod tests {
         let success_decode = decode_state(StateSuccess.from().unwrap()).unwrap();
 
         match new_decode {
-            States::New(_) => {},
+            States::New(_) => {}
             _ => panic!("Expected New state"),
         }
         match testing_decode {
-            States::Testing(_) => {},
+            States::Testing(_) => {}
             _ => panic!("Expected Testing state"),
         }
         match success_decode {
-            States::Success(_) => {},
+            States::Success(_) => {}
             _ => panic!("Expected Success state"),
         }
 
         // Step 3: Verify the full update flow
         let update_updating_decode = decode_state(StateUpdating.from().unwrap()).unwrap();
         match update_updating_decode {
-            States::Updating(_) => {},
+            States::Updating(_) => {}
             _ => panic!("Expected Updating state for update"),
         }
     }
@@ -1219,20 +1219,38 @@ mod tests {
         ];
 
         for &(state_byte, _name) in &boot_values {
-            assert!(decode_state(state_byte).is_ok(), "All boot states should decode");
+            assert!(
+                decode_state(state_byte).is_ok(),
+                "All boot states should decode"
+            );
         }
 
         // Verify that invalid boot states are rejected
         let invalid_states = [0x01u8, 0x55, 0x80, 0xAA, 0xFE];
         for &state in &invalid_states {
-            assert!(decode_state(state).is_err(), "Invalid state should be rejected");
+            assert!(
+                decode_state(state).is_err(),
+                "Invalid state should be rejected"
+            );
         }
 
         // Verify round-trip: TypeState -> u8 -> decode -> correct States variant
-        assert!(matches!(decode_state(StateNew.from().unwrap()).unwrap(), States::New(_)));
-        assert!(matches!(decode_state(StateTesting.from().unwrap()).unwrap(), States::Testing(_)));
-        assert!(matches!(decode_state(StateSuccess.from().unwrap()).unwrap(), States::Success(_)));
-        assert!(matches!(decode_state(StateUpdating.from().unwrap()).unwrap(), States::Updating(_)));
+        assert!(matches!(
+            decode_state(StateNew.from().unwrap()).unwrap(),
+            States::New(_)
+        ));
+        assert!(matches!(
+            decode_state(StateTesting.from().unwrap()).unwrap(),
+            States::Testing(_)
+        ));
+        assert!(matches!(
+            decode_state(StateSuccess.from().unwrap()).unwrap(),
+            States::Success(_)
+        ));
+        assert!(matches!(
+            decode_state(StateUpdating.from().unwrap()).unwrap(),
+            States::Updating(_)
+        ));
     }
 
     /// Verify that state encoding values are consistent between

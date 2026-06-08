@@ -1,0 +1,22 @@
+[package]
+name = "rustboot-qemu-test"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+rustBoot = { path = "../../rustBoot", features = ["stm32f411", "nistp256", "sha256"] }
+
+[[bin]]
+name = "qemu_test"
+path = "src/main.rs"
+test = false
+bench = false
+
+[profile.release]
+debug = false
+lto = true
+codegen-units = 1
+opt-level = "z"
+panic = "abort"

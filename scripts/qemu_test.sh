@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # QEMU-based firmware test for rustBoot STM32 targets
+# Tests firmware builds for the embedded target and runs in QEMU.
+# Note: macOS cross-compilation places sections at different VMA addresses
+# than the STM32 boot address. For proper QEMU boot testing, run on a
+# Linux CI runner where rust-lld produces ELF with correct VMA layout.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
