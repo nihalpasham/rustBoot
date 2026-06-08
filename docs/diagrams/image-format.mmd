@@ -1,0 +1,15 @@
+```mermaid
+packet-beta
+0-15: "Magic (4B)"
+16-31: "Header Size (4B)"
+32-47: "FW Size (4B)"
+48-63: "Version (4B)"
+64-79: "Timestamp (8B)"
+80-95: "Image Type (4B)"
+96-111: "SHA-256 Hash (32B)"
+112-127: "Pubkey Hash (32B)"
+128-143: "Padding"
+144-159: "ECDSASig_R (32B)"
+160-175: "ECDSASig_S (32B)"
+176-191: "Padding to 512B"
+```

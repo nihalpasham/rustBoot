@@ -1,0 +1,39 @@
+```mermaid
+block-beta
+    columns 3
+    
+    block:Flash:3
+        columns 1
+        
+        block:Boot:1
+            columns 1
+            space
+            block:headers:3
+                columns 3
+                a["HDR"] b["FW Image"] c["TRAILER"]
+            end
+            space
+        end
+        
+        block:Update:1
+            columns 1
+            space
+            block:headers2:3
+                columns 3
+                d["HDR"] e["FW Image"] f["TRAILER"]
+            end
+            space
+        end
+        
+        block:Swap:1
+            columns 1
+            space
+            g["Swap Metadata"] h["State Flags"]
+            space
+        end
+    end
+
+    style Boot fill:#4a9eff77
+    style Update fill:#ff9a4a77
+    style Swap fill:#9aff4a77
+```

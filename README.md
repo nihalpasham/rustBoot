@@ -162,6 +162,17 @@ rustBoot is designed with defense in depth:
 See [SECURITY.md](SECURITY.md). Do **not** file public issues for security
 vulnerabilities.
 
+## Architecture
+
+For a visual overview of the system, see:
+
+- **Boot flow**: `docs/diagrams/boot-flow.mmd`
+- **State machine**: `docs/diagrams/state-machine.mmd`
+- **Partition layout**: `docs/diagrams/partition-layout.mmd`
+- **Image format**: `docs/diagrams/image-format.mmd`
+- **Crate architecture**: `docs/diagrams/crate-architecture.mmd`
+- **Full document**: `docs/architecture/ARCHITECTURE.md`
+
 ## Documentation
 
 | Document | Path |

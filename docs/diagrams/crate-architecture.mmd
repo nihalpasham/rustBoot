@@ -1,0 +1,46 @@
+```mermaid
+graph TB
+    subgraph "Application Layer"
+        FW[Firmware Image]
+    end
+    
+    subgraph "Bootloader Core"
+        RB[rustBoot -- no_std]
+        IMG[image/ -- State Machine<br/>Partition Mgmt]
+        CRYPTO[crypto/ -- ECDSA<br/>SHA-256]
+        PARSER[parser/ -- TLV]
+        DT[dt/ -- Device Tree<br/>FIT parser<br/>Reader/Writer]
+        CFG[cfgparser/ -- Config]
+    end
+    
+    subgraph "Board Support"
+        BRD[boards/ -- HAL<br/>Update Logic<br/>Bootloader main]
+        HAL[hal/ -- Register Maps<br/>Drivers]
+    end
+    
+    subgraph "Tooling"
+        XT[xtask/ -- Build System]
+        SIG[rbsigner/ -- Signing CLI]
+    end
+
+    subgraph "Verification"
+        TST[tests/ -- 164 unit<br/>20 integration]
+        KANI[kani/ -- 16 proofs]
+        FUZZ[fuzz/ -- 5 targets]
+        FORM[formal/ -- TLA+<br/>Alloy]
+    end
+
+    RB --> IMG
+    RB --> CRYPTO
+    RB --> PARSER
+    RB --> DT
+    RB --> CFG
+    BRD --> RB
+    BRD --> HAL
+    FW --> BRD
+    SIG --> RB
+    XT --> BRD
+    KANI --> RB
+    FUZZ --> RB
+    TST --> RB
+```

@@ -1,0 +1,36 @@
+```mermaid
+stateDiagram-v2
+    [*] --> BootInNewState : Power-on
+    
+    state BootInNewState {
+        [*] --> VerifyIntegrity
+        VerifyIntegrity --> VerifyAuthenticity
+        VerifyAuthenticity --> BootReady
+    }
+    
+    BootInNewState --> BootInTestingState : into_testing_state()
+    BootInTestingState --> BootInSuccessState : into_success_state()
+    BootInTestingState --> BootInNewState : rollback (update_trigger)
+
+    state UpdateInNewState {
+        [*] --> WaitingForUpdate
+    }
+    
+    UpdateInNewState --> UpdateInUpdatingState : into_updating_state()
+    UpdateInUpdatingState --> BootInTestingState : swap complete
+
+    note right of BootInNewState
+        State flag: 0xFF
+        Fresh image, needs verification
+    end note
+    
+    note right of BootInTestingState
+        State flag: 0x70
+        Under test, can rollback
+    end note
+
+    note right of BootInSuccessState
+        State flag: 0x00
+        Confirmed good
+    end note
+```
