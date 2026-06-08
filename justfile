@@ -11,6 +11,7 @@ verify:
     cargo clippy --package rustBoot --all-targets --features nrf52840 -- -D warnings
     cargo clippy --package rbsigner --all-targets --all-features -- -D warnings
     cargo clippy --package xtask --all-targets --features nrf52840 -- -D warnings
+    cargo clippy --package stack-analysis -- -D warnings
     just test-all
     cargo audit
     cargo deny check

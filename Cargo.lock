@@ -657,6 +657,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "stack-analysis"
+version = "0.1.0"
+dependencies = [
+ "rustBoot",
+]
+
+[[package]]
 name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

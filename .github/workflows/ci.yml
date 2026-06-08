@@ -167,3 +167,31 @@ jobs:
         run: cargo install kani-verifier
       - name: Run Kani proofs
         run: cargo kani --workspace 2>&1 | tail -20
+
+  qemu:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: rustup show
+      - name: Install QEMU
+        run: sudo apt-get update && sudo apt-get install -y qemu-system-arm
+      - name: Build firmware
+        run: cargo run -p xtask --features stm32f411 -- stm32f411 build rustBoot-only
+      - name: Run in QEMU
+        run: ./scripts/qemu_test.sh
+
+  stack-analysis:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: rustup show
+      - name: Install cargo-call-stack
+        run: cargo install cargo-call-stack --locked
+      - name: Analyze stack usage (stm32f411)
+        run: ./scripts/stack_analysis.sh thumbv7em-none-eabihf "stm32f411,nistp256,sha256"
+      - name: Analyze stack usage (nrf52840)
+        run: ./scripts/stack_analysis.sh thumbv7em-none-eabihf "nrf52840,nistp256,sha256"

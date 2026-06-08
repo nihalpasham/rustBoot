@@ -4,5 +4,6 @@ resolver = "2"
 members = [
   "rustBoot",
   "xtask",
-  "rbsigner"
+  "rbsigner",
+  "stack-analysis"
 ]

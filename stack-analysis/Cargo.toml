@@ -1,0 +1,8 @@
+[package]
+name = "stack-analysis"
+version = "0.1.0"
+edition = "2021"
+description = "Stack depth analysis harness for rustBoot"
+
+[dependencies]
+rustBoot = { path = "../rustBoot", features = ["stm32f411","nistp256","sha256"] }
