@@ -2,70 +2,54 @@
 #![no_main]
 #![allow(unsafe_code)]
 
-#[repr(C)]
-struct VT {
-    sp: u32,
-    reset: unsafe extern "C" fn(),
-    _nmi: unsafe extern "C" fn(),
-    _hardfault: unsafe extern "C" fn(),
-    _memmanage: unsafe extern "C" fn(),
-    _busfault: unsafe extern "C" fn(),
-    _usagefault: unsafe extern "C" fn(),
-    _reserved: [unsafe extern "C" fn(); 9],
-    _svcall: unsafe extern "C" fn(),
-    _reserved2: [unsafe extern "C" fn(); 2],
-}
+static mut SHARED_BYTE: u8 = 0;
 
-extern "C" fn default_handler() { loop {} }
-
-#[link_section = "__TEXT,.isr_vector"]
-#[used]
-static VTABLE: VT = VT {
-    sp: 0x20020000,
-    reset: reset_handler,
-    _nmi: default_handler,
-    _hardfault: default_handler,
-    _memmanage: default_handler,
-    _busfault: default_handler,
-    _usagefault: default_handler,
-    _reserved: [default_handler; 9],
-    _svcall: default_handler,
-    _reserved2: [default_handler; 2],
-};
-
-extern "C" fn reset_handler() { main() }
+core::arch::global_asm!(
+    ".section .vector_table,\"ax\"",
+    ".word 0x20020000",
+    ".word _reset + 1",
+    ".word _halt + 1",
+    ".word _halt + 1",
+    ".word _halt + 1",
+    ".word _halt + 1",
+    ".word _halt + 1",
+    ".space 36",
+    ".section .text,\"ax\"",
+    ".balign 4",
+    "_halt: b _halt",
+    ".balign 4",
+    "_reset: bl main; b _reset",
+);
 
 fn putchar(c: u8) {
     unsafe {
-        let func: u32 = 0x03;
-        let ptr: *const u8 = &c;
-        core::arch::asm!(
-            "mov r0, {0}",
-            "mov r1, {1}",
-            ".inst 0xBEAB",
-            in(reg) func,
-            in(reg) ptr,
-        );
+        SHARED_BYTE = c;
+        let p: u32 = &SHARED_BYTE as *const u8 as u32;
+        core::arch::asm!("mov r0, #0x03", "mov r1, {0}", "bkpt #0xab", in(reg) p);
     }
 }
+
 fn puts(s: &str) { for &b in s.as_bytes() { putchar(b); } }
 
 #[no_mangle]
 pub extern "C" fn main() -> ! {
-    puts("rustBoot QEMU Test\n");
-
     use rustBoot::image::image::{StateNew, StateTesting, StateSuccess, StateUpdating, TypeState, SectFlags};
+    use rustBoot::parser::{check_for_eof, check_for_padding};
 
+    puts("rustBoot QEMU Test\n");
     let mut pass = true;
     if StateNew.from() != Some(0xFF) { puts("T1 FAIL\n"); pass = false; }
     if StateTesting.from() != Some(0x10) { puts("T2 FAIL\n"); pass = false; }
     if StateSuccess.from() != Some(0x00) { puts("T3 FAIL\n"); pass = false; }
     if StateUpdating.from() != Some(0x70) { puts("T4 FAIL\n"); pass = false; }
     if SectFlags::NewFlag.from() != Some(0x0F) { puts("T5 FAIL\n"); pass = false; }
-
-    if pass { puts("\nALL PASSED\n"); } else { puts("\nFAILED\n"); }
+    let data = [0x01u8, 0x02];
+    if check_for_eof(&data).is_err() { puts("T6 FAIL\n"); pass = false; }
+    let pad = [0xFFu8, 0xFF];
+    if check_for_padding(&pad).map(|(r,_)| r.is_empty()) != Ok(true) { puts("T7 FAIL\n"); pass = false; }
+    if pass { puts("ALL PASSED\n"); } else { puts("FAILED\n"); }
     loop {}
 }
 
 #[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! { puts("PANIC\n"); loop {} }
+fn panic(_: &core::panic::PanicInfo) -> ! { loop {} }

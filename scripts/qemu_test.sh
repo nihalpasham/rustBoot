@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
-# QEMU-based firmware test for rustBoot STM32 targets
-# Tests firmware builds for the embedded target and runs in QEMU.
-# Note: macOS cross-compilation places sections at different VMA addresses
-# than the STM32 boot address. For proper QEMU boot testing, run on a
-# Linux CI runner where rust-lld produces ELF with correct VMA layout.
+# QEMU firmware test for rustBoot core state machine (Cortex-M3/M4).
+# Builds a minimal test firmware and runs it in QEMU's mps2-an385 (Cortex-M3)
+# or netduinoplus2 (STM32F405 Cortex-M4) machine.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo "=== rustBoot QEMU Test ==="
-echo "Target: stm32f411"
 
 # Check QEMU
 if ! command -v qemu-system-arm &>/dev/null; then
@@ -18,53 +15,42 @@ if ! command -v qemu-system-arm &>/dev/null; then
     exit 1
 fi
 
-# Build the firmware
-echo "Building firmware..."
-cd "$PROJECT_DIR"
-RUSTFLAGS="-C panic=abort" cargo build -Zbuild-std=core --release --target thumbv7em-none-eabihf --manifest-path boards/bootloaders/stm32f411/Cargo.toml 2>&1 | tail -5
-
-# Find the ELF
-FW_DIR="boards/target/thumbv7em-none-eabihf/release"
-FW_ELF=$(find "$PROJECT_DIR/boards" -name "stm32f411" -path "*/release/*" -type f ! -name "*.d" 2>/dev/null | head -1)
-
-if [ -z "$FW_ELF" ]; then
-    # Try alternate paths
-    FW_ELF=$(find boards -name "*.elf" -path "*stm32f411*" 2>/dev/null | head -1)
-fi
-
-if [ -z "$FW_ELF" ]; then
-    echo "WARNING: No ELF binary found. QEMU test skipped."
-    echo "This is expected if the xtask build step uses a different output path."
-    echo "Once binary is available, run:"
-    echo "  qemu-system-arm -machine stm32f4xx -kernel <elf> -nographic"
-    exit 0
-fi
-
-echo "Firmware: $FW_ELF"
-echo "Launching QEMU..."
-
-# Try various machine types for STM32 testing
-# netduinoplus2 (STM32F405) is the closest supported machine
+# Find a suitable machine
 MACHINE=""
-if qemu-system-arm -machine help 2>&1 | grep -q netduinoplus2; then
+if qemu-system-arm -machine help 2>&1 | grep -q mps2-an385; then
+    MACHINE="mps2-an385"
+    echo "Machine: mps2-an385 (Cortex-M3)"
+elif qemu-system-arm -machine help 2>&1 | grep -q netduinoplus2; then
     MACHINE="netduinoplus2"
-elif qemu-system-arm -machine help 2>&1 | grep -q olimex-stm32-h405; then
-    MACHINE="olimex-stm32-h405"
+    echo "Machine: netduinoplus2 (STM32F405 Cortex-M4)"
 else
-    echo "WARNING: No suitable Cortex-M4 machine found in QEMU."
-    echo "Install qemu-system-arm with STM32 support or use a newer QEMU version."
-    echo "Firmware binary built successfully at: $FW_ELF"
-    exit 0
+    echo "ERROR: No suitable Cortex-M machine found in QEMU."
+    exit 1
 fi
 
-echo "Machine: $MACHINE"
+# Build the test firmware
+echo "Building QEMU test firmware..."
+cd "$PROJECT_DIR"
+RUSTFLAGS="-C link-arg=-Tlink.x -C panic=abort" cargo build --release \
+    --target thumbv7em-none-eabihf \
+    --manifest-path boards/qemu_test/Cargo.toml 2>&1 | tail -3
+
+# Convert to raw binary and load at flash base
+ELFDIR="boards/qemu_test/target/thumbv7em-none-eabihf/release"
+if [ ! -f "$ELFDIR/qemu_test" ]; then
+    echo "ERROR: Firmware binary not found at $ELFDIR/qemu_test"
+    exit 1
+fi
+
+rust-objcopy -O binary "$ELFDIR/qemu_test" /tmp/qemu_test.bin 2>/dev/null
+echo "Binary size: $(wc -c < /tmp/qemu_test.bin) bytes"
+
+# Run in QEMU
+echo "Launching QEMU (5 second timeout)..."
 timeout 5 qemu-system-arm \
-    -machine "$MACHINE" \
-    -kernel "$FW_ELF" \
-    -nographic \
-    -semihosting \
-    -semihosting-config enable=on,target=native \
-    2>&1 | head -50 || true
+    -M "$MACHINE" \
+    -device loader,file=/tmp/qemu_test.bin,addr=0x00000000,force-raw=on \
+    -nographic -semihosting -serial none -monitor none 2>&1 || true
 
 echo ""
 echo "=== QEMU test complete ==="

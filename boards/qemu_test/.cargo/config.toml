@@ -1,3 +1,2 @@
-[build]
-target = "thumbv7em-none-eabihf"
-rustflags = ["-C", "panic=abort"]
+[target.thumbv7em-none-eabihf]
+rustflags = ["-C", "link-arg=-Tlink.x", "-C", "link-arg=-nostartfiles", "-C", "panic=abort"]

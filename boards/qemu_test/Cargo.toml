@@ -15,8 +15,9 @@ test = false
 bench = false
 
 [profile.release]
-debug = false
 lto = true
 codegen-units = 1
 opt-level = "z"
-panic = "abort"
+
+[build]
+target = "thumbv7em-none-eabihf"
