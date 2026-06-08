@@ -52,15 +52,35 @@ The bootloader MUST NOT panic in production code paths. All fallible operations 
 
 ## Traceability Matrix
 
-| Req ID | Module | Test | Status |
-|--------|--------|------|--------|
-| REQ-001 | `image/image.rs` | `verify_integrity`, `verify_authenticity` | Verified |
-| REQ-002 | `update/update_flash.rs` | version comparison | Verified |
-| REQ-003 | `update/update_flash.rs` | sector flag state machine | Verified |
-| REQ-004 | `update/update_flash.rs` | `rustboot_start()` rollback | Verified |
-| REQ-005 | `image/image.rs` | `ImageType` enum | Verified |
-| REQ-006 | `hal/src/lib.rs` | `FlashInterface` trait | Verified |
-| REQ-007 | `parser.rs` | TLV parser tests | Verified |
-| REQ-008 | `constants.rs` | per-feature constants | Verified |
-| REQ-009 | `dt/fit.rs`, `dt/patch.rs` | FIT tests | Verified |
-| REQ-010 | `lib.rs` | lint enforcement | **Partial** — PR2 in review |
+| Req ID | Module | Test / Verification | Status |
+|--------|--------|---------------------|--------|
+| REQ-001 | `crypto/signatures.rs` | `nistp256_verify_good_signature`, `nistp256_verify_bad_signature`, `nistp256_verify_malformed_signature`, `nistp256_verify_wrong_key`, `verify_ecc256_bad_sig_returns_auth_failed`, `verify_ecc256_zero_length_signature`, `verify_ecc256_invalid_algorithm_id`, `import_pubkey_nistp256_ok`, `import_pubkey_unsupported_returns_error`, `import_pubkey_nistp384_returns_error`, `import_pubkey_secp256k1_returns_error` | Verified |
+| REQ-001 | `integration` | `test_image_header_size_invariants` | Verified |
+| REQ-001 | Kani | `partition_size_bounds` | Verified |
+| REQ-002 | `integration` | `test_version_comparison_logic` | Verified |
+| REQ-002 | Kani | `version_comparison_properties` | Verified |
+| REQ-003 | `image/image.rs` | `test_sect_flags_mutation`, `test_sect_flags_mutation_from_each_state` | Verified |
+| REQ-003 | integration | `test_sect_flags_values`, `test_sect_flags_none_returns_none`, `test_sect_flags_valid_return_some` | Verified |
+| REQ-003 | Kani | `sect_flags_from_bounded`, `sect_flags_all_values`, `state_encode_decode_roundtrip` | Verified |
+| REQ-004 | `image/image.rs` | `test_valid_state_transitions_graph` (Testing → Success transition) | Verified |
+| REQ-004 | integration | `test_state_transition_table_exhaustive`, `test_documented_valid_transitions` | Verified |
+| REQ-004 | Kani | `state_transition_dag_no_cycles` | Verified |
+| REQ-005 | `image/image.rs` | `test_valid_state_transitions_graph`, `test_state_transition_methods_compile`, `test_image_type_match_exhaustive`, `test_typestate_from_values`, `test_sect_flags_helpers` | Verified |
+| REQ-005 | integration | `test_state_transition_table_exhaustive`, `test_valid_transitions_map_to_methods`, `test_typestate_encoding`, `test_state_flags_distinct` | Verified |
+| REQ-005 | proptest | `state_decoding_never_panics`, `state_encoding_roundtrip`, `invalid_state_flags_produce_errors` | Verified |
+| REQ-005 | Kani | `state_transition_dag_no_cycles`, `state_encode_decode_roundtrip` | Verified |
+| REQ-006 | `boards/hal/src/lib.rs` | `FlashInterface` trait implementations (compile-time per-MCU) | Verified |
+| REQ-007 | `parser.rs` | `padding_test`, `parse_version`, `parse_timestamp`, `parse_img_type`, `parse_digest`, `parse_pubkey_digest`, `parse_signature`, `get_tlv_digest256`, `get_tlv_pubkey_digest` | Verified |
+| REQ-007 | integration | `test_tags_ids`, `test_rbconstants_correctness` | Verified |
+| REQ-007 | Kani | `parser_extract_version_bounds`, `parser_extract_timestamp_bounds`, `parser_extract_version_no_panic`, `parser_extract_timestamp_no_panic`, `parser_extract_img_type_no_panic`, `parser_extract_digest_no_panic`, `parser_extract_pubkey_digest_no_panic`, `parser_extract_signature_no_panic` | Verified |
+| REQ-007 | proptest | `parser_never_panics_on_arbitrary_input`, `parser_version_output_len_valid`, `parser_timestamp_output_len_valid` | Verified |
+| REQ-007 | fuzz | `image_header_parser` | Verified |
+| REQ-008 | `rustBoot/src/constants.rs` | Per-feature partition constants (compile-time constants) | Verified |
+| REQ-008 | integration | `integration::test_platform_constants_consistency` | Verified |
+| REQ-008 | Kani | `partition_offset_arithmetic`, `partition_open_bounds`, `partition_size_bounds`, `constants_consistent` | Verified |
+| REQ-009 | `dt/fit.rs` | `test_parse_algo_valid_curve`, `test_parse_algo_unknown_curve_returns_error`, `test_parse_algo_empty_algo_returns_error`, `test_parse_algo_truncated_blob_does_not_panic`, `test_parse_algo_extra_long_algo_string`, `test_parse_algo_multiple_confignodes`, `test_flatten_correct_size`, `test_flatten_all_zeros`, `test_flatten_distinct_values`, `test_flatten_partial_usage` | Verified |
+| REQ-009 | `dt/patch.rs` | `test_patch_dtb_node_basic`, `test_patch_dtb_node_empty_patches`, `test_patch_chosen_node_valid`, `test_patch_chosen_node_multiple_calls`, `test_check_chosen_node_removes_bootargs_and_initrd`, `test_check_chosen_node_all_removed`, `test_check_chosen_node_empty_items`, `test_get_padded_node_len_chosen`, `test_get_node_start_and_end_chosen` | Verified |
+| REQ-009 | fuzz | `fit_parser`, `dtb_parser` | Verified |
+| REQ-009 | Kani | `flatten_bounds` | Verified |
+| REQ-010 | `lib.rs` | `#![deny(clippy::panic)]`, `#![deny(clippy::unwrap_used)]`, `#![deny(clippy::expect_used)]`, `#![deny(clippy::todo)]`, `#![deny(clippy::unimplemented)]` | Verified |
+| REQ-010 | `crypto/signatures.rs`, `image/image.rs`, `parser.rs`, etc. | All `#[allow(clippy::unwrap_used)]` scoped to `#[cfg(test)]` modules | Verified |
