@@ -1,4 +1,23 @@
 #![no_std]
+#![allow(non_snake_case)]
+#![allow(clippy::let_and_return)]
+#![allow(clippy::redundant_pattern)]
+#![allow(clippy::unnecessary_cast)]
+#![allow(clippy::let_unit_value)]
+#![allow(clippy::needless_late_init)]
+#![allow(clippy::useless_let_if_seq)]
+#![allow(clippy::question_mark)]
+#![allow(clippy::collapsible_if)]
+#![allow(clippy::needless_bool)]
+#![allow(clippy::unnecessary_unwrap)]
+#![allow(clippy::blocks_in_conditions)]
+#![allow(unused_variables)]
+#![allow(unused_assignments)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::doc_markdown)]
+#![allow(unused_must_use)]
 
 pub mod hal;
 pub mod update;

@@ -1,7 +1,8 @@
 #![no_std]
-#![feature(format_args_nl)]
-#![feature(asm)]
-#![feature(core_intrinsics)]
+// UNUSED feature gates removed: format_args_nl, asm, core_intrinsics
+#![allow(non_snake_case)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::doc_lazy_continuation)]
 // Safety: unsafe_code is required for MMIO register access, inline assembly,
 // and architecture-specific operations. Each unsafe block is documented.
 // Target: provide safe abstractions over time.
@@ -33,7 +34,7 @@ pub trait FlashInterface {
 
 // Arch-specific code
 pub fn preboot() {}
-pub fn boot_from(fw_base_address: usize) -> ! {
+pub fn boot_from(_fw_base_address: usize) -> ! {
     #[cfg(feature = "nrf52840")]
     crate::nrf::nrf52840::boot_from(fw_base_address);
 

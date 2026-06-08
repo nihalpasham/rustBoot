@@ -1,5 +1,3 @@
-use core::marker::PhantomData;
-
 use crate::hal::hal::*;
 use rustBoot::constants::*;
 use rustBoot::crypto::signatures::HDR_IMG_TYPE_AUTH;
