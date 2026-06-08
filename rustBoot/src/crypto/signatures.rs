@@ -1,3 +1,9 @@
+//! ECDSA signature verification (NIST P-256, secp256k1).
+//!
+//! Supports digest-based verification via the `signature` crate's
+//! `DigestVerifier` trait. The embedded public key is provisioned
+//! at compile time.
+
 use crate::{Result, RustbootError};
 use core::convert::TryFrom;
 use sha2::digest::{Digest, FixedOutput};

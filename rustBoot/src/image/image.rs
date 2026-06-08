@@ -1,3 +1,8 @@
+//! Boot state machine and partition management.
+//!
+//! Defines the A/B boot state machine with 5 states and 4 valid
+//! transitions. All invalid transitions return `RustbootError`.
+
 // image.rs uses indexing on bounded arrays (IMAGE_HEADER_SIZE).
 // Bounds are compile-time verified.
 #![allow(

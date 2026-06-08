@@ -1,4 +1,6 @@
-//! A nom-based config parser for rustBoot, compatible with `no_std` environments.
+//! Update configuration parser.
+//!
+//! Parses firmware update configuration strings using nom combinators.
 
 #![allow(mismatched_lifetime_syntaxes)]
 

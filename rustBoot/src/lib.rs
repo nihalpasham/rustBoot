@@ -1,3 +1,9 @@
+//! rustBoot — Secure bootloader for embedded systems.
+//!
+//! # Safety
+//! This crate uses `#![deny(unsafe_code)]`. All unsafe code is isolated
+//! to specific modules with documented NATO-grade safety cases.
+
 #![cfg_attr(not(test), no_std)]
 // Reason: crate name is intentional branding, not a style violation
 #![allow(non_snake_case)]

@@ -1,3 +1,9 @@
+//! TLV image header parser using nom 8.
+//!
+//! Parses version, timestamp, image type, digest, public key digest,
+//! and signature from a fixed-size header buffer. Never panics on
+//! arbitrary input (verified by Kani and fuzz testing).
+
 // SAFETY (NATO ASSESSMENT): unsafe_code is required for:
 // - raw pointer cast from *const u8 (memory-mapped partition header) to &[u8; IMAGE_HEADER_SIZE]
 // This is inherent to embedded firmware: headers live at fixed MMIO addresses.

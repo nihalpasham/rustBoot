@@ -1,3 +1,8 @@
+//! Device tree blob (DTB) reader.
+//!
+//! Parses flattened device tree structures from raw byte buffers
+//! into structured items (nodes, properties, strings).
+
 // SAFETY (NATO ASSESSMENT): unsafe_code is required for:
 // - from_raw_parts reinterpreting reserved memory bytes as ReservedMemEntry slices
 // - read_from_address (pub unsafe fn) which reads DTB from arbitrary memory addresses
