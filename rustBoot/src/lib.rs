@@ -28,6 +28,7 @@
 // Legacy pattern — fix tracked separately
 #![allow(clippy::match_ref_pats)]
 
+#[cfg(feature = "config-parser")]
 pub mod cfgparser;
 #[cfg(feature = "mcu")]
 pub mod constants;

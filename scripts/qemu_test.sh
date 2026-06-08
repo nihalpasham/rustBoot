@@ -17,11 +17,11 @@ fi
 # Build the firmware
 echo "Building firmware..."
 cd "$PROJECT_DIR"
-cargo run -p xtask --features stm32f411 -- stm32f411 build rustBoot-only 2>&1 | tail -5
+RUSTFLAGS="-C panic=abort" cargo build -Zbuild-std=core --release --target thumbv7em-none-eabihf --manifest-path boards/bootloaders/stm32f411/Cargo.toml 2>&1 | tail -5
 
 # Find the ELF
 FW_DIR="boards/target/thumbv7em-none-eabihf/release"
-FW_ELF=$(find "$FW_DIR" -name "rustBoot*" -o -name "stm32f411*" 2>/dev/null | head -1)
+FW_ELF=$(find "$PROJECT_DIR/boards" -name "stm32f411" -path "*/release/*" -type f ! -name "*.d" 2>/dev/null | head -1)
 
 if [ -z "$FW_ELF" ]; then
     # Try alternate paths
@@ -39,9 +39,23 @@ fi
 echo "Firmware: $FW_ELF"
 echo "Launching QEMU..."
 
-# Run in QEMU with a 5-second timeout
+# Try various machine types for STM32 testing
+# netduinoplus2 (STM32F405) is the closest supported machine
+MACHINE=""
+if qemu-system-arm -machine help 2>&1 | grep -q netduinoplus2; then
+    MACHINE="netduinoplus2"
+elif qemu-system-arm -machine help 2>&1 | grep -q olimex-stm32-h405; then
+    MACHINE="olimex-stm32-h405"
+else
+    echo "WARNING: No suitable Cortex-M4 machine found in QEMU."
+    echo "Install qemu-system-arm with STM32 support or use a newer QEMU version."
+    echo "Firmware binary built successfully at: $FW_ELF"
+    exit 0
+fi
+
+echo "Machine: $MACHINE"
 timeout 5 qemu-system-arm \
-    -machine stm32f4xx \
+    -machine "$MACHINE" \
     -kernel "$FW_ELF" \
     -nographic \
     -semihosting \

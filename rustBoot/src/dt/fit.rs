@@ -21,7 +21,6 @@ use core::ops::Add;
 
 use super::{Concat, Error, Reader, Result};
 use log::info;
-use nom::AsBytes;
 use p256::ecdsa::signature::digest::Digest;
 #[allow(deprecated)]
 use p256::elliptic_curve::generic_array::ArrayLength;
@@ -440,8 +439,9 @@ where
     let mut buf = [0u8; 150];
     let mut offset = 0usize;
     cfg_values.iter().for_each(|val| {
-        buf[offset..offset + val.len()].copy_from_slice(val.as_bytes());
-        offset += val.len()
+        let bytes = val.as_bytes();
+        buf[offset..offset + bytes.len()].copy_from_slice(bytes);
+        offset += bytes.len()
     });
     let cfg_bytes = &buf[..offset];
     hasher.update(cfg_bytes);
@@ -518,7 +518,7 @@ pub fn parse_algo(itb_blob: &[u8]) -> Result<CurveType> {
         // parse the default config's signature algo
         let config = "/configurations/".concat::<50>(config);
         let config = config.as_str()?;
-        let sig_node = config.concat::<50>("/signature\0".as_bytes());
+        let sig_node = config.concat::<50>(b"/signature\0");
         let sig_node = sig_node.as_str()?;
 
         let (_, node_iter) = root.path_struct_items(sig_node).next().unwrap();

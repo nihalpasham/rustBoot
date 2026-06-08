@@ -18,6 +18,10 @@ version = "0.1.0"
 # ensure that the correct features are enabled.
 # autoexamples = false
 
+[[example]]
+name = "updt_check"
+required-features = ["config-parser"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -28,8 +32,7 @@ defmt = {version = "1.0.0", optional = true}
 generic-array = {version = "1.2.0", default-features = false}
 # log is required by dt/fit.rs
 log = {version = "0.4", default-features = false}
-# rustBoot parser dependencies
-nom = {version = "8.0.0", default-features = false, features = ["alloc", "std"]}
+nom = {version = "8.0.0", default-features = false, optional = true}
 # crypto dependencies
 ecdsa = {version = "0.16", default-features = false, features = ["digest"]}
 k256 = {version = "0.13.4", default-features = false, features = ["ecdsa"], optional = true}
@@ -49,6 +52,7 @@ proptest = {version = "1.4", default-features = false, features = ["std"]}
 
 [features]
 default = ["sha256", "nistp256"]
+config-parser = ["dep:nom", "nom/alloc"]
 ed25519 = ["sha256"]
 ext_flash = []
 nistp256 = ["p256/ecdsa", "sha256"]

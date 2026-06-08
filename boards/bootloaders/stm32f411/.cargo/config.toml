@@ -1,17 +1,14 @@
-# =============================================================================
-# Build configuration options for Cortex-M
-# =============================================================================
+[unstable]
+build-std = ["core"]
 
-[build]
-target = "thumbv7em-none-eabihf"
+[target.thumbv7em-none-eabihf]
+rustflags = ["-C", "panic=abort"]
 
-[target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = "probe-run --chip stm32f411vetx" # runner specific to stm32f411vetx. Replace this with probe-run option for your board.
-rustflags = [
-  "-C", "linker=flip-link",
-  "-C", "link-arg=-Tlink.x",
-  # "-C", "link-arg=-Tdefmt.x",
-  # This is needed if your flash or ram addresses are not aligned to 0x10000 in memory.x
-  # See https://github.com/rust-embedded/cortex-m-quickstart/pull/95
-  "-C", "link-arg=--nmagic",
-]
+[target.thumbv7m-none-eabi]
+rustflags = ["-C", "panic=abort"]
+
+[target.thumbv6m-none-eabi]
+rustflags = ["-C", "panic=abort"]
+
+[target.aarch64-unknown-none-softfloat]
+rustflags = ["-C", "panic=abort"]

@@ -1,0 +1,16 @@
+[package]
+name = "memchr"
+version = "2.8.1"
+edition = "2021"
+publish = false
+
+[dependencies]
+core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
+
+[features]
+default = []
+alloc = []
+std = ["alloc"]
+
+[lib]
+path = "src/lib.rs"

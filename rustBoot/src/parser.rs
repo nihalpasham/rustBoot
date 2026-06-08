@@ -179,117 +179,123 @@ impl Tags {
     }
 }
 
-use nom::bytes::complete::take_while;
-use nom::bytes::complete::{tag, take};
-use nom::{
-    error::{Error, ErrorKind},
-    Err, IResult, Parser,
-};
-
-// use libc_print::libc_println;
-
-pub fn check_for_eof(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    match tag::<&[u8], &[u8], Error<&[u8]>>(Tags::EndOfHeader.get_id()).parse(input) {
-        Ok((_remainder, _eof)) => Err(Err::Error(Error::new(input, ErrorKind::Eof))),
-        Err(_e) => Ok((input, &[])),
+fn take<'a>(
+    input: &'a [u8],
+    n: usize,
+) -> core::result::Result<(&'a [u8], &'a [u8]), RustbootError> {
+    if input.len() < n {
+        Err(RustbootError::InvalidHdrFieldLength)
+    } else {
+        let (taken, rest) = input.split_at(n);
+        Ok((rest, taken))
     }
 }
 
-pub fn check_for_padding(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    let res = take_while(|pad_byte: u8| pad_byte == 0xff).parse(input)?;
-    Ok(res)
+pub fn check_for_eof(input: &[u8]) -> core::result::Result<(&[u8], &[u8]), RustbootError> {
+    let tag_bytes = Tags::EndOfHeader.get_id();
+    if input.len() >= tag_bytes.len() && input[..tag_bytes.len()] == *tag_bytes {
+        Err(RustbootError::TLVNotFound)
+    } else {
+        Ok((input, &[]))
+    }
 }
 
-pub fn extract_version(input: &[u8]) -> IResult<&[u8], &[u8]> {
+pub fn check_for_padding(input: &[u8]) -> core::result::Result<(&[u8], &[u8]), RustbootError> {
+    let pad_end = input.iter().position(|b| *b != 0xff).unwrap_or(input.len());
+    let (padding, rest) = input.split_at(pad_end);
+    Ok((rest, padding))
+}
+
+pub fn extract_version(input: &[u8]) -> core::result::Result<(&[u8], &[u8]), RustbootError> {
     let (input, _) = check_for_eof(input)?;
     let (input, _) = check_for_padding(input)?;
-    let (remainder, version) = take(8usize).parse(input)?;
-    let (lengthvalue, version_check) = take(2usize).parse(version)?;
-    let (value, version_len) = take(2usize).parse(lengthvalue)?;
+    let (remainder, version) = take(input, 8usize)?;
+    let (lengthvalue, version_check) = take(version, 2usize)?;
+    let (value, version_len) = take(lengthvalue, 2usize)?;
     let len = (version_len[0] as u16 | (version_len[1] as u16) << 8) as usize;
     if version_check == Tags::Version.get_id() && len == HDR_VERSION_LEN {
         Ok((remainder, value))
     } else {
-        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+        Err(RustbootError::InvalidValue)
     }
 }
 
-pub fn extract_timestamp(input: &[u8]) -> IResult<&[u8], &[u8]> {
+pub fn extract_timestamp(input: &[u8]) -> core::result::Result<(&[u8], &[u8]), RustbootError> {
     let (remainder, _) = extract_version(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
-    let (remainder, timestamp) = take(12usize).parse(remainder)?;
-    let (lengthvalue, timestamp_check) = take(2usize).parse(timestamp)?;
-    let (value, timestamp_len) = take(2usize).parse(lengthvalue)?;
+    let (remainder, timestamp) = take(remainder, 12usize)?;
+    let (lengthvalue, timestamp_check) = take(timestamp, 2usize)?;
+    let (value, timestamp_len) = take(lengthvalue, 2usize)?;
     let len = (timestamp_len[0] as u16 | (timestamp_len[1] as u16) << 8) as usize;
     if timestamp_check == Tags::TimeStamp.get_id() && len == HDR_TIMESTAMP_LEN {
         Ok((remainder, value))
     } else {
-        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+        Err(RustbootError::InvalidValue)
     }
 }
 
-pub fn extract_img_type(input: &[u8]) -> IResult<&[u8], &[u8]> {
+pub fn extract_img_type(input: &[u8]) -> core::result::Result<(&[u8], &[u8]), RustbootError> {
     let (remainder, _) = extract_timestamp(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
-    let (remainder, img_type) = take(6usize).parse(remainder)?;
-    let (lengthvalue, img_type_check) = take(2usize).parse(img_type)?;
-    let (value, timestamp_len) = take(2usize).parse(lengthvalue)?;
+    let (remainder, img_type) = take(remainder, 6usize)?;
+    let (lengthvalue, img_type_check) = take(img_type, 2usize)?;
+    let (value, timestamp_len) = take(lengthvalue, 2usize)?;
     let len = (timestamp_len[0] as u16 | (timestamp_len[1] as u16) << 8) as usize;
     if img_type_check == Tags::ImgType.get_id() && len == HDR_IMG_TYPE_LEN {
         Ok((remainder, value))
     } else {
-        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+        Err(RustbootError::InvalidValue)
     }
 }
 
-pub fn extract_digest(input: &[u8]) -> IResult<&[u8], &[u8]> {
+pub fn extract_digest(input: &[u8]) -> core::result::Result<(&[u8], &[u8]), RustbootError> {
     let (remainder, _) = extract_img_type(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
-    let (remainder, typelen) = take(4usize).parse(remainder)?;
+    let (remainder, typelen) = take(remainder, 4usize)?;
     let len = (typelen[2] as u16 | (typelen[3] as u16) << 8) as usize;
-    let (remainder, digest) = take(len).parse(remainder)?;
-    let (_, digest_check) = take(2usize).parse(typelen)?;
+    let (remainder, digest) = take(remainder, len)?;
+    let (_, digest_check) = take(typelen, 2usize)?;
     if (digest_check == Tags::Digest256.get_id() && len == SHA256_DIGEST_SIZE)
         || (digest_check == Tags::Digest384.get_id() && len == SHA384_DIGEST_SIZE)
     {
         Ok((remainder, digest))
     } else {
-        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+        Err(RustbootError::InvalidValue)
     }
 }
 
-pub fn extract_pubkey_digest(input: &[u8]) -> IResult<&[u8], &[u8]> {
+pub fn extract_pubkey_digest(input: &[u8]) -> core::result::Result<(&[u8], &[u8]), RustbootError> {
     let (remainder, _) = extract_digest(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
-    let (remainder, typelen) = take(4usize).parse(remainder)?;
+    let (remainder, typelen) = take(remainder, 4usize)?;
     let len = (typelen[2] as u16 | (typelen[3] as u16) << 8) as usize;
-    let (remainder, digest) = take(len).parse(remainder)?;
-    let (_, digest_check) = take(2usize).parse(typelen)?;
+    let (remainder, digest) = take(remainder, len)?;
+    let (_, digest_check) = take(typelen, 2usize)?;
     if (digest_check == Tags::PubkeyDigest.get_id() && len == SHA256_DIGEST_SIZE)
         || (digest_check == Tags::PubkeyDigest.get_id() && len == SHA384_DIGEST_SIZE)
     {
         Ok((remainder, digest))
     } else {
-        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+        Err(RustbootError::InvalidValue)
     }
 }
 
-pub fn extract_signature(input: &[u8]) -> IResult<&[u8], &[u8]> {
+pub fn extract_signature(input: &[u8]) -> core::result::Result<(&[u8], &[u8]), RustbootError> {
     let (remainder, _) = extract_pubkey_digest(input)?;
     let (remainder, _) = check_for_eof(remainder)?;
     let (remainder, _) = check_for_padding(remainder)?;
-    let (remainder, typelen) = take(4usize).parse(remainder)?;
+    let (remainder, typelen) = take(remainder, 4usize)?;
     let len = (typelen[2] as u16 | (typelen[3] as u16) << 8) as usize;
-    let (remainder, signature) = take(len).parse(remainder)?;
-    let (_, signature_check) = take(2usize).parse(typelen)?;
+    let (remainder, signature) = take(remainder, len)?;
+    let (_, signature_check) = take(typelen, 2usize)?;
     if signature_check == Tags::Signature.get_id() && len == ECC_SIGNATURE_SIZE {
         Ok((remainder, signature))
     } else {
-        Err(Err::Error(Error::new(input, ErrorKind::Tag)))
+        Err(RustbootError::InvalidValue)
     }
 }
 
