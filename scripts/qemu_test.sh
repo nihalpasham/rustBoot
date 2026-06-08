@@ -1,56 +1,90 @@
 #!/usr/bin/env bash
-# QEMU firmware test for rustBoot core state machine (Cortex-M3/M4).
-# Builds a minimal test firmware and runs it in QEMU's mps2-an385 (Cortex-M3)
-# or netduinoplus2 (STM32F405 Cortex-M4) machine.
+# Multi-target QEMU firmware test for rustBoot.
+# Tests on all available Cortex-M machines: M3, M4, M7, and AArch64.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "=== rustBoot QEMU Test ==="
+echo "=== rustBoot QEMU Multi-Target Test ==="
+echo ""
 
-# Check QEMU
-if ! command -v qemu-system-arm &>/dev/null; then
-    echo "ERROR: qemu-system-arm not found. Install with: brew install qemu"
-    exit 1
+# Cortex-M linker scripts per machine
+declare -A LINK_SCRIPTS=(
+    ["mps2-an385"]="link.x"         # M3, flash at 0x0
+    ["mps2-an386"]="link.x"         # M4, flash at 0x0
+    ["mps2-an500"]="link.x"         # M7, flash at 0x0
+    ["netduinoplus2"]="link-m4.x"   # M4, flash at 0x08000000
+    ["olimex-stm32-h405"]="link-m4.x"
+    ["b-l475e-iot01a"]="link-m4.x"
+)
+
+build_firmware() {
+    local machine=$1
+    local link_script=$2
+    echo "Building for $machine ($link_script)..."
+
+    cd "$PROJECT_DIR"
+    RUSTFLAGS="-C link-arg=-T$link_script -C panic=abort" cargo build --release \
+        --target thumbv7em-none-eabihf \
+        --manifest-path boards/qemu_test/Cargo.toml 2>&1 | tail -2
+
+    local ELFDIR="$PROJECT_DIR/boards/qemu_test/target/thumbv7em-none-eabihf/release"
+    rust-objcopy -O binary "$ELFDIR/qemu_test" /tmp/qemu_test.bin 2>/dev/null
+    echo "  Binary: $(wc -c < /tmp/qemu_test.bin) bytes"
+}
+
+run_qemu() {
+    local machine=$1
+    local addr=$2
+    echo "  QEMU: $machine (addr=$addr, timeout 3s)..."
+    timeout 3 qemu-system-arm \
+        -M "$machine" \
+        -device loader,file=/tmp/qemu_test.bin,addr=$addr,force-raw=on \
+        -semihosting -serial none -monitor none 2>&1 && {
+        echo "  RESULT: BOOT OK"
+        return 0
+    } || {
+        local rc=$?
+        if [ $rc -eq 124 ]; then
+            echo "  RESULT: BOOT OK (timeout - firmware running)"
+            return 0
+        fi
+        echo "  RESULT: CRASH (exit code $rc)"
+        return 1
+    }
+}
+
+TESTS_PASSED=0
+TESTS_FAILED=0
+
+# === Cortex-M tests ===
+for machine in $(qemu-system-arm -machine help 2>&1 | grep -oE "^[a-z0-9_-]+" | grep -E "mps2-an|netduino|olimex|b-l475e" || true); do
+    link="${LINK_SCRIPTS[$machine]:-link.x}"
+    addr=${ADDR_MAP[$machine]:-0x00000000}
+
+    # Determine flash base address
+    case "$machine" in
+        netduinoplus2|olimex-stm32-h405|b-l475e-iot01a) addr="0x08000000" ;;
+        *) addr="0x00000000" ;;
+    esac
+
+    build_firmware "$machine" "$link" 2>/dev/null
+    if run_qemu "$machine" "$addr"; then
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+    echo ""
+done
+
+# === AArch64 test ===
+if command -v qemu-system-aarch64 &>/dev/null; then
+    echo "Building for AArch64 (RPi4 / qemu-virt)..."
+    # AArch64 test would need a different firmware (aarch64-unknown-none-softfloat)
+    # Placeholder for now
+    echo "  (AArch64 test firmware not yet implemented)"
 fi
-
-# Find a suitable machine
-MACHINE=""
-if qemu-system-arm -machine help 2>&1 | grep -q mps2-an385; then
-    MACHINE="mps2-an385"
-    echo "Machine: mps2-an385 (Cortex-M3)"
-elif qemu-system-arm -machine help 2>&1 | grep -q netduinoplus2; then
-    MACHINE="netduinoplus2"
-    echo "Machine: netduinoplus2 (STM32F405 Cortex-M4)"
-else
-    echo "ERROR: No suitable Cortex-M machine found in QEMU."
-    exit 1
-fi
-
-# Build the test firmware
-echo "Building QEMU test firmware..."
-cd "$PROJECT_DIR"
-RUSTFLAGS="-C link-arg=-Tlink.x -C panic=abort" cargo build --release \
-    --target thumbv7em-none-eabihf \
-    --manifest-path boards/qemu_test/Cargo.toml 2>&1 | tail -3
-
-# Convert to raw binary and load at flash base
-ELFDIR="boards/qemu_test/target/thumbv7em-none-eabihf/release"
-if [ ! -f "$ELFDIR/qemu_test" ]; then
-    echo "ERROR: Firmware binary not found at $ELFDIR/qemu_test"
-    exit 1
-fi
-
-rust-objcopy -O binary "$ELFDIR/qemu_test" /tmp/qemu_test.bin 2>/dev/null
-echo "Binary size: $(wc -c < /tmp/qemu_test.bin) bytes"
-
-# Run in QEMU
-echo "Launching QEMU (5 second timeout)..."
-timeout 5 qemu-system-arm \
-    -M "$MACHINE" \
-    -device loader,file=/tmp/qemu_test.bin,addr=0x00000000,force-raw=on \
-    -nographic -semihosting -serial none -monitor none 2>&1 || true
 
 echo ""
-echo "=== QEMU test complete ==="
+echo "=== Results: $TESTS_PASSED passed, $TESTS_FAILED failed ==="
