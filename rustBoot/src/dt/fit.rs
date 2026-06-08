@@ -22,6 +22,8 @@ use core::ops::Add;
 use super::{Concat, Error, Reader, Result};
 use log::info;
 use p256::ecdsa::signature::digest::Digest;
+// REQUIRED: elliptic_curve::generic_array re-export (upstream deprecation).
+// auto-resolves when elliptic-curve v0.14 releases.
 #[allow(deprecated)]
 use p256::elliptic_curve::generic_array::ArrayLength;
 use sha2::Sha256;
@@ -124,6 +126,8 @@ pub enum CurveType {
     None,
 }
 
+// ArrayLength from elliptic_curve::generic_array (upstream deprecation).
+// Required by EncodedPoint generics. Auto-resolves in elliptic-curve v0.14.
 #[allow(deprecated)]
 pub fn parse_fit<D, const H: usize, const S: usize, const N: usize>(
     reader: Reader,

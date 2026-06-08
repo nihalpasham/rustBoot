@@ -609,8 +609,8 @@ impl<'a, Part: ValidPart + Swappable, State: TypeState> RustbootImage<'a, Part, 
                     Ok(stored_hash) => {
                         let hasher = compute_img_hash::<Part, State, Sha256, N>(self, fw_size)?;
                         let computed_hash = hasher.finalize();
-                        #[allow(deprecated)]
-                        if computed_hash.as_slice() != stored_hash {
+                        let computed_slice: &[u8] = computed_hash.as_ref();
+                        if computed_slice != stored_hash {
                             return Err(RustbootError::IntegrityCheckFailed);
                         }
                         integrity_check = true;

@@ -15,6 +15,9 @@ use k256::{
     Secp256k1,
 };
 #[cfg(feature = "nistp256")]
+// REQUIRED: elliptic_curve::generic_array re-export is deprecated upstream.
+// EncodedPoint::from_untagged_bytes() requires this specific type.
+// Will auto-resolve on elliptic-curve v0.14 (in pre-release).
 #[allow(deprecated)]
 use p256::{
     ecdsa::{Signature, VerifyingKey},
@@ -134,6 +137,7 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
         #[cfg(feature = "secp256k1")]
         PubkeyTypes::Secp256k1 => {
             let embedded_pubkey = [0u8; 64];
+            // Upstream elliptic-curve re-export deprecation (auto-resolves in v0.14)
             #[allow(deprecated)]
             let untagged_bytes: &GenericArray<u8, U64> =
                 GenericArray::from_slice(&embedded_pubkey[..]);
@@ -151,6 +155,7 @@ pub fn import_pubkey(pk: PubkeyTypes) -> Result<VerifyingKeyTypes> {
                 0x34, 0x23, 0xFE, 0x63, 0x05, 0x15, 0x30, 0x43, 0xBB, 0x9E, 0x75, 0x63, 0xE0, 0x41,
                 0x6A, 0x70, 0xCE, 0x16, 0x0A, 0x60, 0x2A, 0x38,
             ];
+            // Upstream elliptic-curve re-export deprecation (auto-resolves in v0.14)
             #[allow(deprecated)]
             let untagged_bytes: &GenericArray<u8, U64> =
                 GenericArray::from_slice(&embedded_pubkey[..]);
