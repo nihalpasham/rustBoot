@@ -307,3 +307,17 @@ fn state_encode_decode_roundtrip() {
     // None variant produces None
     kani::assert(SectFlags::None.from().is_none(), "None variant decodes to None");
 }
+
+/// Proof that KeyBuffer zeroization clears key bytes.
+#[cfg(kani)]
+#[kani::proof]
+fn key_buffer_drop_zeroes() {
+    use rustBoot::crypto::zeroize::KeyBuffer;
+    let mut buf = KeyBuffer::<64>::new();
+    buf.as_mut().fill(0xFF);
+    buf.zeroize();
+    let slice = buf.as_ref();
+    kani::assert(slice[0] == 0, "byte 0 zeroized");
+    kani::assert(slice[32] == 0, "byte 32 zeroized");
+    kani::assert(slice[63] == 0, "byte 63 zeroized");
+}
