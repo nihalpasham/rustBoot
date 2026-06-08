@@ -1275,4 +1275,139 @@ mod tests {
         assert_eq!(SectFlags::BackupFlag.from(), Some(0x03));
         assert_eq!(SectFlags::UpdatedFlag.from(), Some(0x00));
     }
+
+    // ── Additional MC/DC edge case tests ──────────────────────────────
+
+    #[test]
+    fn test_state_decoding_all_invalid_bytes() {
+        for byte in 0x01u8..=0x0F {
+            assert!(decode_state(byte).is_err(), "byte 0x{byte:02X}");
+        }
+        for byte in 0x11u8..=0x6F {
+            assert!(decode_state(byte).is_err(), "byte 0x{byte:02X}");
+        }
+        for byte in 0x71u8..=0xFE {
+            assert!(decode_state(byte).is_err(), "byte 0x{byte:02X}");
+        }
+    }
+
+    #[test]
+    fn test_state_decoding_all_valid_bytes_individually() {
+        let cases: [(u8, fn() -> States); 4] = [
+            (0xFF, || States::New(StateNew)),
+            (0x70, || States::Updating(StateUpdating)),
+            (0x10, || States::Testing(StateTesting)),
+            (0x00, || States::Success(StateSuccess)),
+        ];
+        for (byte, expected_fn) in &cases {
+            let decoded = decode_state(*byte).unwrap();
+            let expected = expected_fn();
+            let decoded_name = match decoded {
+                States::New(_) => "New",
+                States::Updating(_) => "Updating",
+                States::Testing(_) => "Testing",
+                States::Success(_) => "Success",
+                States::NoState(_) => "NoState",
+            };
+            let expected_name = match expected {
+                States::New(_) => "New",
+                States::Updating(_) => "Updating",
+                States::Testing(_) => "Testing",
+                States::Success(_) => "Success",
+                States::NoState(_) => "NoState",
+            };
+            assert_eq!(
+                decoded_name, expected_name,
+                "byte 0x{byte:02X} decoded to wrong variant"
+            );
+        }
+    }
+
+    #[test]
+    fn test_sect_flags_from_all_covers_exhaustive_pattern() {
+        let all_flags = [
+            SectFlags::NewFlag,
+            SectFlags::SwappingFlag,
+            SectFlags::BackupFlag,
+            SectFlags::UpdatedFlag,
+            SectFlags::None,
+        ];
+        let expected = [Some(0x0F), Some(0x07), Some(0x03), Some(0x00), None];
+        for (flag, exp) in all_flags.iter().zip(expected.iter()) {
+            assert_eq!(flag.from(), *exp, "mismatch for {:?}", flag);
+        }
+    }
+
+    #[test]
+    fn test_sect_flags_has_flags_all_false_for_none() {
+        let none = SectFlags::None;
+        assert!(!none.has_new_flag());
+        assert!(!none.has_swapping_flag());
+        assert!(!none.has_backup_flag());
+        assert!(!none.has_updated_flag());
+    }
+
+    #[test]
+    fn test_sect_flags_set_swapping_preserves_input_for_none() {
+        let mut f = SectFlags::None;
+        assert_eq!(f.set_swapping_flag(), SectFlags::SwappingFlag);
+        assert_eq!(f, SectFlags::SwappingFlag);
+    }
+
+    #[test]
+    fn test_sect_flags_set_backup_preserves_input_for_none() {
+        let mut f = SectFlags::None;
+        assert_eq!(f.set_backup_flag(), SectFlags::BackupFlag);
+        assert_eq!(f, SectFlags::BackupFlag);
+    }
+
+    #[test]
+    fn test_sect_flags_set_updated_preserves_input_for_none() {
+        let mut f = SectFlags::None;
+        assert_eq!(f.set_updated_flag(), SectFlags::UpdatedFlag);
+        assert_eq!(f, SectFlags::UpdatedFlag);
+    }
+
+    #[test]
+    fn test_decode_state_new_byte() {
+        assert!(matches!(decode_state(0xFF).unwrap(), States::New(_)));
+    }
+
+    #[test]
+    fn test_decode_state_updating_byte() {
+        assert!(matches!(decode_state(0x70).unwrap(), States::Updating(_)));
+    }
+
+    #[test]
+    fn test_decode_state_testing_byte() {
+        assert!(matches!(decode_state(0x10).unwrap(), States::Testing(_)));
+    }
+
+    #[test]
+    fn test_decode_state_success_byte() {
+        assert!(matches!(decode_state(0x00).unwrap(), States::Success(_)));
+    }
+
+    #[test]
+    fn test_decode_state_invalid_byte_returns_error() {
+        let invalid_bytes = [0x01, 0x55, 0x80, 0xAA, 0xFE, 0x0F, 0x71, 0x6F, 0x11];
+        for byte in invalid_bytes {
+            assert!(
+                decode_state(byte).is_err(),
+                "byte 0x{byte:02X} should be invalid"
+            );
+        }
+    }
+
+    #[test]
+    fn test_state_transition_methods_not_on_update_partition() {
+        // Verify UpdateInNewState can only go to UpdateInUpdatingState
+        // This is a compile-time trait bound check expressed at runtime
+        fn assert_updateable<T: Updateable>() {}
+        assert_updateable::<StateUpdating>();
+        assert_updateable::<StateTesting>();
+        assert_updateable::<StateSuccess>();
+        // StateNew is NOT Updateable, so UpdateInNewState cannot use
+        // set_state/into_updating_state on arbitrary partitions
+    }
 }

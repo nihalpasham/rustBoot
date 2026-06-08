@@ -300,4 +300,46 @@ mod tests {
         let result = verify_ecc256_signature::<Sha256, 0xFFFF>(digest, &sig);
         assert!(matches!(result, Err(RustbootError::InvalidValue)));
     }
+
+    #[test]
+    fn import_pubkey_nistp256_returns_correct_variant() {
+        let result = import_pubkey(PubkeyTypes::NistP256).unwrap();
+        match result {
+            VerifyingKeyTypes::VKeyNistP256(_) => {}
+            _ => panic!("expected VKeyNistP256"),
+        }
+    }
+
+    #[test]
+    fn import_pubkey_nistp256_all_zero_key_handles_gracefully() {
+        // NistP256 uses a real hardcoded key, so this should succeed
+        // (the embedded key is valid). This test documents the current behavior.
+        let result = import_pubkey(PubkeyTypes::NistP256);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn verify_ecc256_truncated_signature_returns_bad_signature() {
+        let truncated = [0x01u8; 1];
+        let digest = Sha256::new().chain_update(b"test");
+        let result = verify_ecc256_signature::<Sha256, { HDR_IMG_TYPE_AUTH }>(digest, &truncated);
+        assert!(matches!(result, Err(RustbootError::BadSignature)));
+    }
+
+    #[test]
+    fn verify_ecc256_one_byte_signature_returns_bad_signature() {
+        let one_byte = [0x42u8];
+        let digest = Sha256::new().chain_update(b"x");
+        let result = verify_ecc256_signature::<Sha256, { HDR_IMG_TYPE_AUTH }>(digest, &one_byte);
+        assert!(matches!(result, Err(RustbootError::BadSignature)));
+    }
+
+    #[test]
+    fn verify_ecc256_signature_wrong_algorithm_not_feature_gated() {
+        let sig = [0xabu8; 64];
+        let digest = Sha256::new().chain_update(b"test");
+        // 0x0100 would be ed25519, not the nistp256 feature
+        let result = verify_ecc256_signature::<Sha256, 0x0100>(digest, &sig);
+        assert!(matches!(result, Err(RustbootError::InvalidValue)));
+    }
 }

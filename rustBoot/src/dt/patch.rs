@@ -871,6 +871,190 @@ mod tests {
         let _ = Reader::read(&result[..actual_size]).unwrap();
     }
 
+    // ── correct_endianess — additional edge cases ──────────────────────
+
+    #[test]
+    fn test_correct_endianess_single_byte_each_position() {
+        assert_eq!(correct_endianess(0x12000000), 0x00000012);
+        assert_eq!(correct_endianess(0x00340000), 0x00003400);
+        assert_eq!(correct_endianess(0x00005600), 0x00560000);
+        assert_eq!(correct_endianess(0x00000078), 0x78000000);
+    }
+
+    #[test]
+    fn test_correct_endianess_double_swap_identity() {
+        assert_eq!(correct_endianess(correct_endianess(0xDEADBEAF)), 0xDEADBEAF);
+        assert_eq!(correct_endianess(correct_endianess(0x12345678)), 0x12345678);
+        assert_eq!(correct_endianess(correct_endianess(0x00000000)), 0x00000000);
+    }
+
+    #[test]
+    fn test_correct_endianess_alternating_bits() {
+        assert_eq!(correct_endianess(0xAAAAAAAA), 0xAAAAAAAA);
+        assert_eq!(correct_endianess(0x55555555), 0x55555555);
+        assert_eq!(correct_endianess(0x0F0F0F0F), 0x0F0F0F0F);
+    }
+
+    // ── update_dtb_header — additional edge cases ──────────────────────
+
+    #[test]
+    fn test_update_dtb_header_append_only() {
+        let mut hdr = Header {
+            magic: DTB_MAGIC,
+            total_size: 200,
+            struct_offset: 56,
+            strings_offset: 120,
+            reserved_mem_offset: 40,
+            version: 17,
+            last_comp_version: 16,
+            bsp_cpu_id: 0,
+            strings_size: 20,
+            struct_size: 64,
+        };
+        let result = update_dtb_header(&mut hdr, 20, 15, 0);
+        assert_eq!(result.strings_size, 40);
+        assert_eq!(result.struct_size, 79);
+        assert_eq!(result.strings_offset, 135);
+        assert_eq!(result.total_size, 235);
+    }
+
+    #[test]
+    fn test_update_dtb_header_subtract_only() {
+        let mut hdr = Header {
+            magic: DTB_MAGIC,
+            total_size: 200,
+            struct_offset: 56,
+            strings_offset: 120,
+            reserved_mem_offset: 40,
+            version: 17,
+            last_comp_version: 16,
+            bsp_cpu_id: 0,
+            strings_size: 20,
+            struct_size: 64,
+        };
+        let result = update_dtb_header(&mut hdr, 0, 0, 30);
+        assert_eq!(result.total_size, 170);
+        assert_eq!(result.struct_size, 34);
+        assert_eq!(result.strings_offset, 90);
+        assert_eq!(result.strings_size, 20);
+    }
+
+    #[test]
+    fn test_update_dtb_header_large_values_no_overflow() {
+        let mut hdr = Header {
+            magic: DTB_MAGIC,
+            total_size: 100_000,
+            struct_offset: 56,
+            strings_offset: 2000,
+            reserved_mem_offset: 40,
+            version: 17,
+            last_comp_version: 16,
+            bsp_cpu_id: 0,
+            strings_size: 500,
+            struct_size: 1000,
+        };
+        let result = update_dtb_header(&mut hdr, 32000, 16000, 8000);
+        assert_eq!(result.strings_size, 32500);
+        assert_eq!(result.struct_size, 9000);
+        assert_eq!(result.total_size, 140000);
+    }
+
+    // ── get_padded_node_len — additional edge cases ────────────────────
+
+    fn make_dtb_with_named_node(node_name: &str) -> Vec<u8> {
+        let strings = b"";
+        let name_bytes = node_name.as_bytes();
+        let padded_name_len = name_bytes.len() + 1;
+        let padding = (4 - (padded_name_len % 4)) % 4;
+
+        let mut struct_blk = Vec::new();
+        struct_blk.extend_from_slice(&TOK_BEGIN_NODE.to_be_bytes());
+        struct_blk.extend_from_slice(&[0u8; 4]);
+        struct_blk.extend_from_slice(&TOK_BEGIN_NODE.to_be_bytes());
+        struct_blk.extend_from_slice(name_bytes);
+        struct_blk.push(0);
+        for _ in 0..padding {
+            struct_blk.push(0);
+        }
+        struct_blk.extend_from_slice(&TOK_END_NODE.to_be_bytes());
+        struct_blk.extend_from_slice(&TOK_END_NODE.to_be_bytes());
+        struct_blk.extend_from_slice(&TOK_END.to_be_bytes());
+
+        let mem_rsvmap: [u8; 16] = [0u8; 16];
+        let off_dt_struct: u32 = 40 + 16;
+        let off_dt_strings: u32 = off_dt_struct + struct_blk.len() as u32;
+        let total_size = off_dt_strings + strings.len() as u32;
+
+        let mut blob = Vec::with_capacity(total_size as usize);
+        blob.extend_from_slice(&DTB_MAGIC.to_be_bytes());
+        blob.extend_from_slice(&total_size.to_be_bytes());
+        blob.extend_from_slice(&off_dt_struct.to_be_bytes());
+        blob.extend_from_slice(&off_dt_strings.to_be_bytes());
+        blob.extend_from_slice(&40u32.to_be_bytes());
+        blob.extend_from_slice(&17u32.to_be_bytes());
+        blob.extend_from_slice(&16u32.to_be_bytes());
+        blob.extend_from_slice(&0u32.to_be_bytes());
+        blob.extend_from_slice(&(strings.len() as u32).to_be_bytes());
+        blob.extend_from_slice(&(struct_blk.len() as u32).to_be_bytes());
+        blob.extend_from_slice(&mem_rsvmap);
+        blob.extend_from_slice(&struct_blk);
+        blob.extend_from_slice(strings);
+
+        blob
+    }
+
+    #[test]
+    fn test_get_padded_node_len_single_char_name() {
+        let dtb = make_dtb_with_named_node("a");
+        let reader = Reader::read(&dtb).unwrap();
+        let len = get_padded_node_len(&reader, "/a");
+        // TOKEN_SIZE(4) + "a".len()(1) = 5, 5 % 4 = 1, padded = 6
+        assert_eq!(len, 6);
+        assert_eq!(len % 4, 2);
+    }
+
+    #[test]
+    fn test_get_padded_node_len_varied_names() {
+        // name "ab": len=2 → node_len=6 → 6%4=2 → padded=8
+        let dtb_2 = make_dtb_with_named_node("ab");
+        let reader_2 = Reader::read(&dtb_2).unwrap();
+        assert_eq!(get_padded_node_len(&reader_2, "/ab"), 8);
+
+        // name "abc": len=3 → node_len=7 → 7%4=3 → padded=10
+        let dtb_3 = make_dtb_with_named_node("abc");
+        let reader_3 = Reader::read(&dtb_3).unwrap();
+        assert_eq!(get_padded_node_len(&reader_3, "/abc"), 10);
+
+        // name "abcd": len=4 → node_len=8 → 8%4=0 → padded=8
+        let dtb_4 = make_dtb_with_named_node("abcd");
+        let reader_4 = Reader::read(&dtb_4).unwrap();
+        assert_eq!(get_padded_node_len(&reader_4, "/abcd"), 8);
+    }
+
+    // ── parse_raw_node — additional edge cases ─────────────────────────
+
+    #[test]
+    fn test_parse_raw_node_root_only_no_chosen() {
+        let dtb = make_root_only_dtb();
+        let reader = Reader::read(&dtb).unwrap();
+        let result = parse_raw_node::<5>(&reader, "/", &dtb);
+        assert!(result.is_ok());
+    }
+
+    // ── check_chosen_node — additional edge cases ──────────────────────
+
+    #[test]
+    fn test_check_chosen_node_with_constructors() {
+        let dtb = make_minimal_dtb();
+        let reader = Reader::read(&dtb).unwrap();
+        let items = parse_raw_node::<10>(&reader, "/chosen", &dtb).unwrap();
+        let result = check_chosen_node::<10, 300>(items);
+        assert!(result.is_ok());
+        let (_serialized, subtracted) = result.unwrap();
+        // other-prop should be kept; bootargs + initrd-start + initrd-end removed
+        assert!(subtracted > 0);
+    }
+
     #[test]
     fn test_patch_chosen_node_multiple_calls() {
         let dtb = make_minimal_dtb();

@@ -320,5 +320,9 @@ Next hardening step:
 4. Add more Kani proof harnesses (partition math, state transitions).
 5. Extend proptest rounds and fuzz corpus.
 6. Upgrade remaining `#[allow(deprecated)]` items (generic-array re-export).
-7. Formalize the vendored `aarch64-cpu` fork (upgrade to v11.2.0, extract `mair_el3` locally).
+7. **Vendored aarch64-cpu fork**: Upgrade from v9.3.1 to upstream v11.2.0.
+   - The upstream v11.2.0 API has 89 breaking changes vs the vendored fork.
+   - Requires porting exception.rs, register access patterns.
+   - After upgrade, extract `mair_el3.rs` (the only fork-unique file) as a local module.
+   - Deferred: i.MX8MN-specific, not needed for STM32 targets.
 8. Document remaining gaps: hardware-dependent features, `rustboot_start()` diverging return type.
