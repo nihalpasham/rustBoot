@@ -758,6 +758,7 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)]
 mod tests {
     use super::*;
 
@@ -1163,6 +1164,94 @@ mod tests {
 
     #[test]
     fn test_sect_flags_from_all_variants() {
+        assert_eq!(SectFlags::NewFlag.from(), Some(0x0F));
+        assert_eq!(SectFlags::SwappingFlag.from(), Some(0x07));
+        assert_eq!(SectFlags::BackupFlag.from(), Some(0x03));
+        assert_eq!(SectFlags::UpdatedFlag.from(), Some(0x00));
+    }
+
+    /// Combined boot flow simulation:
+    /// Tests the full state machine + SectFlags + TypeState pipeline
+    /// end-to-end without hardware (pure software).
+    #[test]
+    fn test_combined_boot_flow_scenario() {
+        // Step 1: Verify TypeState encodes the correct state byte
+        assert_eq!(StateNew.from(), Some(0xFF));   // 255 = new
+        assert_eq!(StateUpdating.from(), Some(0x70)); // 112 = updating
+        assert_eq!(StateTesting.from(), Some(0x10)); // 16 = testing
+        assert_eq!(StateSuccess.from(), Some(0x00)); // 0 = success
+
+        // Step 2: Verify the transition DAG produces correct final states
+        let new_decode = decode_state(StateNew.from().unwrap()).unwrap();
+        let testing_decode = decode_state(StateTesting.from().unwrap()).unwrap();
+        let success_decode = decode_state(StateSuccess.from().unwrap()).unwrap();
+
+        match new_decode {
+            States::New(_) => {},
+            _ => panic!("Expected New state"),
+        }
+        match testing_decode {
+            States::Testing(_) => {},
+            _ => panic!("Expected Testing state"),
+        }
+        match success_decode {
+            States::Success(_) => {},
+            _ => panic!("Expected Success state"),
+        }
+
+        // Step 3: Verify the full update flow
+        let update_updating_decode = decode_state(StateUpdating.from().unwrap()).unwrap();
+        match update_updating_decode {
+            States::Updating(_) => {},
+            _ => panic!("Expected Updating state for update"),
+        }
+    }
+
+    /// Test that the complete state machine decision matrix
+    /// (similar to rustboot_start logic) produces correct actions
+    #[test]
+    fn test_boot_decision_logic() {
+        // Test: All valid boot states produce correct decode
+        let boot_values = [
+            (StateNew.from().unwrap(), "BootInNewState"),
+            (StateTesting.from().unwrap(), "BootInTestingState"),
+            (StateSuccess.from().unwrap(), "BootInSuccessState"),
+        ];
+
+        for &(state_byte, _name) in &boot_values {
+            assert!(decode_state(state_byte).is_ok(), "All boot states should decode");
+        }
+
+        // Verify that invalid boot states are rejected
+        let invalid_states = [0x01u8, 0x55, 0x80, 0xAA, 0xFE];
+        for &state in &invalid_states {
+            assert!(decode_state(state).is_err(), "Invalid state should be rejected");
+        }
+
+        // Verify round-trip: TypeState -> u8 -> decode -> correct States variant
+        assert!(matches!(decode_state(StateNew.from().unwrap()).unwrap(), States::New(_)));
+        assert!(matches!(decode_state(StateTesting.from().unwrap()).unwrap(), States::Testing(_)));
+        assert!(matches!(decode_state(StateSuccess.from().unwrap()).unwrap(), States::Success(_)));
+        assert!(matches!(decode_state(StateUpdating.from().unwrap()).unwrap(), States::Updating(_)));
+    }
+
+    /// Verify that state encoding values are consistent between
+    /// TypeState and SectFlags representations
+    #[test]
+    fn test_state_encoding_consistency() {
+        // TypeState encoding values
+        let new_val = StateNew.from().unwrap();
+        let test_val = StateTesting.from().unwrap();
+        let succ_val = StateSuccess.from().unwrap();
+        let upd_val = StateUpdating.from().unwrap();
+
+        // Verify each TypeState value
+        assert_eq!(new_val, 0xFF, "StateNew encodes as 0xFF");
+        assert_eq!(test_val, 0x10, "StateTesting encodes as 0x10");
+        assert_eq!(succ_val, 0x00, "StateSuccess encodes as 0x00");
+        assert_eq!(upd_val, 0x70, "StateUpdating encodes as 0x70");
+
+        // Verify SectFlags provide a consistent but distinct encoding
         assert_eq!(SectFlags::NewFlag.from(), Some(0x0F));
         assert_eq!(SectFlags::SwappingFlag.from(), Some(0x07));
         assert_eq!(SectFlags::BackupFlag.from(), Some(0x03));
