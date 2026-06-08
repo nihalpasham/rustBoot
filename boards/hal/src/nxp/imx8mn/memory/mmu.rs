@@ -1,6 +1,7 @@
 //! Memory Management Unit Driver.
 
 use aarch64_cpu::{asm::barrier, registers::*};
+use crate::nxp::imx8mn::mair_el3::MAIR_EL3;
 use core::intrinsics::unlikely;
 use tock_registers::interfaces::{ReadWriteable, Readable, Writeable};
 
@@ -32,7 +33,7 @@ impl MemoryManagementUnit {
 
     #[inline(always)]
     fn is_enabled(&self) -> bool {
-        SCTLR_EL3.matches_all(SCTLR_EL3::M::Enable)
+        SCTLR_EL3.matches_all(SCTLR_EL3::M::Enabled)
     }
 
     pub unsafe fn disable_mmu_and_caching(&self) {
@@ -43,7 +44,7 @@ impl MemoryManagementUnit {
 
         // We have already disabled the MMU using GDB. So, we only turn off data and instruction caching. 
         SCTLR_EL3.modify(
-            SCTLR_EL3::C::NonCacheable + SCTLR_EL3::I::NonCacheable,
+            SCTLR_EL3::C::Disabled + SCTLR_EL3::I::Disabled,
         );
 
         // Force MMU disabling to complete before next instruction.

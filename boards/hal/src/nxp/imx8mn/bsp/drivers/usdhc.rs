@@ -2828,21 +2828,4 @@ impl UsdhController {
     }
 }
 
-impl Debug for SCR::BUS_WIDTH::Value {
-    fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::BUS_WIDTH_1 => {
-                print!("WIDTH_1");
-                Ok(())
-            }
-            Self::BUS_WIDTH_4 => {
-                print!("WIDTH_4");
-                Ok(())
-            }
-            Self::BUS_WIDTH_1_4 => {
-                print!("WIDTH_1_4");
-                Ok(())
-            }
-        }
-    }
-}
+

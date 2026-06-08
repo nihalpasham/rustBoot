@@ -16,7 +16,7 @@ fn _panic_print(args: fmt::Arguments) {
 #[macro_export]
 macro_rules! panic_println {
     ($($arg:tt)*) => ({
-        _panic_print(format_args_nl!($($arg)*));
+        _panic_print(format_args!("{}\n", format_args!($($arg)*)));
     })
 }
 
@@ -71,7 +71,7 @@ fn panic(info: &PanicInfo) -> ! {
         location,
         line,
         column,
-        info.message().unwrap_or(&format_args!("")),
+        info.message(),
     );
 
     cpu_core::wait_forever()

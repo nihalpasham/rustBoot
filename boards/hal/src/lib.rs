@@ -1,5 +1,5 @@
 #![no_std]
-// UNUSED feature gates removed: format_args_nl, asm, core_intrinsics
+#![feature(core_intrinsics)]
 #![allow(non_snake_case)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::doc_lazy_continuation)]
@@ -34,7 +34,7 @@ pub trait FlashInterface {
 
 // Arch-specific code
 pub fn preboot() {}
-pub fn boot_from(_fw_base_address: usize) -> ! {
+pub fn boot_from(fw_base_address: usize) -> ! {
     #[cfg(feature = "nrf52840")]
     crate::nrf::nrf52840::boot_from(fw_base_address);
 

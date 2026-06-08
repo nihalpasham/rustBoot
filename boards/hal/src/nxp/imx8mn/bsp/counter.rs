@@ -168,7 +168,7 @@ impl SystemCounter {
     pub fn start_counter(&self) {
         let freq = self.get_cntfid0();
         // Update with accurate clock frequency
-        CNTFRQ_EL0.set(freq as u64);
+        unsafe { core::arch::asm!("msr CNTFRQ_EL0, {}", in(reg) freq as u64, options(nomem, nostack)) };
         self.registers
             .SYS_CNTCR
             .write(SYS_CNTCR::FCR0::SelEntry0 + SYS_CNTCR::EN::Enable + SYS_CNTCR::HDBG::Halt)

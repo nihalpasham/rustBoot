@@ -31,7 +31,7 @@ macro_rules! print {
 macro_rules! println {
     () => ($crate::print!("\n"));
     ($($arg:tt)*) => ({
-        $crate::rpi::rpi4::log::print::_print(format_args_nl!($($arg)*));
+        $crate::rpi::rpi4::log::print::_print(format_args!(concat!($($arg)*, "\n")));
     })
 }
 
@@ -45,8 +45,8 @@ macro_rules! info {
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
 
-        $crate::rpi::rpi4::log::print::_print(format_args_nl!(
-            concat!("[  {:>3}.{:03}{:03}] ", $string),
+        $crate::rpi::rpi4::log::print::_print(format_args!(
+            concat!("[  {:>3}.{:03}{:03}] ", $string, "\n"),
             timestamp.as_secs(),
             timestamp_subsec_us / 1_000,
             timestamp_subsec_us % 1_000
@@ -59,8 +59,8 @@ macro_rules! info {
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
 
-        $crate::rpi::rpi4::log::print::_print(format_args_nl!(
-            concat!("[  {:>3}.{:03}{:03}] ", $format_string),
+        $crate::rpi::rpi4::log::print::_print(format_args!(
+            concat!("[  {:>3}.{:03}{:03}] ", $format_string, "\n"),
             timestamp.as_secs(),
             timestamp_subsec_us / 1_000,
             timestamp_subsec_us % 1_000,
@@ -79,8 +79,8 @@ macro_rules! warn {
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
 
-        $crate::rpi::rpi4::log::print::_print(format_args_nl!(
-            concat!("[W {:>3}.{:03}{:03}] ", $string),
+        $crate::rpi::rpi4::log::print::_print(format_args!(
+            concat!("[W {:>3}.{:03}{:03}] ", $string, "\n"),
             timestamp.as_secs(),
             timestamp_subsec_us / 1_000,
             timestamp_subsec_us % 1_000
@@ -93,8 +93,8 @@ macro_rules! warn {
         let timestamp = time_manager().uptime();
         let timestamp_subsec_us = timestamp.subsec_micros();
 
-        $crate::rpi::rpi4::log::print::_print(format_args_nl!(
-            concat!("[W {:>3}.{:03}{:03}] ", $format_string),
+        $crate::rpi::rpi4::log::print::_print(format_args!(
+            concat!("[W {:>3}.{:03}{:03}] ", $format_string, "\n"),
             timestamp.as_secs(),
             timestamp_subsec_us / 1_000,
             timestamp_subsec_us % 1_000,

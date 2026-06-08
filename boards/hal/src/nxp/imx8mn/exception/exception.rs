@@ -203,8 +203,6 @@ impl ExceptionContext {
                     | PCAlignmentFault
                     | DataAbortLowerEL
                     | DataAbortCurrentEL
-                    | WatchpointLowerEL
-                    | WatchpointCurrentEL
             ),
         }
     }
